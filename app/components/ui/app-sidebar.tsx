@@ -33,6 +33,7 @@ import { Button } from "./button";
 import "./sidebar-scroll.css";
 
 const items = [
+  // Prioridad solicitada: Inicio, Pacientes, Enfermería, Laboratorio
   {
     title: "Inicio",
     url: "/",
@@ -43,6 +44,17 @@ const items = [
     url: "/pacientes",
     icon: Users,
   },
+  {
+    title: "Enfermería",
+    url: "/enfermeria",
+    icon: HeartPulse,
+  },
+  {
+    title: "Laboratorio",
+    url: "/laboratorio",
+    icon: FlaskConical,
+  },
+  // Resto de opciones
   {
     title: "Personal",
     url: "/personal",
@@ -62,16 +74,6 @@ const items = [
     title: "Cotizaciones",
     url: "/cotizaciones",
     icon: FileText,
-  },
-  {
-    title: "Laboratorio",
-    url: "/laboratorio",
-    icon: FlaskConical,
-  },
-  {
-    title: "Enfermería",
-    url: "/enfermeria",
-    icon: HeartPulse,
   },
   {
     title: "Inventario",
