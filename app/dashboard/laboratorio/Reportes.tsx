@@ -89,7 +89,11 @@ export default function LaboratorioReportes() {
         totalRevenue: filteredOrders.reduce((sum, order) => sum + order.total_amount, 0),
         totalExams: filteredOrders.reduce((sum, order) => sum + order.items.length, 0),
         completedOrders: filteredOrders.filter(order => order.status === 'Completado').length,
-        pendingOrders: filteredOrders.filter(order => order.status === 'Pendiente' || order.status === 'En Proceso').length
+        pendingOrders: filteredOrders.filter(order => 
+          order.status === 'Pendiente' || 
+          order.status === 'En toma de muestra' || 
+          order.status === 'En Proceso'
+        ).length
       };
       setStats(calculatedStats);
 
@@ -364,7 +368,12 @@ export default function LaboratorioReportes() {
                             <td className="p-2">{new Date(order.order_date).toLocaleDateString('es-ES')}</td>
                             <td className="p-2">{order.physician_name || '-'}</td>
                             <td className="p-2">
-                              <Badge variant={order.status === 'Completado' ? 'default' : order.status === 'Pendiente' ? 'secondary' : 'outline'}>
+                              <Badge variant={
+                                order.status === 'Completado' ? 'default' :
+                                order.status === 'Pendiente' ? 'outline' :
+                                order.status === 'En toma de muestra' ? 'secondary' :
+                                'secondary'
+                              }>
                                 {order.status}
                               </Badge>
                             </td>

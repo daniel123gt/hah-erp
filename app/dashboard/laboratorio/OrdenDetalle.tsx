@@ -4,11 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
+import { Input } from "~/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "~/components/ui/dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, FileText, User, Calendar } from "lucide-react";
+import { ArrowLeft, Loader2, FileText, User, Calendar, Edit, Plus, X, Search, Trash2 } from "lucide-react";
 import labOrderService, { type LabExamOrder } from "~/services/labOrderService";
 import patientsService, { type Patient } from "~/services/patientsService";
 import { UploadResultPdf } from "~/components/ui/upload-result-pdf";
+import { getExams } from "~/services/labService";
 import {
   Select,
   SelectContent,
@@ -24,6 +27,14 @@ export default function OrdenDetalle() {
   const [patient, setPatient] = useState<Patient | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isAddingExams, setIsAddingExams] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedExams, setSelectedExams] = useState<string[]>([]);
+  const [isAdding, setIsAdding] = useState(false);
+  const [isRemoving, setIsRemoving] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -69,11 +80,94 @@ export default function OrdenDetalle() {
     }
   };
 
+  const handleSearchExams = async () => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    try {
+      setIsSearching(true);
+      const result = await getExams({
+        page: 1,
+        limit: 20,
+        search: searchQuery.trim(),
+        categoria: ''
+      });
+      
+      // Filtrar exámenes que ya están en la orden
+      const existingExamIds = order?.items.map(item => item.exam_id) || [];
+      const filtered = result.data.filter(exam => !existingExamIds.includes(exam.id));
+      setSearchResults(filtered);
+    } catch (error) {
+      console.error("Error al buscar exámenes:", error);
+      toast.error("Error al buscar exámenes");
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleAddExams = async () => {
+    if (!order || selectedExams.length === 0) return;
+    
+    try {
+      setIsAdding(true);
+      const updatedOrder = await labOrderService.addExamsToOrder(order.id, selectedExams);
+      setOrder(updatedOrder);
+      toast.success(`${selectedExams.length} examen(es) agregado(s) exitosamente`);
+      setSelectedExams([]);
+      setSearchQuery("");
+      setSearchResults([]);
+      setIsAddingExams(false);
+    } catch (error: any) {
+      console.error("Error al agregar exámenes:", error);
+      toast.error(error?.message || "Error al agregar exámenes");
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  const handleRemoveExam = async (itemId: string) => {
+    if (!order) return;
+    
+    try {
+      setIsRemoving(itemId);
+      const updatedOrder = await labOrderService.removeExamFromOrder(order.id, itemId);
+      setOrder(updatedOrder);
+      toast.success("Examen eliminado exitosamente");
+    } catch (error: any) {
+      console.error("Error al eliminar examen:", error);
+      toast.error(error?.message || "Error al eliminar examen");
+    } finally {
+      setIsRemoving(null);
+    }
+  };
+
+  useEffect(() => {
+    if (!isAddingExams) {
+      setSearchQuery("");
+      setSearchResults([]);
+      setSelectedExams([]);
+    }
+  }, [isAddingExams]);
+
+  useEffect(() => {
+    if (searchQuery.trim() && isAddingExams) {
+      const timeout = setTimeout(() => {
+        handleSearchExams();
+      }, 300);
+      return () => clearTimeout(timeout);
+    } else {
+      setSearchResults([]);
+    }
+  }, [searchQuery, isAddingExams, order]);
+
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
       case "Completado":
         return "default";
       case "En Proceso":
+        return "secondary";
+      case "En toma de muestra":
         return "secondary";
       case "Cancelado":
         return "destructive";
@@ -151,6 +245,14 @@ export default function OrdenDetalle() {
           <Badge variant={getPriorityBadgeVariant(order.priority)} className="text-sm px-3 py-1">
             {order.priority}
           </Badge>
+          <Button
+            variant={isEditing ? "default" : "outline"}
+            onClick={() => setIsEditing(!isEditing)}
+            size="sm"
+          >
+            <Edit className="w-4 h-4 mr-2" />
+            {isEditing ? "Cancelar Edición" : "Editar Orden"}
+          </Button>
         </div>
       </div>
 
@@ -197,6 +299,7 @@ export default function OrdenDetalle() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Pendiente">Pendiente</SelectItem>
+                      <SelectItem value="En toma de muestra">En toma de muestra</SelectItem>
                       <SelectItem value="En Proceso">En Proceso</SelectItem>
                       <SelectItem value="Completado">Completado</SelectItem>
                       <SelectItem value="Cancelado">Cancelado</SelectItem>
@@ -298,10 +401,105 @@ export default function OrdenDetalle() {
         <div className="lg:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="w-5 h-5" />
-                Exámenes de la Orden ({order.items.length})
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="w-5 h-5" />
+                  Exámenes de la Orden ({order.items.length})
+                </CardTitle>
+                {isEditing && (
+                  <Dialog open={isAddingExams} onOpenChange={setIsAddingExams}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" variant="outline">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Agregar Exámenes
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>Buscar y Agregar Exámenes</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div className="flex gap-2">
+                          <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                            <Input
+                              placeholder="Buscar por nombre o código..."
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              className="pl-10"
+                            />
+                          </div>
+                        </div>
+                        {isSearching && (
+                          <div className="flex items-center justify-center py-4">
+                            <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                          </div>
+                        )}
+                        {searchResults.length > 0 && (
+                          <div className="border rounded-lg max-h-60 overflow-y-auto">
+                            {searchResults.map((exam) => (
+                              <div
+                                key={exam.id}
+                                className={`p-3 border-b last:border-b-0 cursor-pointer hover:bg-gray-50 ${
+                                  selectedExams.includes(exam.id) ? 'bg-blue-50' : ''
+                                }`}
+                                onClick={() => {
+                                  setSelectedExams(prev =>
+                                    prev.includes(exam.id)
+                                      ? prev.filter(id => id !== exam.id)
+                                      : [...prev, exam.id]
+                                  );
+                                }}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="font-medium text-gray-900">{exam.nombre}</p>
+                                    <p className="text-sm text-gray-500">Código: {exam.codigo}</p>
+                                    <p className="text-sm font-semibold text-green-600">{exam.precio}</p>
+                                  </div>
+                                  {selectedExams.includes(exam.id) && (
+                                    <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+                                      <X className="w-3 h-3 text-white" />
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {searchQuery && !isSearching && searchResults.length === 0 && (
+                          <div className="text-center py-4 text-gray-500">
+                            No se encontraron exámenes
+                          </div>
+                        )}
+                        {selectedExams.length > 0 && (
+                          <div className="flex items-center justify-between pt-4 border-t">
+                            <span className="text-sm text-gray-600">
+                              {selectedExams.length} examen(es) seleccionado(s)
+                            </span>
+                            <Button
+                              onClick={handleAddExams}
+                              disabled={isAdding}
+                            >
+                              {isAdding ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                  Agregando...
+                                </>
+                              ) : (
+                                <>
+                                  <Plus className="w-4 h-4 mr-2" />
+                                  Agregar
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -312,11 +510,12 @@ export default function OrdenDetalle() {
                       <TableHead>Examen</TableHead>
                       <TableHead>Precio</TableHead>
                       <TableHead>Estado</TableHead>
+                      {isEditing && <TableHead>Acciones</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {order.items.map((item) => (
-                      <TableRow key={item.exam_id}>
+                      <TableRow key={item.id}>
                         <TableCell className="font-mono text-sm">
                           {item.exam_code}
                         </TableCell>
@@ -331,6 +530,23 @@ export default function OrdenDetalle() {
                             {item.status}
                           </Badge>
                         </TableCell>
+                        {isEditing && (
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveExam(item.id)}
+                              disabled={isRemoving === item.id}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              {isRemoving === item.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-4 h-4" />
+                              )}
+                            </Button>
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))}
                   </TableBody>
