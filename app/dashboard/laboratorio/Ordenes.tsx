@@ -77,6 +77,8 @@ export default function OrdenesLaboratorio() {
         return "default";
       case "En Proceso":
         return "secondary";
+      case "En toma de muestra":
+        return "secondary";
       case "Cancelado":
         return "destructive";
       default:
@@ -144,6 +146,7 @@ export default function OrdenesLaboratorio() {
                 <SelectContent>
                   <SelectItem value="all">Todos los estados</SelectItem>
                   <SelectItem value="Pendiente">Pendiente</SelectItem>
+                  <SelectItem value="En toma de muestra">En toma de muestra</SelectItem>
                   <SelectItem value="En Proceso">En Proceso</SelectItem>
                   <SelectItem value="Completado">Completado</SelectItem>
                   <SelectItem value="Cancelado">Cancelado</SelectItem>

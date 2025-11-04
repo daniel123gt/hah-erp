@@ -5,11 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
+import { FileText } from "lucide-react";
 import patientsService, { type Patient } from "~/services/patientsService";
 import { patientHistoryService, type PatientHistory } from "~/services/patientHistoryService";
 import { nursingHistoryService, type NursingHistory } from "~/services/nursingHistoryService";
 import { examHistoryService, type ExamHistory } from "~/services/examHistoryService";
 import { nursingInitialAssessmentService, type NursingInitialAssessment } from "~/services/nursingInitialAssessmentService";
+import medicalRestsService, { type MedicalRest } from "~/services/medicalRestsService";
+import medicalPrescriptionsService, { type MedicalPrescription } from "~/services/medicalPrescriptionsService";
+import storageService from "~/services/storageService";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -25,6 +29,8 @@ export default function PacienteDetalleRoute() {
   const [nursingHistory, setNursingHistory] = useState<NursingHistory[]>([]);
   const [examHistory, setExamHistory] = useState<ExamHistory[]>([]);
   const [initialAssessment, setInitialAssessment] = useState<NursingInitialAssessment | null>(null);
+  const [medicalRests, setMedicalRests] = useState<MedicalRest[]>([]);
+  const [medicalPrescriptions, setMedicalPrescriptions] = useState<MedicalPrescription[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,14 +72,24 @@ export default function PacienteDetalleRoute() {
             console.warn('Error al cargar valoración inicial:', err);
             return null;
           }),
+          medicalRestsService.getByPatient(id).catch(err => {
+            console.warn('Error al cargar descansos médicos:', err);
+            return [];
+          }),
+          medicalPrescriptionsService.getByPatient(id).catch(err => {
+            console.warn('Error al cargar recetas médicas:', err);
+            return [];
+          }),
         ];
         
-        const [ch, nh, eh, ia] = await Promise.all(historyPromises);
+        const [ch, nh, eh, ia, mr, mp] = await Promise.all(historyPromises);
         if (!isMounted) return;
         setClinicalHistory(ch);
         setNursingHistory(nh);
         setExamHistory(eh);
         setInitialAssessment(ia);
+        setMedicalRests(mr);
+        setMedicalPrescriptions(mp);
       } catch (error: any) {
         console.error('Error al cargar datos del paciente:', error);
         setError(error?.message || 'Error al cargar los datos del paciente');
@@ -483,6 +499,154 @@ export default function PacienteDetalleRoute() {
                           </TableCell>
                           <TableCell>{entry.ordered_by || '-'}</TableCell>
                           <TableCell className="max-w-xl whitespace-pre-wrap">{entry.results || entry.notes || '-'}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Descansos Médicos */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Descansos Médicos</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {medicalRests.length === 0 ? (
+                <p className="text-gray-500">Aún no hay registros de descansos médicos.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Médico</TableHead>
+                        <TableHead>Motivo</TableHead>
+                        <TableHead>Documento</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {medicalRests.map((rest) => (
+                        <TableRow key={rest.id}>
+                          <TableCell>{new Date(rest.date).toLocaleDateString('es-ES')}</TableCell>
+                          <TableCell>{rest.physician_name}</TableCell>
+                          <TableCell className="max-w-md">{rest.reason}</TableCell>
+                          <TableCell>
+                            {rest.document_url ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={async () => {
+                                  try {
+                                    // Intentar obtener URL firmada si es necesario
+                                    if (rest.document_url?.includes('storage')) {
+                                      // Extraer bucket y path del URL
+                                      const urlParts = rest.document_url.split('/');
+                                      const bucketIndex = urlParts.indexOf('object') + 2;
+                                      if (bucketIndex > 1) {
+                                        const bucket = urlParts[bucketIndex];
+                                        const filePath = urlParts.slice(bucketIndex + 1).join('/');
+                                        const signedUrl = await storageService.getDownloadUrl(bucket, filePath);
+                                        window.open(signedUrl, '_blank');
+                                      } else {
+                                        window.open(rest.document_url, '_blank');
+                                      }
+                                    } else {
+                                      window.open(rest.document_url, '_blank');
+                                    }
+                                  } catch (error) {
+                                    console.error('Error al abrir documento:', error);
+                                    // Si falla, intentar abrir directamente
+                                    if (rest.document_url) {
+                                      window.open(rest.document_url, '_blank');
+                                    }
+                                  }
+                                }}
+                                className="flex items-center gap-2"
+                              >
+                                <FileText className="w-4 h-4" />
+                                Ver PDF
+                              </Button>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Recetas Médicas */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Recetas Médicas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {medicalPrescriptions.length === 0 ? (
+                <p className="text-gray-500">Aún no hay registros de recetas médicas.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Médico</TableHead>
+                        <TableHead>Motivo</TableHead>
+                        <TableHead>Documento</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {medicalPrescriptions.map((prescription) => (
+                        <TableRow key={prescription.id}>
+                          <TableCell>{new Date(prescription.date).toLocaleDateString('es-ES')}</TableCell>
+                          <TableCell>{prescription.physician_name}</TableCell>
+                          <TableCell className="max-w-md">{prescription.reason}</TableCell>
+                          <TableCell>
+                            {prescription.document_url ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={async () => {
+                                  try {
+                                    // Intentar obtener URL firmada si es necesario
+                                    if (prescription.document_url?.includes('storage')) {
+                                      // Extraer bucket y path del URL
+                                      const urlParts = prescription.document_url.split('/');
+                                      const bucketIndex = urlParts.indexOf('object') + 2;
+                                      if (bucketIndex > 1) {
+                                        const bucket = urlParts[bucketIndex];
+                                        const filePath = urlParts.slice(bucketIndex + 1).join('/');
+                                        const signedUrl = await storageService.getDownloadUrl(bucket, filePath);
+                                        window.open(signedUrl, '_blank');
+                                      } else {
+                                        window.open(prescription.document_url, '_blank');
+                                      }
+                                    } else {
+                                      window.open(prescription.document_url, '_blank');
+                                    }
+                                  } catch (error) {
+                                    console.error('Error al abrir documento:', error);
+                                    // Si falla, intentar abrir directamente
+                                    if (prescription.document_url) {
+                                      window.open(prescription.document_url, '_blank');
+                                    }
+                                  }
+                                }}
+                                className="flex items-center gap-2"
+                              >
+                                <FileText className="w-4 h-4" />
+                                Ver PDF
+                              </Button>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

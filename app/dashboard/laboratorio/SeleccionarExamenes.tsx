@@ -279,7 +279,7 @@ export default function LaboratorioPage() {
                       handleClearSelection();
                       toast.success("Orden creada exitosamente");
                     }}
-                  />
+                  />   
                   <Button
                     onClick={handleClearSelection}
                     variant="outline"

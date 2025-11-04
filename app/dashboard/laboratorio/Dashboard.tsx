@@ -195,7 +195,12 @@ export default function LaboratorioDashboard() {
                     <span className="font-medium text-sm">
                       Orden #{order.id.slice(0, 8)}
                     </span>
-                    <Badge variant={order.status === 'Pendiente' ? 'outline' : order.status === 'Completado' ? 'default' : 'secondary'}>
+                    <Badge variant={
+                      order.status === 'Completado' ? 'default' :
+                      order.status === 'Pendiente' ? 'outline' :
+                      order.status === 'En toma de muestra' ? 'secondary' :
+                      'secondary'
+                    }>
                       {order.status}
                     </Badge>
                   </div>

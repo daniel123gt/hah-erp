@@ -6,7 +6,7 @@ export interface LabExamOrderItem {
   exam_code: string;
   exam_name: string;
   price: number;
-  status: 'Pendiente' | 'En Proceso' | 'Completado' | 'Cancelado';
+  status: 'Pendiente' | 'En toma de muestra' | 'En Proceso' | 'Completado' | 'Cancelado';
 }
 
 export interface LabExamOrder {
@@ -17,7 +17,7 @@ export interface LabExamOrder {
   priority: 'urgente' | 'normal' | 'programada';
   observations?: string;
   total_amount: number;
-  status: 'Pendiente' | 'En Proceso' | 'Completado' | 'Cancelado';
+  status: 'Pendiente' | 'En toma de muestra' | 'En Proceso' | 'Completado' | 'Cancelado';
   result_pdf_url?: string;
   result_date?: string;
   result_notes?: string;
@@ -260,7 +260,7 @@ export const labOrderService = {
     result_pdf_url?: string;
     result_date?: string;
     result_notes?: string;
-    status?: 'Pendiente' | 'En Proceso' | 'Completado' | 'Cancelado';
+    status?: 'Pendiente' | 'En toma de muestra' | 'En Proceso' | 'Completado' | 'Cancelado';
   }): Promise<void> {
     try {
       const updateData: any = {
@@ -332,6 +332,207 @@ export const labOrderService = {
     } catch (error: any) {
       console.error('Error al eliminar resultado:', error);
       throw new Error(error?.message || 'Error al eliminar el resultado');
+    }
+  },
+
+  async addExamsToOrder(orderId: string, examIds: string[]): Promise<LabExamOrder> {
+    try {
+      // Obtener la orden actual
+      const currentOrder = await this.getOrderById(orderId);
+      
+      // Obtener los exámenes a agregar
+      const { data: exams, error: examsError } = await supabase
+        .from('laboratory_exams')
+        .select('id, codigo, nombre, precio')
+        .in('id', examIds);
+
+      if (examsError) throw examsError;
+      if (!exams || exams.length === 0) {
+        throw new Error('No se encontraron los exámenes seleccionados');
+      }
+
+      // Verificar que los exámenes no estén ya en la orden
+      const existingExamIds = currentOrder.items.map(item => item.exam_id);
+      const newExams = exams.filter(exam => !existingExamIds.includes(exam.id));
+
+      if (newExams.length === 0) {
+        throw new Error('Todos los exámenes seleccionados ya están en la orden');
+      }
+
+      // Calcular precios (mismo cálculo que en createOrder)
+      const parsePrice = (precio: string) =>
+        parseFloat(precio.replace('S/', '').replace(',', '').trim()) || 0;
+
+      const RECARGO_TOTAL = 120;
+      const totalItems = currentOrder.items.length + newExams.length;
+      const recargoUnitario = totalItems > 0 ? RECARGO_TOTAL / totalItems : 0;
+
+      // Crear items nuevos
+      const newItems = newExams.map(exam => {
+        const precio = parsePrice(exam.precio);
+        return {
+          order_id: orderId,
+          exam_id: exam.id,
+          exam_code: exam.codigo,
+          exam_name: exam.nombre,
+          price: precio * 1.2 + recargoUnitario,
+          status: 'Pendiente'
+        };
+      });
+
+      // Obtener todos los exámenes (existentes + nuevos) para recalcular precios
+      const allExamIds = [...existingExamIds, ...newExams.map(e => e.id)];
+      const { data: allExams } = await supabase
+        .from('laboratory_exams')
+        .select('id, precio')
+        .in('id', allExamIds);
+
+      // Recalcular precios de items existentes con el nuevo recargo unitario
+      const updatedExistingItems = currentOrder.items.map(item => {
+        // Obtener el precio original del examen
+        const exam = allExams?.find(e => e.id === item.exam_id);
+        if (!exam) return item;
+        
+        const precio = parsePrice(exam.precio);
+        return {
+          ...item,
+          price: precio * 1.2 + recargoUnitario
+        };
+      });
+
+      // Insertar nuevos items
+      const { error: itemsError } = await supabase
+        .from('lab_exam_order_items')
+        .insert(newItems);
+
+      if (itemsError) throw itemsError;
+
+      // Actualizar items existentes con nuevos precios
+      for (const item of updatedExistingItems) {
+        const { error: updateError } = await supabase
+          .from('lab_exam_order_items')
+          .update({ price: item.price })
+          .eq('id', item.id);
+        
+        if (updateError) {
+          console.warn('Error al actualizar precio del item:', updateError);
+        }
+      }
+
+      // Recalcular total
+      const newTotal = [...updatedExistingItems, ...newItems.map(item => ({
+        id: '',
+        exam_id: item.exam_id,
+        exam_code: item.exam_code,
+        exam_name: item.exam_name,
+        price: item.price,
+        status: item.status as any
+      }))].reduce((sum, item) => sum + item.price, 0);
+
+      // Actualizar total de la orden
+      const { error: orderUpdateError } = await supabase
+        .from('lab_exam_orders')
+        .update({ 
+          total_amount: newTotal,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId);
+
+      if (orderUpdateError) throw orderUpdateError;
+
+      // Retornar la orden actualizada
+      return await this.getOrderById(orderId);
+    } catch (error: any) {
+      console.error('Error al agregar exámenes:', error);
+      throw new Error(error?.message || 'Error al agregar exámenes a la orden');
+    }
+  },
+
+  async removeExamFromOrder(orderId: string, itemId: string): Promise<LabExamOrder> {
+    try {
+      // Obtener la orden actual
+      const currentOrder = await this.getOrderById(orderId);
+      
+      // Eliminar el item
+      const { error: deleteError } = await supabase
+        .from('lab_exam_order_items')
+        .delete()
+        .eq('id', itemId);
+
+      if (deleteError) throw deleteError;
+
+      // Si no quedan items, eliminar la orden o mantenerla con total 0
+      const remainingItems = currentOrder.items.filter(item => item.id !== itemId);
+      
+      if (remainingItems.length === 0) {
+        // Si no quedan items, actualizar el total a 0
+        const { error: orderUpdateError } = await supabase
+          .from('lab_exam_orders')
+          .update({ 
+            total_amount: 0,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', orderId);
+
+        if (orderUpdateError) throw orderUpdateError;
+      } else {
+        // Recalcular precios de items restantes con nuevo recargo unitario
+        const RECARGO_TOTAL = 120;
+        const recargoUnitario = remainingItems.length > 0 ? RECARGO_TOTAL / remainingItems.length : 0;
+
+        // Obtener los exámenes para recalcular precios
+        const examIds = remainingItems.map(item => item.exam_id);
+        const { data: exams } = await supabase
+          .from('laboratory_exams')
+          .select('id, precio')
+          .in('id', examIds);
+
+        const parsePrice = (precio: string) =>
+          parseFloat(precio.replace('S/', '').replace(',', '').trim()) || 0;
+
+        // Actualizar precios de items restantes
+        for (const item of remainingItems) {
+          const exam = exams?.find(e => e.id === item.exam_id);
+          if (!exam) continue;
+          
+          const precio = parsePrice(exam.precio);
+          const newPrice = precio * 1.2 + recargoUnitario;
+
+          const { error: updateError } = await supabase
+            .from('lab_exam_order_items')
+            .update({ price: newPrice })
+            .eq('id', item.id);
+          
+          if (updateError) {
+            console.warn('Error al actualizar precio del item:', updateError);
+          }
+        }
+
+        // Recalcular total
+        const { data: updatedItems } = await supabase
+          .from('lab_exam_order_items')
+          .select('price')
+          .eq('order_id', orderId);
+
+        const newTotal = (updatedItems || []).reduce((sum, item) => sum + item.price, 0);
+
+        // Actualizar total de la orden
+        const { error: orderUpdateError } = await supabase
+          .from('lab_exam_orders')
+          .update({ 
+            total_amount: newTotal,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', orderId);
+
+        if (orderUpdateError) throw orderUpdateError;
+      }
+
+      // Retornar la orden actualizada
+      return await this.getOrderById(orderId);
+    } catch (error: any) {
+      console.error('Error al eliminar examen:', error);
+      throw new Error(error?.message || 'Error al eliminar examen de la orden');
     }
   }
 };

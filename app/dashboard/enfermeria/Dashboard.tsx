@@ -94,6 +94,27 @@ export default function EnfermeriaDashboard() {
       color: "bg-blue-50 border-blue-200 hover:bg-blue-100"
     },
     {
+      title: "Funciones Vitales",
+      description: "Registrar y consultar funciones vitales",
+      icon: <HeartPulse className="w-8 h-8 text-red-500" />,
+      action: () => navigate('/enfermeria/signos-vitales'),
+      color: "bg-red-50 border-red-200 hover:bg-red-100"
+    },
+    {
+      title: "Evolución de Enfermería",
+      description: "Registrar evolución de enfermería con escala de dolor",
+      icon: <FileText className="w-8 h-8 text-purple-500" />,
+      action: () => navigate('/enfermeria/evolucion'),
+      color: "bg-purple-50 border-purple-200 hover:bg-purple-100"
+    },
+    {
+      title: "Eliminación Heces y Orinas",
+      description: "Registrar eliminación de heces y orinas",
+      icon: <FileText className="w-8 h-8 text-amber-500" />,
+      action: () => navigate('/enfermeria/eliminacion'),
+      color: "bg-amber-50 border-amber-200 hover:bg-amber-100"
+    },
+    {
       title: "Ver Valoraciones",
       description: "Ver todas las valoraciones iniciales realizadas",
       icon: <FileText className="w-8 h-8 text-indigo-500" />,
