@@ -546,7 +546,7 @@ export default function EvolucionEnfermeria() {
                           <TableHead>INTERVENCIONES (NIC)</TableHead>
                           <TableHead>EVALUACION</TableHead>
                           <TableHead>OBSERVACION</TableHead>
-                          <TableHead>Acciones</TableHead>
+                          <TableHead className="whitespace-nowrap sticky right-0 bg-muted shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10 min-w-[100px]">Acciones</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -569,7 +569,7 @@ export default function EvolucionEnfermeria() {
                             <TableCell className="max-w-md">{record.nic_interventions || '-'}</TableCell>
                             <TableCell className="max-w-md">{record.evaluation || '-'}</TableCell>
                             <TableCell className="max-w-md">{record.observation || '-'}</TableCell>
-                            <TableCell>
+                            <TableCell className="sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10">
                               <Button
                                 variant="ghost"
                                 size="sm"

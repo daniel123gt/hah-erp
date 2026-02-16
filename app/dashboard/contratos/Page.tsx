@@ -330,7 +330,7 @@ export default function ContratosPage() {
                   <TableHead>Monto Mensual</TableHead>
                   <TableHead>Fecha de Inicio</TableHead>
                   <TableHead>Estado</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
+                  <TableHead className="text-right whitespace-nowrap sticky right-0 bg-muted shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10 min-w-[100px]">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -377,7 +377,7 @@ export default function ContratosPage() {
                         </div>
                       </TableCell>
                       <TableCell>{getStatusBadge(contract.status)}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10">
                         <div className="flex items-center justify-end gap-2">
                           <Button
                             variant="outline"

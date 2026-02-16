@@ -346,7 +346,7 @@ export default function PersonalCategoryPage() {
                         </div>
                       </TableCell>
                       <TableCell>{getStatusBadge(member.status)}</TableCell>
-                      <TableCell>
+                      <TableCell className="sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10">
                         <div className="flex gap-2">
                           <ViewStaffModal staff={convertToModalStaff(member)} />
                           <EditStaffModal

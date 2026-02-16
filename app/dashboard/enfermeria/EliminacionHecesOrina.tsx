@@ -584,7 +584,7 @@ export default function EliminacionHecesOrina() {
                       <TableHead>Orina - Mañana</TableHead>
                       <TableHead>Orina - Tarde</TableHead>
                       <TableHead>Orina - Noche</TableHead>
-                      <TableHead>Acciones</TableHead>
+                      <TableHead className="whitespace-nowrap sticky right-0 bg-muted shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10 min-w-[100px]">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -654,7 +654,7 @@ export default function EliminacionHecesOrina() {
                             </div>
                           ) : '-'}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10">
                           <Button
                             variant="ghost"
                             size="sm"

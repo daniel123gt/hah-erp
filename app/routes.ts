@@ -19,6 +19,8 @@ export default [
     route('personal', 'routes/personal.tsx'),
     route('personal/:category', 'routes/personal-category.tsx'),
     route('citas', 'routes/citas.tsx'),
+    route('citas/medicina', 'routes/citas-medicina.tsx'),
+    route('citas/procedimientos', 'routes/citas-procedimientos.tsx'),
     route('procedimientos', 'routes/procedimientos.tsx'),
     route('procedimientos/catalogo', 'routes/procedimientos-catalogo.tsx'),
     route('procedimientos/listado', 'routes/procedimientos-listado.tsx'),

@@ -1,38 +1,38 @@
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
   Table,
   TableBody,
-  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "~/components/ui/table";
 import { Badge } from "~/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { AddAppointmentModal } from "~/components/ui/add-appointment-modal";
 import { ViewAppointmentModal } from "~/components/ui/view-appointment-modal";
 import { EditAppointmentModal } from "~/components/ui/edit-appointment-modal";
-import { 
-  Search, 
-  Plus, 
-  Filter, 
-  Calendar, 
-  Clock, 
-  User, 
+import {
+  Search,
+  Plus,
+  Filter,
+  Calendar,
+  Clock,
   Stethoscope,
   Phone,
-  Mail,
   MapPin,
   AlertCircle,
   CheckCircle,
-  XCircle
+  XCircle,
+  ArrowLeft,
 } from "lucide-react";
 
-interface Appointment {
+const DOMICILIO = "Domicilio del paciente";
+
+export interface Appointment {
   id: string;
   patientName: string;
   patientEmail: string;
@@ -50,7 +50,7 @@ interface Appointment {
 
 const mockAppointments: Appointment[] = [
   {
-    id: "A001",
+    id: "M001",
     patientName: "María González",
     patientEmail: "maria.gonzalez@email.com",
     patientPhone: "+51 999 123 456",
@@ -61,24 +61,10 @@ const mockAppointments: Appointment[] = [
     duration: 30,
     type: "consulta",
     status: "confirmed",
-    location: "Consultorio 1"
+    location: DOMICILIO,
   },
   {
-    id: "A002",
-    patientName: "Carlos Rodríguez",
-    patientEmail: "carlos.rodriguez@email.com",
-    patientPhone: "+51 999 234 567",
-    doctorName: "Dra. Elena Morales",
-    doctorSpecialty: "Enfermería",
-    date: "2025-01-25",
-    time: "10:30",
-    duration: 45,
-    type: "examen",
-    status: "scheduled",
-    location: "Laboratorio"
-  },
-  {
-    id: "A003",
+    id: "M002",
     patientName: "Ana Torres",
     patientEmail: "ana.torres@email.com",
     patientPhone: "+51 999 345 678",
@@ -89,24 +75,10 @@ const mockAppointments: Appointment[] = [
     duration: 60,
     type: "seguimiento",
     status: "scheduled",
-    location: "Consultorio 3"
+    location: DOMICILIO,
   },
   {
-    id: "A004",
-    patientName: "Luis Mendoza",
-    patientEmail: "luis.mendoza@email.com",
-    patientPhone: "+51 999 456 789",
-    doctorName: "Lic. Miguel Torres",
-    doctorSpecialty: "Laboratorio",
-    date: "2025-01-24",
-    time: "08:00",
-    duration: 20,
-    type: "examen",
-    status: "completed",
-    location: "Laboratorio"
-  },
-  {
-    id: "A005",
+    id: "M003",
     patientName: "Carmen Silva",
     patientEmail: "carmen.silva@email.com",
     patientPhone: "+51 999 567 890",
@@ -118,37 +90,35 @@ const mockAppointments: Appointment[] = [
     type: "consulta",
     status: "cancelled",
     notes: "Paciente canceló por enfermedad",
-    location: "Consultorio 1"
-  }
+    location: DOMICILIO,
+  },
 ];
 
-export default function CitasPage() {
+export default function CitasMedicinaPage() {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDate, setFilterDate] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
   const [appointments, setAppointments] = useState<Appointment[]>(mockAppointments);
 
-  const filteredAppointments = appointments.filter(appointment => {
-    const matchesSearch = appointment.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         appointment.doctorName.toLowerCase().includes(searchTerm.toLowerCase());
-    
+  const filteredAppointments = appointments.filter((appointment) => {
+    const matchesSearch =
+      appointment.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      appointment.doctorName.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesDate = !filterDate || appointment.date === filterDate;
     const matchesStatus = filterStatus === "all" || appointment.status === filterStatus;
     const matchesType = filterType === "all" || appointment.type === filterType;
-    
     return matchesSearch && matchesDate && matchesStatus && matchesType;
   });
 
   const handleAppointmentAdded = (newAppointment: Appointment) => {
-    setAppointments(prev => [newAppointment, ...prev]);
+    setAppointments((prev) => [newAppointment, ...prev]);
   };
 
   const handleAppointmentUpdated = (updatedAppointment: Appointment) => {
-    setAppointments(prev => 
-      prev.map(appointment => 
-        appointment.id === updatedAppointment.id ? updatedAppointment : appointment
-      )
+    setAppointments((prev) =>
+      prev.map((a) => (a.id === updatedAppointment.id ? updatedAppointment : a))
     );
   };
 
@@ -201,21 +171,28 @@ export default function CitasPage() {
     }
   };
 
-  const todayAppointments = appointments.filter(a => a.date === new Date().toISOString().split('T')[0]);
-  const upcomingAppointments = appointments.filter(a => new Date(a.date) > new Date()).slice(0, 5);
+  const todayAppointments = appointments.filter(
+    (a) => a.date === new Date().toISOString().split("T")[0]
+  );
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-primary-blue">Gestión de Citas</h1>
-          <p className="text-gray-600 mt-2">Programa y administra las citas médicas</p>
+      <div className="flex justify-between items-center flex-wrap gap-4">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="icon" onClick={() => navigate("/citas")}>
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-primary-blue">Citas Medicina</h1>
+            <p className="text-gray-600 mt-1">Agenda de citas a domicilio con médicos</p>
+          </div>
         </div>
-        <AddAppointmentModal onAppointmentAdded={handleAppointmentAdded} />
+        <AddAppointmentModal
+          onAppointmentAdded={handleAppointmentAdded}
+          variant="medicina"
+        />
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardContent className="p-6">
@@ -230,7 +207,6 @@ export default function CitasPage() {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center space-x-4">
@@ -240,13 +216,12 @@ export default function CitasPage() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Confirmadas</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {appointments.filter(a => a.status === "confirmed").length}
+                  {appointments.filter((a) => a.status === "confirmed").length}
                 </p>
               </div>
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center space-x-4">
@@ -256,13 +231,12 @@ export default function CitasPage() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Programadas</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {appointments.filter(a => a.status === "scheduled").length}
+                  {appointments.filter((a) => a.status === "scheduled").length}
                 </p>
               </div>
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center space-x-4">
@@ -278,7 +252,6 @@ export default function CitasPage() {
         </Card>
       </div>
 
-      {/* Today's Schedule */}
       {todayAppointments.length > 0 && (
         <Card>
           <CardHeader>
@@ -290,7 +263,10 @@ export default function CitasPage() {
           <CardContent>
             <div className="space-y-3">
               {todayAppointments.map((appointment) => (
-                <div key={appointment.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div
+                  key={appointment.id}
+                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                >
                   <div className="flex items-center space-x-4">
                     <div className="text-center">
                       <p className="text-lg font-bold text-primary-blue">{appointment.time}</p>
@@ -298,14 +274,16 @@ export default function CitasPage() {
                     </div>
                     <div className="flex-1">
                       <p className="font-medium">{appointment.patientName}</p>
-                      <p className="text-sm text-gray-500">{appointment.doctorName} - {appointment.doctorSpecialty}</p>
+                      <p className="text-sm text-gray-500">
+                        {appointment.doctorName} – {appointment.doctorSpecialty}
+                      </p>
                       <p className="text-sm text-gray-500">{appointment.location}</p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-3">
                     {getStatusIcon(appointment.status)}
                     {getStatusBadge(appointment.status)}
-                    <ViewAppointmentModal appointment={appointment} />
+                    <ViewAppointmentModal appointment={appointment} professionalLabel="Médico" />
                   </div>
                 </div>
               ))}
@@ -314,14 +292,13 @@ export default function CitasPage() {
         </Card>
       )}
 
-      {/* Filters and Search */}
       <Card>
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
-                placeholder="Buscar citas por paciente o doctor..."
+                placeholder="Buscar por paciente o médico..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -364,7 +341,6 @@ export default function CitasPage() {
         </CardContent>
       </Card>
 
-      {/* Appointments Table */}
       <Card>
         <CardHeader>
           <CardTitle>Lista de Citas</CardTitle>
@@ -372,66 +348,73 @@ export default function CitasPage() {
         <CardContent>
           <div className="overflow-x-auto">
             <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Fecha y Hora</TableHead>
-                <TableHead>Paciente</TableHead>
-                <TableHead>Doctor</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Ubicación</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead className="whitespace-nowrap sticky right-0 bg-muted shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10 min-w-[100px]">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredAppointments.map((appointment) => (
-                <TableRow key={appointment.id}>
-                  <TableCell>
-                    <div className="text-center">
-                      <p className="font-medium">{new Date(appointment.date).toLocaleDateString('es-ES')}</p>
-                      <p className="text-sm text-gray-500">{appointment.time} ({appointment.duration} min)</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium">{appointment.patientName}</p>
-                      <div className="flex items-center space-x-2 text-sm text-gray-500">
-                        <Phone className="w-3 h-3" />
-                        <span>{appointment.patientPhone}</span>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium">{appointment.doctorName}</p>
-                      <p className="text-sm text-gray-500">{appointment.doctorSpecialty}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>{getTypeBadge(appointment.type)}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <MapPin className="w-4 h-4 text-gray-400" />
-                      <span className="text-sm">{appointment.location}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      {getStatusIcon(appointment.status)}
-                      {getStatusBadge(appointment.status)}
-                    </div>
-                  </TableCell>
-                  <TableCell className="sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10">
-                    <div className="flex space-x-2">
-                      <ViewAppointmentModal appointment={appointment} />
-                      <EditAppointmentModal 
-                        appointment={appointment} 
-                        onAppointmentUpdated={handleAppointmentUpdated} 
-                      />
-                    </div>
-                  </TableCell>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Fecha y Hora</TableHead>
+                  <TableHead>Paciente</TableHead>
+                  <TableHead>Médico</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Ubicación</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead className="whitespace-nowrap sticky right-0 bg-muted shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10 min-w-[100px]">
+                    Acciones
+                  </TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
+              </TableHeader>
+              <TableBody>
+                {filteredAppointments.map((appointment) => (
+                  <TableRow key={appointment.id}>
+                    <TableCell>
+                      <div className="text-center">
+                        <p className="font-medium">
+                          {new Date(appointment.date).toLocaleDateString("es-ES")}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {appointment.time} ({appointment.duration} min)
+                        </p>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium">{appointment.patientName}</p>
+                        <div className="flex items-center space-x-2 text-sm text-gray-500">
+                          <Phone className="w-3 h-3" />
+                          <span>{appointment.patientPhone}</span>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium">{appointment.doctorName}</p>
+                        <p className="text-sm text-gray-500">{appointment.doctorSpecialty}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell>{getTypeBadge(appointment.type)}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-2">
+                        <MapPin className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm">{appointment.location}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-2">
+                        {getStatusIcon(appointment.status)}
+                        {getStatusBadge(appointment.status)}
+                      </div>
+                    </TableCell>
+                    <TableCell className="sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10">
+                      <div className="flex space-x-2">
+                        <ViewAppointmentModal appointment={appointment} professionalLabel="Médico" />
+                        <EditAppointmentModal
+                          appointment={appointment}
+                          onAppointmentUpdated={handleAppointmentUpdated}
+                          variant="medicina"
+                        />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
             </Table>
           </div>
         </CardContent>

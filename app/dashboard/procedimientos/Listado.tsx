@@ -165,7 +165,7 @@ export default function ListadoProcedimientos() {
                   <TableHead className="text-right">Material</TableHead>
                   <TableHead className="text-right">Combustible</TableHead>
                   <TableHead className="text-right">Utilidad</TableHead>
-                  <TableHead className="text-right sticky right-0 bg-white">Acciones</TableHead>
+                  <TableHead className="text-right whitespace-nowrap sticky right-0 bg-muted shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10 min-w-[100px]">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -186,7 +186,7 @@ export default function ListadoProcedimientos() {
                       <TableCell className="text-right">{Number(r.gastos_material || 0).toFixed(2)}</TableCell>
                       <TableCell className="text-right">{Number(r.combustible || 0).toFixed(2)}</TableCell>
                       <TableCell className="text-right text-green-600">{util.toFixed(2)}</TableCell>
-                      <TableCell className="text-right sticky right-0 bg-white">
+                      <TableCell className="text-right sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10">
                         <div className="flex justify-end gap-1">
                           <Button
                             variant="ghost"
