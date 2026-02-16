@@ -38,6 +38,7 @@ import {
 interface ModalPatient {
   id: string;
   name: string;
+  dni?: string;
   email: string;
   phone: string;
   age: number;
@@ -59,6 +60,7 @@ interface ModalPatient {
 const convertToModalPatient = (patient: Patient): ModalPatient => ({
   id: patient.id,
   name: patient.name,
+  dni: patient.dni,
   email: patient.email || '',
   phone: patient.phone || '',
   age: patient.age || 0,
@@ -80,6 +82,7 @@ const convertToModalPatient = (patient: Patient): ModalPatient => ({
 const convertToSupabasePatient = (modalPatient: ModalPatient): Patient => ({
   id: modalPatient.id,
   name: modalPatient.name,
+  dni: modalPatient.dni,
   email: modalPatient.email,
   phone: modalPatient.phone,
   age: modalPatient.age,
@@ -249,11 +252,11 @@ export default function PacientesPage() {
       case "Activo":
         return <Badge className="bg-green-100 text-green-800">Activo</Badge>;
       case "Inactivo":
-        return <Badge className="bg-gray-100 text-gray-800">Inactivo</Badge>;
+        return <Badge className="bg-red-100 text-red-800">Inactivo</Badge>;
       case "Pendiente":
-        return <Badge className="bg-yellow-100 text-yellow-800">Pendiente</Badge>;
+        return <Badge className="bg-gray-100 text-gray-800">Pendiente</Badge>;
       default:
-        return <Badge className="bg-blue-100 text-blue-800">{status || 'Activo'}</Badge>;
+        return <Badge className="bg-gray-100 text-gray-600">{status || 'Pendiente'}</Badge>;
     }
   };
 
@@ -353,7 +356,7 @@ export default function PacientesPage() {
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
-                  placeholder="Buscar pacientes por nombre, email o teléfono..."
+                  placeholder="Buscar por nombre, nro. documento, email o teléfono..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -478,26 +481,32 @@ export default function PacientesPage() {
               <Table>
                 <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[100px]">Estado</TableHead>
                   <TableHead>Nombre</TableHead>
+                  <TableHead>Nro. documento</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Teléfono</TableHead>
                   <TableHead>Dirección</TableHead>
                   <TableHead>Última Visita</TableHead>
                   <TableHead>Fecha Creación</TableHead>
-                  <TableHead>Acciones</TableHead>
+                  <TableHead className="sticky right-0 bg-white shadow-[-4px_0_8px_rgba(0,0,0,0.06)] min-w-[140px]">Acciones</TableHead>
                 </TableRow>
                 </TableHeader>
                 <TableBody>
                   {patients.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={9} className="text-center py-8 text-gray-500">
                         No se encontraron pacientes
                       </TableCell>
                     </TableRow>
                   ) : (
                     patients.map((patient) => (
                       <TableRow key={patient.id}>
+                        <TableCell className="w-[100px]">{getStatusBadge(patient.status)}</TableCell>
                         <TableCell className="font-medium">{patient.name}</TableCell>
+                        <TableCell>
+                          <span className="text-sm font-mono">{patient.dni || '-'}</span>
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center space-x-2">
                             <Mail className="w-4 h-4 text-gray-400" />
@@ -525,7 +534,7 @@ export default function PacientesPage() {
                         <TableCell>
                           <span className="text-sm">{new Date(patient.created_at).toLocaleDateString('es-ES')}</span>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="sticky right-0 bg-white shadow-[-4px_0_8px_rgba(0,0,0,0.06)]">
                           <div className="flex space-x-2">
                             <Button variant="outline" size="sm" onClick={() => navigate(`/pacientes/${patient.id}`)}>
                               Ver

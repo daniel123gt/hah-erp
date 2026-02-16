@@ -2,7 +2,7 @@ import { Button } from "./button";
 import { Card, CardContent, CardHeader, CardTitle } from "./card";
 import { Avatar, AvatarFallback, AvatarImage } from "./avatar";
 import { Badge } from "./badge";
-import { ArrowUpDown, User, Calendar, Hash, DollarSign } from "lucide-react";
+import { ArrowUpDown, Settings, Calendar, Hash } from "lucide-react";
 import { useAuthStore } from "~/store/authStore";
 import { useNavigate } from "react-router";
 
@@ -58,6 +58,14 @@ export function RightSidebar() {
               <Hash className="w-4 h-4" />
               <span>Código de empleado {user?.id?.slice(-8) || "N/A"}</span>
             </div>
+            <Button
+              variant="outline"
+              className="w-full mt-3 border-primary-blue text-primary-blue hover:bg-primary-blue hover:text-white"
+              onClick={() => navigate("/mi-perfil")}
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              Datos y configuración
+            </Button>
           </div>
         </CardContent>
       </Card>

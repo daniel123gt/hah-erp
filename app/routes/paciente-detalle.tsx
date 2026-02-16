@@ -140,6 +140,7 @@ export default function PacienteDetalleRoute() {
             <CardTitle>Información General</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
+            {patient.dni ? <p><span className="text-gray-500">Nro. documento:</span> <span className="font-mono">{patient.dni}</span></p> : null}
             <p><span className="text-gray-500">Email:</span> {patient.email || "-"}</p>
             <p><span className="text-gray-500">Teléfono:</span> {patient.phone || "-"}</p>
             <p><span className="text-gray-500">Dirección:</span> {patient.address || "-"}</p>

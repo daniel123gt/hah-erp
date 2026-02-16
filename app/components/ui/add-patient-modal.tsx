@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "./button";
 import { Input } from "./input";
 import { Card, CardContent, CardHeader, CardTitle } from "./card";
@@ -12,6 +12,13 @@ import {
   DialogTrigger,
 } from "./dialog";
 import { Label } from "./label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./select";
 import { 
   User, 
   Mail, 
@@ -29,6 +36,7 @@ import { toast } from "sonner";
 interface Patient {
   id: string;
   name: string;
+  dni?: string;
   email: string;
   phone: string;
   age: number;
@@ -55,6 +63,7 @@ export function AddPatientModal({ onPatientAdded }: AddPatientModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
+    dni: "",
     email: "",
     phone: "",
     age: "",
@@ -72,6 +81,13 @@ export function AddPatientModal({ onPatientAdded }: AddPatientModalProps) {
   });
   const [newAllergy, setNewAllergy] = useState("");
   const [newMedication, setNewMedication] = useState("");
+  const [districts, setDistricts] = useState<Array<{ name: string; zone: string }>>([]);
+
+  useEffect(() => {
+    if (open) {
+      patientsService.getDistricts().then(setDistricts).catch(() => setDistricts([]));
+    }
+  }, [open]);
 
   const bloodTypes = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
   const genders = ["Masculino", "Femenino"];
@@ -127,9 +143,19 @@ export function AddPatientModal({ onPatientAdded }: AddPatientModalProps) {
     setIsLoading(true);
 
     try {
+             const dni = formData.dni.trim();
+             if (dni) {
+               const taken = await patientsService.isDniTaken(dni);
+               if (taken) {
+                 toast.error("Este número de documento ya está registrado para otro paciente.");
+                 setIsLoading(false);
+                 return;
+               }
+             }
              // Crear paciente usando el servicio de Supabase
              const createdPatient = await patientsService.createPatient({
                name: formData.name,
+               dni: formData.dni.trim() || undefined,
                email: formData.email,
                phone: formData.phone,
                age: parseInt(formData.age),
@@ -151,6 +177,7 @@ export function AddPatientModal({ onPatientAdded }: AddPatientModalProps) {
              const modalPatient: Patient = {
                id: createdPatient.id,
                name: createdPatient.name,
+               dni: createdPatient.dni,
                email: createdPatient.email || '',
                phone: createdPatient.phone || '',
                age: createdPatient.age || 0,
@@ -175,6 +202,7 @@ export function AddPatientModal({ onPatientAdded }: AddPatientModalProps) {
              // Reset form
              setFormData({
                name: "",
+               dni: "",
                email: "",
                phone: "",
                age: "",
@@ -237,6 +265,16 @@ export function AddPatientModal({ onPatientAdded }: AddPatientModalProps) {
                     onChange={(e) => handleInputChange("name", e.target.value)}
                     placeholder="Ej: María González"
                     required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="dni">Nro. documento (para portal de resultados)</Label>
+                  <Input
+                    id="dni"
+                    value={formData.dni}
+                    onChange={(e) => handleInputChange("dni", e.target.value)}
+                    placeholder="Ej: 12345678"
+                    maxLength={20}
                   />
                 </div>
                 <div className="space-y-2">
@@ -314,12 +352,22 @@ export function AddPatientModal({ onPatientAdded }: AddPatientModalProps) {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="district">Distrito</Label>
-                  <Input
-                    id="district"
-                    value={formData.district}
-                    onChange={(e) => handleInputChange("district", e.target.value)}
-                    placeholder="Ej: San Borjas, Jesús María, Surco"
-                  />
+                  <Select
+                    value={formData.district || "__none__"}
+                    onValueChange={(value) => handleInputChange("district", value === "__none__" ? "" : value)}
+                  >
+                    <SelectTrigger id="district">
+                      <SelectValue placeholder="Seleccionar distrito" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Sin especificar</SelectItem>
+                      {districts.map((d) => (
+                        <SelectItem key={d.name} value={d.name}>
+                          {d.name} {d.zone ? `(${d.zone})` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </CardContent>

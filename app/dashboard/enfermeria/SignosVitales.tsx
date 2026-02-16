@@ -123,7 +123,7 @@ export default function SignosVitales() {
           {!selectedPatient ? (
             <div className="flex flex-col sm:flex-row gap-2">
               <Input
-                placeholder="Buscar por nombre, DNI, email..."
+                placeholder="Buscar por nombre, nro. documento, email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}

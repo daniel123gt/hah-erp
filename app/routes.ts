@@ -12,10 +12,18 @@ export default [
   // Dashboard del ERP - RUTAS PROTEGIDAS PARA STAFF/ADMIN
   route('/', 'routes/dashboard.tsx', [
     index('routes/home.tsx'),
+    route('cuidados-en-casa', 'routes/cuidados-en-casa.tsx'),
+    route('cuidados-en-casa/:patientId', 'routes/cuidados-en-casa-detalle.tsx'),
     route('pacientes', 'routes/pacientes.tsx'),
     route('pacientes/:id', 'routes/paciente-detalle.tsx'),
     route('personal', 'routes/personal.tsx'),
+    route('personal/:category', 'routes/personal-category.tsx'),
     route('citas', 'routes/citas.tsx'),
+    route('procedimientos', 'routes/procedimientos.tsx'),
+    route('procedimientos/catalogo', 'routes/procedimientos-catalogo.tsx'),
+    route('procedimientos/listado', 'routes/procedimientos-listado.tsx'),
+    route('procedimientos/listado/:id', 'routes/procedimientos-detalle.tsx'),
+    route('procedimientos/reportes', 'routes/procedimientos-reportes.tsx'),
     route('servicios', 'routes/servicios.tsx'),
     route('cotizaciones', 'routes/cotizaciones.tsx'),
     route('laboratorio', 'routes/laboratorio.tsx'),
@@ -35,5 +43,6 @@ export default [
     route('reportes', 'routes/reportes.tsx'),
     route('emergencias', 'routes/emergencias.tsx'),
     route('configuracion', 'routes/configuracion.tsx'),
+    route('mi-perfil', 'routes/mi-perfil.tsx'),
   ]),
 ] satisfies RouteConfig;

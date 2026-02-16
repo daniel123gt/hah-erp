@@ -9,6 +9,9 @@ export interface LabExamOrderItem {
   status: 'Pendiente' | 'En toma de muestra' | 'En Proceso' | 'Completado' | 'Cancelado';
 }
 
+export type LabOrderPaymentMethod = 'yape' | 'plin' | 'transfer_deposito' | 'tarjeta_link_pos' | 'efectivo';
+export type LabOrderPaymentStatus = 'Pendiente de pago' | 'Pagado';
+
 export interface LabExamOrder {
   id: string;
   patient_id: string;
@@ -18,6 +21,8 @@ export interface LabExamOrder {
   observations?: string;
   total_amount: number;
   status: 'Pendiente' | 'En toma de muestra' | 'En Proceso' | 'Completado' | 'Cancelado';
+  payment_method?: LabOrderPaymentMethod | null;
+  payment_status?: LabOrderPaymentStatus | null;
   result_pdf_url?: string;
   result_date?: string;
   result_notes?: string;
@@ -253,6 +258,25 @@ export const labOrderService = {
     } catch (error: any) {
       console.error('Error al actualizar orden:', error);
       throw new Error(error?.message || 'Error al actualizar el estado de la orden');
+    }
+  },
+
+  async updateOrderPayment(
+    orderId: string,
+    data: { payment_method?: LabOrderPaymentMethod | null; payment_status?: LabOrderPaymentStatus | null }
+  ): Promise<void> {
+    try {
+      const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (data.payment_method !== undefined) updateData.payment_method = data.payment_method;
+      if (data.payment_status !== undefined) updateData.payment_status = data.payment_status;
+      const { error } = await supabase
+        .from('lab_exam_orders')
+        .update(updateData)
+        .eq('id', orderId);
+      if (error) throw error;
+    } catch (error: any) {
+      console.error('Error al actualizar pago:', error);
+      throw new Error(error?.message || 'Error al actualizar el pago de la orden');
     }
   },
 

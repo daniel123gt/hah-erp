@@ -23,6 +23,7 @@ import {
 interface Patient {
   id: string;
   name: string;
+  dni?: string;
   email: string;
   phone: string;
   age: number;
@@ -121,6 +122,12 @@ export function ViewPatientModal({ patient }: ViewPatientModalProps) {
                 Información Personal
               </h3>
               <div className="space-y-2">
+                {patient.dni && (
+                  <div>
+                    <span className="text-sm text-gray-500">Nro. documento:</span>
+                    <p className="font-medium font-mono">{patient.dni}</p>
+                  </div>
+                )}
                 <div>
                   <span className="text-sm text-gray-500">Edad:</span>
                   <p className="font-medium">{patient.age} años</p>

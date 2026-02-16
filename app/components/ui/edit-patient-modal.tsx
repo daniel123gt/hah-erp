@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "./button";
 import { Input } from "./input";
 import { Card, CardContent, CardHeader, CardTitle } from "./card";
@@ -12,6 +12,13 @@ import {
   DialogTrigger,
 } from "./dialog";
 import { Label } from "./label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./select";
 import { 
   User, 
   Mail, 
@@ -30,6 +37,7 @@ import { toast } from "sonner";
 interface Patient {
   id: string;
   name: string;
+  dni?: string;
   email: string;
   phone: string;
   age: number;
@@ -57,6 +65,7 @@ export function EditPatientModal({ patient, onPatientUpdated }: EditPatientModal
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: patient.name,
+    dni: patient.dni || "",
     email: patient.email,
     phone: patient.phone,
     age: patient.age.toString(),
@@ -74,6 +83,13 @@ export function EditPatientModal({ patient, onPatientUpdated }: EditPatientModal
   });
   const [newAllergy, setNewAllergy] = useState("");
   const [newMedication, setNewMedication] = useState("");
+  const [districts, setDistricts] = useState<Array<{ name: string; zone: string }>>([]);
+
+  useEffect(() => {
+    if (open) {
+      patientsService.getDistricts().then(setDistricts).catch(() => setDistricts([]));
+    }
+  }, [open]);
 
   const bloodTypes = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
   const genders = ["Masculino", "Femenino"];
@@ -124,10 +140,20 @@ export function EditPatientModal({ patient, onPatientUpdated }: EditPatientModal
     setIsLoading(true);
 
     try {
+             const dni = formData.dni.trim();
+             if (dni) {
+               const taken = await patientsService.isDniTaken(dni, patient.id);
+               if (taken) {
+                 toast.error("Este número de documento ya está registrado para otro paciente.");
+                 setIsLoading(false);
+                 return;
+               }
+             }
              // Actualizar paciente usando el servicio de Supabase
              const updatedPatient = await patientsService.updatePatient({
                id: patient.id,
                name: formData.name,
+               dni: formData.dni.trim() || undefined,
                email: formData.email,
                phone: formData.phone,
                age: parseInt(formData.age),
@@ -148,6 +174,7 @@ export function EditPatientModal({ patient, onPatientUpdated }: EditPatientModal
              const modalPatient: Patient = {
                ...patient,
                name: updatedPatient.name,
+               dni: updatedPatient.dni,
                email: updatedPatient.email || '',
                phone: updatedPatient.phone || '',
                age: updatedPatient.age || 0,
@@ -180,6 +207,7 @@ export function EditPatientModal({ patient, onPatientUpdated }: EditPatientModal
       // Reset form when closing
       setFormData({
         name: patient.name,
+        dni: patient.dni || "",
         email: patient.email,
         phone: patient.phone,
         age: patient.age.toString(),
@@ -236,6 +264,16 @@ export function EditPatientModal({ patient, onPatientUpdated }: EditPatientModal
                     onChange={(e) => handleInputChange("name", e.target.value)}
                     placeholder="Ej: María González"
                     required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-dni">Nro. documento (para portal de resultados)</Label>
+                  <Input
+                    id="edit-dni"
+                    value={formData.dni}
+                    onChange={(e) => handleInputChange("dni", e.target.value)}
+                    placeholder="Ej: 12345678"
+                    maxLength={20}
                   />
                 </div>
                 <div className="space-y-2">
@@ -313,12 +351,22 @@ export function EditPatientModal({ patient, onPatientUpdated }: EditPatientModal
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-district">Distrito</Label>
-                  <Input
-                    id="edit-district"
-                    value={formData.district}
-                    onChange={(e) => handleInputChange("district", e.target.value)}
-                    placeholder="Ej: San Borjas, Jesús María, Surco"
-                  />
+                  <Select
+                    value={formData.district || "__none__"}
+                    onValueChange={(value) => handleInputChange("district", value === "__none__" ? "" : value)}
+                  >
+                    <SelectTrigger id="edit-district">
+                      <SelectValue placeholder="Seleccionar distrito" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Sin especificar</SelectItem>
+                      {districts.map((d) => (
+                        <SelectItem key={d.name} value={d.name}>
+                          {d.name} {d.zone ? `(${d.zone})` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </CardContent>

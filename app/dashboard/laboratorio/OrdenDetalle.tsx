@@ -5,11 +5,17 @@ import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "~/components/ui/dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, FileText, User, Calendar, Edit, Plus, X, Search, Trash2 } from "lucide-react";
-import labOrderService, { type LabExamOrder } from "~/services/labOrderService";
+import { ArrowLeft, Loader2, FileText, User, Calendar, Edit, Plus, X, Search, Trash2, KeyRound, Copy } from "lucide-react";
+import labOrderService, {
+  type LabExamOrder,
+  type LabOrderPaymentMethod,
+  type LabOrderPaymentStatus,
+} from "~/services/labOrderService";
 import patientsService, { type Patient } from "~/services/patientsService";
+import { getPortalCredentialsByOrder } from "~/services/patientPortalService";
 import { UploadResultPdf } from "~/components/ui/upload-result-pdf";
 import { getExams } from "~/services/labService";
 import {
@@ -35,6 +41,9 @@ export default function OrdenDetalle() {
   const [selectedExams, setSelectedExams] = useState<string[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [isRemoving, setIsRemoving] = useState<string | null>(null);
+  const [credentialsModal, setCredentialsModal] = useState<{ dni: string; password: string } | null>(null);
+  const [credentialsLoading, setCredentialsLoading] = useState(false);
+  const [updatingPayment, setUpdatingPayment] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -66,17 +75,34 @@ export default function OrdenDetalle() {
 
   const handleStatusUpdate = async (newStatus: LabExamOrder['status']) => {
     if (!order) return;
-    
     try {
       setUpdating(true);
       await labOrderService.updateOrderStatus(order.id, newStatus);
       toast.success("Estado actualizado exitosamente");
-      loadOrder(); // Recargar la orden
+      loadOrder();
     } catch (error: any) {
       console.error("Error al actualizar estado:", error);
       toast.error(error?.message || "Error al actualizar el estado");
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handlePaymentUpdate = async (data: {
+    payment_method?: LabOrderPaymentMethod | null;
+    payment_status?: LabOrderPaymentStatus | null;
+  }) => {
+    if (!order) return;
+    try {
+      setUpdatingPayment(true);
+      await labOrderService.updateOrderPayment(order.id, data);
+      toast.success("Pago actualizado");
+      loadOrder();
+    } catch (error: any) {
+      console.error("Error al actualizar pago:", error);
+      toast.error(error?.message || "Error al actualizar el pago");
+    } finally {
+      setUpdatingPayment(false);
     }
   };
 
@@ -299,10 +325,55 @@ export default function OrdenDetalle() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Pendiente">Pendiente</SelectItem>
-                      <SelectItem value="En toma de muestra">En toma de muestra</SelectItem>
                       <SelectItem value="En Proceso">En Proceso</SelectItem>
                       <SelectItem value="Completado">Completado</SelectItem>
                       <SelectItem value="Cancelado">Cancelado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="pt-2 border-t space-y-3">
+                <span className="text-sm font-medium text-gray-700">Pago</span>
+                <div>
+                  <Label className="text-sm text-gray-500">Método de pago</Label>
+                  <Select
+                    value={order.payment_method ?? "__none__"}
+                    onValueChange={(value) =>
+                      handlePaymentUpdate({
+                        payment_method:
+                          value === "__none__" ? null : (value as LabOrderPaymentMethod),
+                      })
+                    }
+                    disabled={updatingPayment}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Seleccionar..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Sin definir</SelectItem>
+                      <SelectItem value="yape">Yape</SelectItem>
+                      <SelectItem value="plin">Plin</SelectItem>
+                      <SelectItem value="transfer_deposito">Transferencia / Depósito</SelectItem>
+                      <SelectItem value="tarjeta_link_pos">Tarjeta / Link / POS</SelectItem>
+                      <SelectItem value="efectivo">Efectivo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-sm text-gray-500">Estado de pago</Label>
+                  <Select
+                    value={order.payment_status ?? "Pendiente de pago"}
+                    onValueChange={(value: LabOrderPaymentStatus) =>
+                      handlePaymentUpdate({ payment_status: value })
+                    }
+                    disabled={updatingPayment}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Pendiente de pago">Pendiente de pago</SelectItem>
+                      <SelectItem value="Pagado">Pagado</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -382,6 +453,12 @@ export default function OrdenDetalle() {
                     <p className="text-sm">{patient.address}</p>
                   </div>
                 )}
+                {patient.district && (
+                  <div>
+                    <span className="text-sm text-gray-500">Distrito:</span>
+                    <p className="text-sm">{patient.district}</p>
+                  </div>
+                )}
                 <div className="pt-2 mt-2 border-t">
                   <Button
                     variant="outline"
@@ -392,6 +469,50 @@ export default function OrdenDetalle() {
                     Ver Perfil Completo
                   </Button>
                 </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Credenciales de portal del paciente */}
+          {order && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <KeyRound className="w-5 h-5" />
+                  Credenciales de portal
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-600 mb-3">
+                  Para que el paciente vea sus resultados con Nro. documento y contraseña. Si perdió la contraseña, puede generar una nueva.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  disabled={credentialsLoading}
+                  onClick={async () => {
+                    setCredentialsLoading(true);
+                    try {
+                      const result = await getPortalCredentialsByOrder(order.id);
+                      if ("error" in result) {
+                        toast.error(result.error);
+                        return;
+                      }
+                      setCredentialsModal({ dni: result.dni, password: result.password });
+                      toast.success("Se generó una nueva contraseña. Entréguela al paciente.");
+                    } finally {
+                      setCredentialsLoading(false);
+                    }
+                  }}
+                >
+                  {credentialsLoading ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <KeyRound className="w-4 h-4 mr-2" />
+                  )}
+                  Ver credenciales
+                </Button>
               </CardContent>
             </Card>
           )}
@@ -574,6 +695,57 @@ export default function OrdenDetalle() {
           </Card>
         </div>
       </div>
+
+      {/* Modal Ver credenciales de portal */}
+      <Dialog open={!!credentialsModal} onOpenChange={(open) => !open && setCredentialsModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-green-700">
+              <KeyRound className="w-5 h-5" />
+              Credenciales de portal
+            </DialogTitle>
+          </DialogHeader>
+          {credentialsModal && (
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">
+                Se generó una nueva contraseña. Entregue estos datos al paciente (login con Nro. documento y contraseña):
+              </p>
+              <div className="grid gap-3 p-3 bg-gray-50 rounded-lg">
+                <div>
+                  <Label className="text-gray-500 text-xs">Usuario (Nro. documento)</Label>
+                  <p className="font-mono text-lg font-semibold mt-1 select-all">{credentialsModal.dni}</p>
+                </div>
+                <div>
+                  <Label className="text-gray-500 text-xs">Contraseña</Label>
+                  <p className="font-mono text-lg font-semibold mt-1 select-all">{credentialsModal.password}</p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                className="w-full bg-primary-blue hover:bg-primary-blue/90"
+                onClick={() => {
+                  const text = `Nro. documento: ${credentialsModal.dni}\nContraseña: ${credentialsModal.password}`;
+                  navigator.clipboard.writeText(text).then(
+                    () => toast.success("Copiado al portapapeles"),
+                    () => toast.error("No se pudo copiar")
+                  );
+                }}
+              >
+                <Copy className="w-4 h-4 mr-2" />
+                Copiar usuario y contraseña
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => setCredentialsModal(null)}
+              >
+                Cerrar
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
