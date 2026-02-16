@@ -489,7 +489,7 @@ export default function PacientesPage() {
                   <TableHead>Dirección</TableHead>
                   <TableHead>Última Visita</TableHead>
                   <TableHead>Fecha Creación</TableHead>
-                  <TableHead className="sticky right-0 bg-white shadow-[-4px_0_8px_rgba(0,0,0,0.06)] min-w-[140px]">Acciones</TableHead>
+                  <TableHead className="whitespace-nowrap sticky right-0 bg-muted shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10 min-w-[140px]">Acciones</TableHead>
                 </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -534,7 +534,7 @@ export default function PacientesPage() {
                         <TableCell>
                           <span className="text-sm">{new Date(patient.created_at).toLocaleDateString('es-ES')}</span>
                         </TableCell>
-                        <TableCell className="sticky right-0 bg-white shadow-[-4px_0_8px_rgba(0,0,0,0.06)]">
+                        <TableCell className="sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10">
                           <div className="flex space-x-2">
                             <Button variant="outline" size="sm" onClick={() => navigate(`/pacientes/${patient.id}`)}>
                               Ver

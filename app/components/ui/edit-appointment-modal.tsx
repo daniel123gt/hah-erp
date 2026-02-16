@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -11,6 +11,7 @@ import {
   DialogTrigger,
 } from "~/components/ui/dialog";
 import { Badge } from "~/components/ui/badge";
+import { patientsService, type Patient } from "~/services/patientsService";
 import { 
   Edit, 
   Calendar, 
@@ -43,38 +44,51 @@ interface Appointment {
 interface EditAppointmentModalProps {
   appointment: Appointment;
   onAppointmentUpdated: (appointment: Appointment) => void;
+  variant?: "medicina" | "procedimientos";
 }
 
 const mockDoctors = [
   { name: "Dr. Roberto Silva", specialty: "Medicina General" },
-  { name: "Dra. Elena Morales", specialty: "Enfermería" },
+  { name: "Dra. Elena Morales", specialty: "Medicina Interna" },
   { name: "Dr. Carlos Mendoza", specialty: "Cardiología" },
-  { name: "Lic. Miguel Torres", specialty: "Laboratorio" }
 ];
 
-const mockPatients = [
-  { name: "María González", email: "maria.gonzalez@email.com", phone: "+51 999 123 456" },
-  { name: "Carlos Rodríguez", email: "carlos.rodriguez@email.com", phone: "+51 999 234 567" },
-  { name: "Ana Torres", email: "ana.torres@email.com", phone: "+51 999 345 678" },
-  { name: "Luis Mendoza", email: "luis.mendoza@email.com", phone: "+51 999 456 789" }
+const mockNurses = [
+  { name: "Lic. Elena Morales", specialty: "Enfermería" },
+  { name: "Lic. Miguel Torres", specialty: "Enfermería" },
+  { name: "Lic. Rosa Díaz", specialty: "Enfermería" },
 ];
 
-const locations = [
-  "Consultorio 1",
-  "Consultorio 2", 
-  "Consultorio 3",
-  "Laboratorio",
-  "Sala de Emergencias",
-  "Sala de Exámenes"
-];
-
-export function EditAppointmentModal({ appointment, onAppointmentUpdated }: EditAppointmentModalProps) {
+export function EditAppointmentModal({
+  appointment,
+  onAppointmentUpdated,
+  variant = "medicina",
+}: EditAppointmentModalProps) {
+  const professionals = variant === "procedimientos" ? mockNurses : mockDoctors;
+  const professionalLabel = variant === "procedimientos" ? "Enfermera" : "Médico";
   const [isOpen, setIsOpen] = useState(false);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [loadingPatients, setLoadingPatients] = useState(false);
   const [formData, setFormData] = useState<Appointment>(appointment);
 
   useEffect(() => {
     setFormData(appointment);
   }, [appointment]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setLoadingPatients(true);
+    patientsService
+      .getPatients({ limit: 500 })
+      .then((res) => setPatients(res.data))
+      .catch(() => setPatients([]))
+      .finally(() => setLoadingPatients(false));
+  }, [isOpen]);
+
+  const selectedPatientId = useMemo(
+    () => patients.find((p) => p.name === formData.patientName)?.id ?? "",
+    [patients, formData.patientName]
+  );
 
   const handleInputChange = (field: string, value: string | number) => {
     setFormData(prev => ({
@@ -84,21 +98,22 @@ export function EditAppointmentModal({ appointment, onAppointmentUpdated }: Edit
   };
 
   const handleDoctorChange = (doctorName: string) => {
-    const doctor = mockDoctors.find(d => d.name === doctorName);
-    setFormData(prev => ({
+    const professional = professionals.find((d) => d.name === doctorName);
+    setFormData((prev) => ({
       ...prev,
-      doctorName,
-      doctorSpecialty: doctor?.specialty || ""
+      doctorName: doctorName,
+      doctorSpecialty: professional?.specialty ?? "",
     }));
   };
 
-  const handlePatientChange = (patientName: string) => {
-    const patient = mockPatients.find(p => p.name === patientName);
-    setFormData(prev => ({
+  const handlePatientChange = (patientId: string) => {
+    const patient = patients.find((p) => p.id === patientId);
+    setFormData((prev) => ({
       ...prev,
-      patientName,
-      patientEmail: patient?.email || prev.patientEmail,
-      patientPhone: patient?.phone || prev.patientPhone
+      patientName: patient?.name ?? prev.patientName,
+      patientEmail: patient?.email ?? prev.patientEmail,
+      patientPhone: patient?.phone ?? prev.patientPhone,
+      location: patient?.address ?? prev.location,
     }));
   };
 
@@ -156,14 +171,17 @@ export function EditAppointmentModal({ appointment, onAppointmentUpdated }: Edit
                   Paciente *
                 </label>
                 <select
-                  value={formData.patientName}
+                  value={selectedPatientId}
                   onChange={(e) => handlePatientChange(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
                   required
+                  disabled={loadingPatients}
                 >
-                  <option value="">Seleccionar paciente</option>
-                  {mockPatients.map((patient) => (
-                    <option key={patient.name} value={patient.name}>
+                  <option value="">
+                    {loadingPatients ? "Cargando pacientes..." : "Seleccionar paciente"}
+                  </option>
+                  {patients.map((patient) => (
+                    <option key={patient.id} value={patient.id}>
                       {patient.name}
                     </option>
                   ))}
@@ -288,40 +306,34 @@ export function EditAppointmentModal({ appointment, onAppointmentUpdated }: Edit
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ubicación *
+                  Dirección (domicilio de la cita) *
                 </label>
                 <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <select
+                  <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+                  <Input
                     value={formData.location}
                     onChange={(e) => handleInputChange("location", e.target.value)}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
+                    placeholder="Si el paciente tiene dirección registrada se usará esa; si no, ingrese la dirección"
+                    className="pl-10"
                     required
-                  >
-                    <option value="">Seleccionar ubicación</option>
-                    {locations.map((location) => (
-                      <option key={location} value={location}>
-                        {location}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Información del Doctor */}
+          {/* Información del profesional (Médico/Enfermera) */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Stethoscope className="w-5 h-5 text-primary-blue" />
-                Doctor Asignado
+                {professionalLabel} asignad{professionalLabel === "Médico" ? "o" : "a"}
               </CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Doctor *
+                  {professionalLabel} *
                 </label>
                 <select
                   value={formData.doctorName}
@@ -329,10 +341,10 @@ export function EditAppointmentModal({ appointment, onAppointmentUpdated }: Edit
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
                   required
                 >
-                  <option value="">Seleccionar doctor</option>
-                  {mockDoctors.map((doctor) => (
-                    <option key={doctor.name} value={doctor.name}>
-                      {doctor.name}
+                  <option value="">Seleccionar {professionalLabel.toLowerCase()}</option>
+                  {professionals.map((p) => (
+                    <option key={p.name} value={p.name}>
+                      {p.name}
                     </option>
                   ))}
                 </select>
@@ -390,7 +402,7 @@ export function EditAppointmentModal({ appointment, onAppointmentUpdated }: Edit
                   <p className="font-medium">{formData.patientName}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Doctor:</p>
+                  <p className="text-sm text-gray-600">{professionalLabel}:</p>
                   <p className="font-medium">{formData.doctorName}</p>
                 </div>
                 <div>

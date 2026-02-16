@@ -631,7 +631,7 @@ export default function OrdenDetalle() {
                       <TableHead>Examen</TableHead>
                       <TableHead>Precio</TableHead>
                       <TableHead>Estado</TableHead>
-                      {isEditing && <TableHead>Acciones</TableHead>}
+                      {isEditing && <TableHead className="whitespace-nowrap sticky right-0 bg-muted shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10 min-w-[100px]">Acciones</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -652,7 +652,7 @@ export default function OrdenDetalle() {
                           </Badge>
                         </TableCell>
                         {isEditing && (
-                          <TableCell>
+                          <TableCell className="sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10">
                             <Button
                               variant="ghost"
                               size="sm"

@@ -195,7 +195,7 @@ export default function OrdenesLaboratorio() {
                       <TableHead>Prioridad</TableHead>
                       <TableHead>Estado</TableHead>
                       <TableHead>Total</TableHead>
-                      <TableHead>Acciones</TableHead>
+                      <TableHead className="whitespace-nowrap sticky right-0 bg-muted shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10 min-w-[100px]">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -231,7 +231,7 @@ export default function OrdenesLaboratorio() {
                           <TableCell className="font-semibold">
                             S/ {order.total_amount.toFixed(2)}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10">
                             <Button
                               variant="outline"
                               size="sm"

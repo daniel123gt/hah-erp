@@ -43,9 +43,11 @@ interface Appointment {
 
 interface ViewAppointmentModalProps {
   appointment: Appointment;
+  /** Etiqueta del profesional: "Médico" o "Enfermera" */
+  professionalLabel?: string;
 }
 
-export function ViewAppointmentModal({ appointment }: ViewAppointmentModalProps) {
+export function ViewAppointmentModal({ appointment, professionalLabel = "Médico" }: ViewAppointmentModalProps) {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "scheduled":
@@ -188,12 +190,12 @@ export function ViewAppointmentModal({ appointment }: ViewAppointmentModalProps)
             </CardContent>
           </Card>
 
-          {/* Información del Doctor */}
+          {/* Información del profesional (Médico/Enfermera) */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Stethoscope className="w-5 h-5 text-primary-blue" />
-                Doctor Asignado
+                {professionalLabel} asignad{professionalLabel === "Médico" ? "o" : "a"}
               </CardTitle>
             </CardHeader>
             <CardContent>

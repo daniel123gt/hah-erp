@@ -1,13 +1,13 @@
 import type { Route } from "./+types/citas";
-import CitasPage from "~/dashboard/citas/Page";
+import CitasHome from "~/dashboard/citas/Home";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "Gestión de Citas - Health At Home ERP" },
-    { name: "description", content: "Programa y administra las citas médicas" },
+    { title: "Citas - Health At Home ERP" },
+    { name: "description", content: "Citas a domicilio: procedimientos y medicina" },
   ];
 }
 
 export default function Citas() {
-  return <CitasPage />;
+  return <CitasHome />;
 }

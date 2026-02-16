@@ -6,10 +6,7 @@ import {
   Power,
   UserCheck,
   Calendar,
-  Stethoscope,
   Package,
-  DollarSign,
-  BarChart3,
   HeartPulse,
   ClipboardList,
   Building2,
@@ -70,11 +67,8 @@ const items = [
     url: "/procedimientos",
     icon: ClipboardList,
   },
-  {
-    title: "Servicios",
-    url: "/servicios",
-    icon: Stethoscope,
-  },
+  // Servicios oculto de momento
+  // { title: "Servicios", url: "/servicios", icon: Stethoscope },
   {
     title: "Cuidados en casa",
     url: "/cuidados-en-casa",
@@ -85,16 +79,9 @@ const items = [
     url: "/inventario",
     icon: Package,
   },
-  {
-    title: "Facturacion",
-    url: "/facturacion",
-    icon: DollarSign,
-  },
-  {
-    title: "Reportes",
-    url: "/reportes",
-    icon: BarChart3,
-  },
+  // Facturación y Reportes ocultos de momento
+  // { title: "Facturacion", url: "/facturacion", icon: DollarSign },
+  // { title: "Reportes", url: "/reportes", icon: BarChart3 },
   {
     title: "Configuración",
     url: "/configuracion",

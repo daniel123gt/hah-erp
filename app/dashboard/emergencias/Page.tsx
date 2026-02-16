@@ -363,7 +363,7 @@ export default function EmergenciasPage() {
                 <TableHead>Estado</TableHead>
                 <TableHead>Ubicación</TableHead>
                 <TableHead>Reportado</TableHead>
-                <TableHead>Acciones</TableHead>
+                <TableHead className="whitespace-nowrap sticky right-0 bg-muted shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10 min-w-[100px]">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -407,7 +407,7 @@ export default function EmergenciasPage() {
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10">
                     <div className="flex space-x-2">
                       <ViewEmergencyModal emergency={emergency} />
                       <EditEmergencyModal 

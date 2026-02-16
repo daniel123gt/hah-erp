@@ -136,7 +136,7 @@ export default function CuidadosEnCasaList() {
                     <TableHead>Plan</TableHead>
                     <TableHead>Monto mensual</TableHead>
                     <TableHead>Estado</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
+                    <TableHead className="text-right whitespace-nowrap sticky right-0 bg-muted shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10 min-w-[100px]">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -164,7 +164,7 @@ export default function CuidadosEnCasaList() {
                           {contract.is_active ? "Activo" : "Inactivo"}
                         </span>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10">
                         <Button
                           variant="outline"
                           size="sm"
