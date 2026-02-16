@@ -4,6 +4,7 @@ import supabase from "~/utils/supabase";
 export interface Patient {
   id: string;
   name: string;
+  dni?: string;
   email?: string;
   phone?: string;
   age?: number;
@@ -25,6 +26,7 @@ export interface Patient {
 
 export interface CreatePatientData {
   name: string;
+  dni?: string;
   email?: string;
   phone?: string;
   age?: number;
@@ -82,9 +84,9 @@ export const patientsService = {
         .order(sortBy, { ascending: sortOrder === 'asc' })
         .range(from, to);
 
-             // Aplicar filtro de búsqueda si existe
+             // Aplicar filtro de búsqueda si existe (nombre, nro. documento, email, teléfono)
              if (search) {
-               query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`);
+               query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%,dni.ilike.%${search}%`);
              }
 
       // Aplicar filtro de estado
@@ -123,6 +125,24 @@ export const patientsService = {
     } catch (error) {
       console.error('Error al obtener pacientes:', error);
       throw new Error('Error al obtener la lista de pacientes');
+    }
+  },
+
+  /** Comprueba si un número de documento ya está en uso por otro paciente. excludePatientId = id a ignorar (edición). */
+  async isDniTaken(dni: string, excludePatientId?: string): Promise<boolean> {
+    if (!dni?.trim()) return false;
+    try {
+      let query = supabase
+        .from('patients')
+        .select('id')
+        .eq('dni', dni.trim());
+      if (excludePatientId) query = query.neq('id', excludePatientId);
+      const { data, error } = await query.limit(1).maybeSingle();
+      if (error) throw error;
+      return !!data;
+    } catch (e) {
+      console.error('Error al comprobar número de documento:', e);
+      return false;
     }
   },
 

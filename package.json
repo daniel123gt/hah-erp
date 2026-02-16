@@ -6,7 +6,11 @@
     "build": "react-router build",
     "dev": "react-router dev",
     "start": "react-router-serve ./build/server/index.js",
-    "typecheck": "react-router typegen && tsc"
+    "typecheck": "react-router typegen && tsc",
+    "supabase": "supabase",
+    "supabase:login": "supabase login",
+    "supabase:link": "supabase link",
+    "supabase:deploy": "supabase functions deploy"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",
@@ -42,6 +46,7 @@
     "@types/node": "^20",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
+    "supabase": "^2.76.8",
     "tailwindcss": "^4.1.4",
     "tw-animate-css": "^1.3.0",
     "typescript": "^5.8.3",

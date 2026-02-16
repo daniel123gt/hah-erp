@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -17,10 +18,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import { Plus, User, FileText, Calendar, Search, UserPlus, Loader2, X } from "lucide-react";
+import { Plus, User, FileText, Calendar, Search, UserPlus, Loader2, X, Copy, KeyRound, ExternalLink, Home } from "lucide-react";
 import { toast } from "sonner";
 import patientsService, { type Patient } from "~/services/patientsService";
 import labOrderService from "~/services/labOrderService";
+import {
+  ensurePatientPortalUser,
+  generatePortalPassword,
+} from "~/services/patientPortalService";
 
 interface LaboratoryExam {
   id: string;
@@ -54,11 +59,14 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
   // Estados para formulario de nuevo paciente
   const [newPatientData, setNewPatientData] = useState({
     name: "",
+    dni: "",
     email: "",
     phone: "",
     gender: "",
     address: "",
+    district: "",
   });
+  const [districts, setDistricts] = useState<Array<{ name: string; zone: string }>>([]);
 
   // Estados para información de la orden
   const [formData, setFormData] = useState({
@@ -68,19 +76,34 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
     observaciones: "",
   });
 
-  // Reset cuando se abre/cierra el modal
+  // Nro. documento para paciente que aún no lo tiene (al crear orden se pide para generar cuenta de portal)
+  const [dniParaOrden, setDniParaOrden] = useState("");
+  // Credenciales de portal creadas (mostrar en diálogo para copiar y navegar)
+  const [portalCredentials, setPortalCredentials] = useState<{ dni: string; password: string; orderId?: string } | null>(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (open) {
+      patientsService.getDistricts().then(setDistricts).catch(() => setDistricts([]));
+    }
+  }, [open]);
+
+  // Reset cuando se abre/cierra el modal (no tocamos portalCredentials: el modal de credenciales se cierra solo con sus botones)
   useEffect(() => {
     if (!open) {
       setSelectedPatient(null);
       setSearchTerm("");
       setSearchResults([]);
       setShowNewPatientForm(false);
+      setDniParaOrden("");
       setNewPatientData({
         name: "",
+        dni: "",
         email: "",
         phone: "",
         gender: "",
         address: "",
+        district: "",
       });
       setFormData({
         fechaOrden: new Date().toISOString().split('T')[0],
@@ -133,15 +156,17 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
       setIsLoading(true);
       const newPatient = await patientsService.createPatient({
         name: newPatientData.name,
+        dni: newPatientData.dni.trim() || undefined,
         email: newPatientData.email || undefined,
         phone: newPatientData.phone || undefined,
         gender: (newPatientData.gender as 'M' | 'F') || undefined,
         address: newPatientData.address || undefined,
+        district: newPatientData.district?.trim() || undefined,
       });
       
       setSelectedPatient(newPatient);
       setShowNewPatientForm(false);
-      setNewPatientData({ name: "", email: "", phone: "", gender: "", address: "" });
+      setNewPatientData({ name: "", dni: "", email: "", phone: "", gender: "", address: "", district: "" });
       toast.success("Paciente creado exitosamente");
     } catch (error) {
       console.error("Error al crear paciente:", error);
@@ -164,12 +189,36 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
       return;
     }
 
+    const dniFinal = selectedPatient.dni?.trim() || dniParaOrden.trim();
+    if (!dniFinal) {
+      toast.error("Para generar usuario y contraseña del portal de resultados, ingrese el Nro. de documento del paciente.");
+      return;
+    }
+
     try {
       setIsLoading(true);
 
+      if (dniFinal) {
+        const dniTaken = await patientsService.isDniTaken(dniFinal, selectedPatient.id);
+        if (dniTaken) {
+          toast.error("Este número de documento ya está registrado para otro paciente.");
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      let patientToUse = selectedPatient;
+      if (!selectedPatient.dni?.trim() && dniParaOrden.trim()) {
+        await patientsService.updatePatient({
+          id: selectedPatient.id,
+          dni: dniParaOrden.trim(),
+        });
+        patientToUse = { ...selectedPatient, dni: dniParaOrden.trim() };
+      }
+
       // Crear la orden de exámenes
-      await labOrderService.createOrder({
-        patient_id: selectedPatient.id,
+      const orderCreated = await labOrderService.createOrder({
+        patient_id: patientToUse.id,
         order_date: formData.fechaOrden,
         physician_name: formData.medicoSolicitante || undefined,
         priority: formData.prioridad,
@@ -178,21 +227,52 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
       });
 
       toast.success("Orden de exámenes creada exitosamente");
+
+      // Crear cuenta de portal para el paciente (login por nro. documento)
+      try {
+        const password = generatePortalPassword();
+        const result = await ensurePatientPortalUser({
+          patient_id: patientToUse.id,
+          dni: dniFinal,
+          full_name: patientToUse.name,
+          email: patientToUse.email,
+          phone: patientToUse.phone,
+          password,
+        });
+        if (result.ok && !result.already_exists) {
+          setPortalCredentials({ dni: dniFinal, password, orderId: orderCreated.id });
+          // No cerramos el modal: mostramos las credenciales dentro del mismo
+        } else if (result.ok && result.already_exists) {
+          toast.info("El paciente ya tiene cuenta de portal para ver sus resultados.");
+          setOpen(false);
+          onOrderCreated();
+        } else if (!result.ok) {
+          toast.warning(result.error || "No se pudo crear la cuenta de portal.");
+          setOpen(false);
+          onOrderCreated();
+        }
+      } catch (e) {
+        console.error("Error al crear cuenta de portal:", e);
+        toast.warning("Orden creada. No se pudo crear la cuenta de portal del paciente.");
+        setOpen(false);
+        onOrderCreated();
+      }
       
-      // Reset y cerrar
-      setSelectedPatient(null);
-      setSearchTerm("");
-      setSearchResults([]);
-      setShowNewPatientForm(false);
-      setFormData({
-        fechaOrden: new Date().toISOString().split('T')[0],
-        medicoSolicitante: "",
-        prioridad: "normal",
-        observaciones: "",
-      });
-      
-      setOpen(false);
-      onOrderCreated();
+      if (!portalCredentials) {
+        setSelectedPatient(null);
+        setSearchTerm("");
+        setSearchResults([]);
+        setShowNewPatientForm(false);
+        setDniParaOrden("");
+        setFormData({
+          fechaOrden: new Date().toISOString().split('T')[0],
+          medicoSolicitante: "",
+          prioridad: "normal",
+          observaciones: "",
+        });
+      }
+      // No llamar onOrderCreated() aquí cuando mostramos credenciales: el padre limpiaría la
+      // selección y desmontaría el modal. Se llama al cerrar la vista de credenciales.
     } catch (error: any) {
       console.error("Error al crear orden:", error);
       toast.error(error?.message || "Error al crear la orden. Inténtalo de nuevo.");
@@ -227,7 +307,17 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
   const total = calculateTotal();
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <>
+    <Dialog
+      open={open}
+      onOpenChange={(isOpen: boolean) => {
+        if (!isOpen) {
+          if (portalCredentials) onOrderCreated();
+          setPortalCredentials(null);
+        }
+        setOpen(isOpen);
+      }}
+    >
       <DialogTrigger asChild>
         <Button className="bg-green-500 hover:bg-green-600 text-white text-sm flex-shrink-0">
           <Plus className="w-4 h-4 mr-2" />
@@ -236,14 +326,100 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
           <span className="sm:hidden">Orden</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className={portalCredentials ? "max-w-md" : "max-w-4xl max-h-[90vh] overflow-y-auto"}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileText className="w-5 h-5" />
-            Crear Orden de Exámenes
+            {portalCredentials ? (
+              <>
+                <KeyRound className="w-5 h-5 text-green-700" />
+                Cuenta de portal creada
+              </>
+            ) : (
+              <>
+                <FileText className="w-5 h-5" />
+                Crear Orden de Exámenes
+              </>
+            )}
           </DialogTitle>
         </DialogHeader>
         
+        {portalCredentials ? (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Copie y entregue estos datos al paciente para que pueda ver sus resultados en el portal (login con Nro. documento y contraseña):
+            </p>
+            <div className="grid gap-3 p-3 bg-gray-50 rounded-lg">
+              <div>
+                <Label className="text-gray-500 text-xs">Usuario (Nro. documento)</Label>
+                <p className="font-mono text-lg font-semibold mt-1 select-all">{portalCredentials.dni}</p>
+              </div>
+              <div>
+                <Label className="text-gray-500 text-xs">Contraseña</Label>
+                <p className="font-mono text-lg font-semibold mt-1 select-all">{portalCredentials.password}</p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              className="w-full bg-primary-blue hover:bg-primary-blue/90"
+              onClick={() => {
+                const text = `Nro. documento: ${portalCredentials.dni}\nContraseña: ${portalCredentials.password}`;
+                navigator.clipboard.writeText(text).then(
+                  () => toast.success("Copiado al portapapeles"),
+                  () => toast.error("No se pudo copiar")
+                );
+              }}
+            >
+              <Copy className="w-4 h-4 mr-2" />
+              Copiar usuario y contraseña
+            </Button>
+            <div className="flex flex-col gap-2 pt-2 border-t">
+              {portalCredentials.orderId && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    setPortalCredentials(null);
+                    setOpen(false);
+                    onOrderCreated();
+                    navigate(`/laboratorio/ordenes/${portalCredentials.orderId}`);
+                  }}
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Ir al detalle de la orden
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  setPortalCredentials(null);
+                  setOpen(false);
+                  onOrderCreated();
+                  navigate("/laboratorio");
+                }}
+              >
+                <Home className="w-4 h-4 mr-2" />
+                Ir a Laboratorio
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                onClick={() => {
+                  setPortalCredentials(null);
+                  setOpen(false);
+                  onOrderCreated();
+                }}
+              >
+                Cerrar
+              </Button>
+            </div>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Selección de Paciente */}
           <div className="space-y-4">
@@ -306,6 +482,15 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
                             />
                           </div>
                           <div>
+                            <Label>Nro. documento (para portal de resultados)</Label>
+                            <Input
+                              value={newPatientData.dni}
+                              onChange={(e) => setNewPatientData({ ...newPatientData, dni: e.target.value })}
+                              placeholder="Ej. 12345678"
+                              maxLength={20}
+                            />
+                          </div>
+                          <div>
                             <Label>Email</Label>
                             <Input
                               type="email"
@@ -344,6 +529,25 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
                               onChange={(e) => setNewPatientData({ ...newPatientData, address: e.target.value })}
                               placeholder="Dirección"
                             />
+                          </div>
+                          <div>
+                            <Label>Distrito</Label>
+                            <Select
+                              value={newPatientData.district || "__none__"}
+                              onValueChange={(value) => setNewPatientData({ ...newPatientData, district: value === "__none__" ? "" : value })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Seleccionar distrito" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__none__">Sin especificar</SelectItem>
+                                {districts.map((d) => (
+                                  <SelectItem key={d.name} value={d.name}>
+                                    {d.name} {d.zone ? `(${d.zone})` : ""}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
                         </div>
                         <Button
@@ -397,22 +601,42 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
                 )}
               </>
             ) : (
-              <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
-                <div>
-                  <p className="font-semibold">Paciente seleccionado: {selectedPatient.name}</p>
-                  <p className="text-sm text-gray-600">
-                    {selectedPatient.email || selectedPatient.phone || 'Sin contacto'}
-                  </p>
+              <>
+                <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
+                  <div>
+                    <p className="font-semibold">Paciente seleccionado: {selectedPatient.name}</p>
+                    <p className="text-sm text-gray-600">
+                      {selectedPatient.dni ? `Nro. doc.: ${selectedPatient.dni}` : "Sin nro. documento"}
+                      {selectedPatient.dni ? " · " : ""}
+                      {selectedPatient.email || selectedPatient.phone || "Sin contacto"}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedPatient(null)}
+                  >
+                    Cambiar
+                  </Button>
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSelectedPatient(null)}
-                >
-                  Cambiar
-                </Button>
-              </div>
+                {!selectedPatient.dni?.trim() && (
+                  <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
+                    <Label htmlFor="dniOrden" className="flex items-center gap-2 text-amber-800 font-medium">
+                      <KeyRound className="w-4 h-4" />
+                      Nro. de documento del paciente (requerido para generar usuario y contraseña del portal de resultados)
+                    </Label>
+                    <Input
+                      id="dniOrden"
+                      value={dniParaOrden}
+                      onChange={(e) => setDniParaOrden(e.target.value.replace(/[^a-zA-Z0-9]/g, "").slice(0, 20))}
+                      placeholder="Ej: 12345678"
+                      maxLength={20}
+                      className="mt-2 max-w-xs font-mono"
+                    />
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -509,7 +733,14 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={isLoading || !selectedPatient}>
+            <Button
+              type="submit"
+              disabled={
+                isLoading ||
+                !selectedPatient ||
+                (!(selectedPatient.dni?.trim()) && !dniParaOrden.trim())
+              }
+            >
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -524,7 +755,10 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
             </Button>
           </div>
         </form>
+        )}
       </DialogContent>
+
     </Dialog>
+    </>
   );
 }

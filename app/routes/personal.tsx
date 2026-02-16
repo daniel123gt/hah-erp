@@ -1,13 +1,13 @@
 import type { Route } from "./+types/personal";
-import PersonalPage from "~/dashboard/personal/Page";
+import PersonalDashboard from "~/dashboard/personal/PersonalDashboard";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "Gestión de Personal - Health At Home ERP" },
-    { name: "description", content: "Administra el personal médico y administrativo" },
+    { title: "Personal - Health At Home ERP" },
+    { name: "description", content: "Categorías de personal" },
   ];
 }
 
 export default function Personal() {
-  return <PersonalPage />;
+  return <PersonalDashboard />;
 }

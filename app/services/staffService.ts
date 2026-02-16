@@ -55,6 +55,8 @@ export const staffService = {
     gender?: string;
     department?: string;
     position?: string;
+    /** Si se usa, filtra position con ilike (ej. "%Técnic%") en lugar de eq */
+    positionPattern?: string;
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
   } = {}) {
@@ -67,6 +69,7 @@ export const staffService = {
         gender = '',
         department = '',
         position = '',
+        positionPattern = '',
         sortBy = 'created_at', 
         sortOrder = 'desc' 
       } = options;
@@ -100,8 +103,10 @@ export const staffService = {
         query = query.eq('department', department);
       }
 
-      // Aplicar filtro de posición
-      if (position && position !== 'all') {
+      // Aplicar filtro de posición (exacto o por patrón)
+      if (positionPattern) {
+        query = query.ilike('position', positionPattern);
+      } else if (position && position !== 'all') {
         query = query.eq('position', position);
       }
 

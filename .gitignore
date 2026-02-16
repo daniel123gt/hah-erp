@@ -4,3 +4,7 @@
 # React Router
 /.react-router/
 /build/
+
+# No necesarios para la app
+/scripts/
+/docs/
