@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
+import { Combobox } from "~/components/ui/combobox";
 import { Plus, User, FileText, Calendar, Search, UserPlus, Loader2, X, Copy, KeyRound, ExternalLink, Home, MapPin, MapPinned } from "lucide-react";
 import { toast } from "sonner";
 import patientsService, { type Patient } from "~/services/patientsService";
@@ -551,22 +552,13 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
                           </div>
                           <div>
                             <Label>Distrito</Label>
-                            <Select
+                            <Combobox
+                              options={districts.map((d) => ({ value: d.name, label: d.zone ? `${d.name} (${d.zone})` : d.name }))}
                               value={newPatientData.district || "__none__"}
                               onValueChange={(value) => setNewPatientData({ ...newPatientData, district: value === "__none__" ? "" : value })}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Seleccionar distrito" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="__none__">Sin especificar</SelectItem>
-                                {districts.map((d) => (
-                                  <SelectItem key={d.name} value={d.name}>
-                                    {d.name} {d.zone ? `(${d.zone})` : ""}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                              placeholder="Seleccionar distrito"
+                              emptyOption={{ value: "__none__", label: "Sin especificar" }}
+                            />
                           </div>
                         </div>
                         <Button
@@ -676,22 +668,15 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
                       <MapPinned className="w-4 h-4" />
                       Distrito del paciente (requerido para la orden de exámenes)
                     </Label>
-                    <Select
+                    <Combobox
+                      id="districtOrden"
+                      options={districts.map((d) => ({ value: d.name, label: d.zone ? `${d.name} (${d.zone})` : d.name }))}
                       value={districtParaOrden || "__none__"}
                       onValueChange={(v) => setDistrictParaOrden(v === "__none__" ? "" : v)}
-                    >
-                      <SelectTrigger id="districtOrden" className="mt-2 max-w-xs">
-                        <SelectValue placeholder="Seleccionar distrito" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">Seleccionar distrito</SelectItem>
-                        {districts.map((d) => (
-                          <SelectItem key={d.name} value={d.name}>
-                            {d.name} {d.zone ? `(${d.zone})` : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder="Seleccionar distrito"
+                      emptyOption={{ value: "__none__", label: "Seleccionar distrito" }}
+                      className="mt-2 max-w-xs"
+                    />
                   </div>
                 )}
               </>
@@ -719,24 +704,16 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="medicoSolicitante">Médico Solicitante</Label>
-                    <Select
+                    <Combobox
+                      id="medicoSolicitante"
+                      options={doctors.map((doc) => ({ value: doc.name, label: doc.name }))}
                       value={formData.medicoSolicitante || "__none__"}
                       onValueChange={(value) =>
                         setFormData({ ...formData, medicoSolicitante: value === "__none__" ? "" : value })
                       }
-                    >
-                      <SelectTrigger id="medicoSolicitante">
-                        <SelectValue placeholder="Seleccionar médico" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">Ninguno</SelectItem>
-                        {doctors.map((doc) => (
-                          <SelectItem key={doc.id} value={doc.name}>
-                            {doc.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder="Seleccionar médico"
+                      emptyOption={{ value: "__none__", label: "Ninguno" }}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="prioridad">Prioridad</Label>

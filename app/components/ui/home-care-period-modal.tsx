@@ -9,8 +9,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "./dialog";
-import { Loader2, Plus, X } from "lucide-react";
-import type { HomeCarePeriod } from "~/services/homeCareService";
+import { Loader2, Plus, X, Calendar, Banknote, Pause, Receipt } from "lucide-react";
+import homeCareService, { type HomeCarePeriod } from "~/services/homeCareService";
 
 function addDays(isoDate: string, days: number): string {
   if (!isoDate) return "";
@@ -266,7 +266,6 @@ export function HomeCarePeriodModal({
   const [feriadosDates, setFeriadosDates] = useState<string[]>([]);
   const [pausasDates, setPausasDates] = useState<string[]>([]);
   const [fechaPagoDates, setFechaPagoDates] = useState<string[]>([]);
-  const [nuevaFeriado, setNuevaFeriado] = useState("");
   const [nuevaPausa, setNuevaPausa] = useState("");
   const [nuevaFechaPago, setNuevaFechaPago] = useState("");
 
@@ -285,7 +284,6 @@ export function HomeCarePeriodModal({
       setPausasDates([]);
       setFechaPagoDates([]);
     }
-    setNuevaFeriado("");
     setNuevaPausa("");
     setNuevaFechaPago("");
   }, [open, period, montoQuincena]);
@@ -315,7 +313,7 @@ export function HomeCarePeriodModal({
       const next = { ...prev, [field]: value };
       if (field === "fecha_pago_quincena" && value) {
         next.f_desde = value;
-        next.f_hasta = addDays(value, 15);
+        next.f_hasta = addDays(value, 14); // 14 días: el día seleccionado cuenta como día 1 de la quincena
       }
       if (field === "horas_pausa") {
         const h = parseFloat(value) || 0;
@@ -329,22 +327,14 @@ export function HomeCarePeriodModal({
       next.m_feriados = m_feriados.toFixed(2);
       return next;
     });
-  };
-
-  const addFeriado = () => {
-    const iso = normalizeToIsoDate(nuevaFeriado);
-    if (!iso) return;
-    if (feriadosDates.includes(iso)) return;
-    const next = [...feriadosDates, iso].sort();
-    setFeriadosDates(next);
-    setNuevaFeriado("");
-    setForm((prev) => syncFormFromArrays(next, pausasDates, prev));
-  };
-
-  const removeFeriado = (idx: number) => {
-    const next = feriadosDates.filter((_, i) => i !== idx);
-    setFeriadosDates(next);
-    setForm((prev) => syncFormFromArrays(next, pausasDates, prev));
+    // Al cambiar la fecha de pago de quincena, auto-rellenar feriados del rango [f_desde, f_hasta]
+    if (field === "fecha_pago_quincena" && value) {
+      const f_hasta = addDays(value, 14);
+      homeCareService.getHolidaysInRange(value, f_hasta).then((dates) => {
+        setFeriadosDates(dates);
+        setForm((prev) => syncFormFromArrays(dates, pausasDates, prev));
+      });
+    }
   };
 
   const addPausa = () => {
@@ -415,156 +405,162 @@ export function HomeCarePeriodModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[640px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[620px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <div className="space-y-1">
-              <Label>F. pago quincena</Label>
-              <Input
-                type="date"
-                value={form.fecha_pago_quincena}
-                onChange={(e) => handleChange("fecha_pago_quincena", e.target.value)}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>Turno</Label>
-              <Input value="24X24" readOnly className="bg-muted" />
-            </div>
-            <div className="space-y-1">
-              <Label>Monto base quincena</Label>
-              <Input
-                value={`S/ ${montoQuincena.toLocaleString("es-PE", { minimumFractionDigits: 2 })}`}
-                readOnly
-                className="bg-muted"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>F. desde *</Label>
-              <Input
-                type="date"
-                value={form.f_desde}
-                onChange={(e) => handleChange("f_desde", e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>F. hasta *</Label>
-              <Input
-                type="date"
-                value={form.f_hasta}
-                onChange={(e) => handleChange("f_hasta", e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-1 sm:col-span-2">
-              <Label>F. feriados</Label>
-              <div className="flex gap-2 flex-wrap">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Periodo quincenal */}
+          <section className="rounded-lg border bg-muted/30 p-4 space-y-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2 text-foreground">
+              <Calendar className="w-4 h-4" />
+              Periodo quincenal
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="fecha-pago-quincena">F. pago quincena</Label>
+                <input
+                  id="fecha-pago-quincena"
+                  type="date"
+                  value={form.fecha_pago_quincena}
+                  onChange={(e) => handleChange("fecha_pago_quincena", e.target.value)}
+                  className="flex h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] md:text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>F. desde</Label>
                 <Input
                   type="date"
-                  value={nuevaFeriado}
-                  onChange={(e) => setNuevaFeriado(e.target.value)}
-                  className="w-[140px]"
+                  value={form.f_desde}
+                  readOnly
+                  className="bg-muted"
+                  required
                 />
-                <Button type="button" variant="outline" size="sm" onClick={addFeriado}>
-                  <Plus className="w-4 h-4 mr-1" />
-                  Agregar
-                </Button>
               </div>
-              {feriadosDates.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-2">
+              <div className="space-y-1">
+                <Label>F. hasta</Label>
+                <Input
+                  type="date"
+                  value={form.f_hasta}
+                  readOnly
+                  className="bg-muted"
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Turno</Label>
+                <Input value="24X24" readOnly className="bg-muted" />
+              </div>
+              <div className="space-y-1">
+                <Label>Monto base quincena</Label>
+                <Input
+                  value={`S/ ${montoQuincena.toLocaleString("es-PE", { minimumFractionDigits: 2 })}`}
+                  readOnly
+                  className="bg-muted"
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* Feriados (solo tags + monto; se completan al elegir la quincena) */}
+          <section className="rounded-lg border bg-muted/30 p-4 space-y-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2 text-foreground">
+              <Banknote className="w-4 h-4" />
+              Feriados en el periodo
+            </h3>
+            <div className="flex flex-wrap items-center gap-3">
+              {feriadosDates.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
                   {feriadosDates.map((d, idx) => (
                     <span
                       key={`${d}-${idx}`}
-                      className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-sm"
+                      className="inline-flex items-center rounded-md bg-background border px-2 py-1 text-sm"
                     >
                       {new Date(d + "T12:00:00").toLocaleDateString("es-PE")}
-                      <button
-                        type="button"
-                        onClick={() => removeFeriado(idx)}
-                        className="rounded hover:bg-muted-foreground/20 p-0.5"
-                        aria-label="Quitar"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
                     </span>
                   ))}
                 </div>
+              ) : (
+                <span className="text-sm text-muted-foreground">
+                  Elija la fecha de pago quincena para cargar los feriados del rango.
+                </span>
               )}
-              <p className="text-xs text-muted-foreground mt-1">
-                N° feriados: {feriadosDates.length} → M. feriados (auto): S/ {form.m_feriados}
-              </p>
-            </div>
-            <div className="space-y-1">
-              <Label>M. feriados (auto)</Label>
-              <Input
-                value={form.m_feriados}
-                readOnly
-                className="bg-muted"
-                title="N° feriados × (monto quincena / 15)"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>Horas de pausa</Label>
-              <Input
-                type="number"
-                min="0"
-                step="0.5"
-                value={form.horas_pausa}
-                onChange={(e) => handleChange("horas_pausa", e.target.value)}
-                title="Por hora se descuenta: monto quincena / 15 / 24"
-              />
-            </div>
-            <div className="space-y-1 sm:col-span-2">
-              <Label>F. pausas</Label>
-              <div className="flex gap-2 flex-wrap">
-                <Input
-                  type="date"
-                  value={nuevaPausa}
-                  onChange={(e) => setNuevaPausa(e.target.value)}
-                  className="w-[140px]"
-                />
-                <Button type="button" variant="outline" size="sm" onClick={addPausa}>
-                  <Plus className="w-4 h-4 mr-1" />
-                  Agregar
-                </Button>
+              <div className="ml-auto min-w-[100px]">
+                <Label className="text-xs text-muted-foreground">M. feriados</Label>
+                <p className="text-sm font-medium">S/ {form.m_feriados}</p>
               </div>
-              {pausasDates.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {pausasDates.map((d, idx) => (
-                    <span
-                      key={`${d}-${idx}`}
-                      className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-sm"
-                    >
-                      {new Date(d + "T12:00:00").toLocaleDateString("es-PE")}
-                      <button
-                        type="button"
-                        onClick={() => removePausa(idx)}
-                        className="rounded hover:bg-muted-foreground/20 p-0.5"
-                        aria-label="Quitar"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </span>
-                  ))}
+            </div>
+          </section>
+
+          {/* Pausas y monto total */}
+          <section className="rounded-lg border bg-muted/30 p-4 space-y-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2 text-foreground">
+              <Pause className="w-4 h-4" />
+              Pausas y monto
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <Label>Horas de pausa</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={form.horas_pausa}
+                  onChange={(e) => handleChange("horas_pausa", e.target.value)}
+                  title="Por hora se descuenta: monto quincena / 15 / 24"
+                />
+              </div>
+              <div className="space-y-1 sm:col-span-2">
+                <Label>F. pausas</Label>
+                <div className="flex gap-2 flex-wrap items-center">
+                  <Input
+                    type="date"
+                    value={nuevaPausa}
+                    onChange={(e) => setNuevaPausa(e.target.value)}
+                    className="w-[140px]"
+                  />
+                  <Button type="button" variant="outline" size="sm" onClick={addPausa}>
+                    <Plus className="w-4 h-4 mr-1" />
+                    Agregar
+                  </Button>
+                  {pausasDates.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {pausasDates.map((d, idx) => (
+                        <span
+                          key={`${d}-${idx}`}
+                          className="inline-flex items-center gap-1 rounded-md bg-background border px-2 py-1 text-sm"
+                        >
+                          {new Date(d + "T12:00:00").toLocaleDateString("es-PE")}
+                          <button
+                            type="button"
+                            onClick={() => removePausa(idx)}
+                            className="rounded hover:bg-muted p-0.5"
+                            aria-label="Quitar"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
-            <div className="space-y-1">
-              <Label>Monto total (auto)</Label>
-              <Input
-                value={form.monto_total}
-                readOnly
-                className="bg-muted font-medium"
-                title="Monto base + M. feriados - descuento por horas de pausa"
-              />
+            <div className="pt-1">
+              <Label className="text-xs text-muted-foreground">Monto total (auto)</Label>
+              <p className="text-lg font-semibold">S/ {form.monto_total}</p>
             </div>
-            <div className="space-y-1 sm:col-span-2">
-              <Label>Fecha de pago</Label>
-              <div className="flex gap-2 flex-wrap">
+          </section>
+
+          {/* Datos de pago */}
+          <section className="rounded-lg border bg-muted/30 p-4 space-y-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2 text-foreground">
+              <Receipt className="w-4 h-4" />
+              Datos de pago
+            </h3>
+            <div className="space-y-2">
+              <div className="flex gap-2 flex-wrap items-center">
                 <Input
                   type="date"
                   value={nuevaFechaPago}
@@ -573,61 +569,64 @@ export function HomeCarePeriodModal({
                 />
                 <Button type="button" variant="outline" size="sm" onClick={addFechaPago}>
                   <Plus className="w-4 h-4 mr-1" />
-                  Agregar
+                  Agregar fecha
                 </Button>
-              </div>
-              {fechaPagoDates.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {fechaPagoDates.map((d, idx) => (
-                    <span
-                      key={`${d}-${idx}`}
-                      className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-sm"
-                    >
-                      {new Date(d + "T12:00:00").toLocaleDateString("es-PE")}
-                      <button
-                        type="button"
-                        onClick={() => removeFechaPago(idx)}
-                        className="rounded hover:bg-muted-foreground/20 p-0.5"
-                        aria-label="Quitar"
+                {fechaPagoDates.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {fechaPagoDates.map((d, idx) => (
+                      <span
+                        key={`${d}-${idx}`}
+                        className="inline-flex items-center gap-1 rounded-md bg-background border px-2 py-1 text-sm"
                       >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </span>
+                        {new Date(d + "T12:00:00").toLocaleDateString("es-PE")}
+                        <button
+                          type="button"
+                          onClick={() => removeFechaPago(idx)}
+                          className="rounded hover:bg-muted p-0.5"
+                          aria-label="Quitar"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <Label>Método de pago</Label>
+                <select
+                  value={form.metodo_pago}
+                  onChange={(e) => handleChange("metodo_pago", e.target.value)}
+                  className="w-full flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value="">Seleccionar</option>
+                  {PERIOD_PAYMENT_METHODS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
                   ))}
-                </div>
-              )}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <Label>N° operación</Label>
+                <Input
+                  value={form.numero_operacion}
+                  onChange={(e) => handleChange("numero_operacion", e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Factura/Boleta</Label>
+                <Input
+                  value={form.factura_boleta}
+                  onChange={(e) => handleChange("factura_boleta", e.target.value)}
+                />
+              </div>
             </div>
-            <div className="space-y-1">
-              <Label>Método de pago</Label>
-              <select
-                value={form.metodo_pago}
-                onChange={(e) => handleChange("metodo_pago", e.target.value)}
-                className="w-full flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                <option value="">Seleccionar</option>
-                {PERIOD_PAYMENT_METHODS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1">
-              <Label>N° operación</Label>
-              <Input
-                value={form.numero_operacion}
-                onChange={(e) => handleChange("numero_operacion", e.target.value)}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>Factura/Boleta</Label>
-              <Input
-                value={form.factura_boleta}
-                onChange={(e) => handleChange("factura_boleta", e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
+          </section>
+
+          <div className="flex justify-end gap-2 pt-1">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
               Cancelar
             </Button>

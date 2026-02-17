@@ -5,9 +5,12 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
+import { Combobox } from "~/components/ui/combobox";
 import { toast } from "sonner";
 import { ArrowLeft, Search, Loader2, Save, Trash2 } from "lucide-react";
 import patientsService from "~/services/patientsService";
+import { staffService } from "~/services/staffService";
+import { getDepartmentForCategory } from "~/dashboard/personal/categories";
 import eliminationRecordsService, {
   type EliminationRecord,
   type CreateEliminationRecordData
@@ -15,6 +18,7 @@ import eliminationRecordsService, {
 
 export default function EliminacionHecesOrina() {
   const navigate = useNavigate();
+  const [nurses, setNurses] = useState<{ name: string }[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [patientResults, setPatientResults] = useState<any[]>([]);
@@ -57,6 +61,15 @@ export default function EliminacionHecesOrina() {
     urine_night_odor: "",
     urine_night_quantity: "",
   });
+
+  useEffect(() => {
+    const department = getDepartmentForCategory("enfermeria");
+    if (department) {
+      staffService.getStaff({ limit: 200, department, status: "Activo" }).then((res) =>
+        setNurses(res.data.map((s) => ({ name: s.name })))
+      ).catch(() => setNurses([]));
+    }
+  }, []);
 
   const handleSearch = async () => {
     if (!searchTerm.trim()) return;
@@ -336,11 +349,11 @@ export default function EliminacionHecesOrina() {
               </div>
               <div>
                 <Label>Enfermera(o)</Label>
-                <Input
+                <Combobox
+                  options={nurses.map((n) => ({ value: n.name, label: n.name }))}
                   value={form.nurse_name}
-                  onChange={(e) => setForm({ ...form, nurse_name: e.target.value })}
+                  onValueChange={(value) => setForm({ ...form, nurse_name: value })}
                   placeholder="Nombre de la enfermera(o)"
-                  required
                 />
               </div>
             </div>

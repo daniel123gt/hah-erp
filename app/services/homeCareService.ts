@@ -307,6 +307,24 @@ export const homeCareService = {
       .eq("id", periodId);
     if (error) throw error;
   },
+
+  /**
+   * Feriados que caen dentro del rango [fechaDesde, fechaHasta] (inclusive).
+   * Usado para auto-rellenar feriados al seleccionar la quincena.
+   * Fechas en formato ISO YYYY-MM-DD.
+   */
+  async getHolidaysInRange(fechaDesde: string, fechaHasta: string): Promise<string[]> {
+    const { data, error } = await supabase
+      .from("holidays")
+      .select("date")
+      .gte("date", fechaDesde)
+      .lte("date", fechaHasta)
+      .order("date", { ascending: true });
+
+    if (error) return [];
+    const dates = (data ?? []) as { date: string }[];
+    return dates.map((r) => (typeof r.date === "string" ? r.date : String(r.date)).slice(0, 10));
+  },
 };
 
 export default homeCareService;

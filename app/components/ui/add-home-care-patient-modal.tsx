@@ -11,6 +11,7 @@ import {
   DialogTrigger,
 } from "./dialog";
 import { Label } from "./label";
+import { Combobox } from "./combobox";
 import { User, Calendar, DollarSign, Plus, Loader2, UserPlus } from "lucide-react";
 import homeCareService, {
   type HomeCareContractWithPatient,
@@ -218,25 +219,20 @@ export function AddHomeCarePatientModal({ onAdded }: AddHomeCarePatientModalProp
               {patientMode === "existing" ? (
                 <div className="space-y-2">
                   <Label>Paciente *</Label>
-                  <select
+                  <Combobox
+                    options={availablePatients.map((p) => ({
+                      value: p.id,
+                      label: p.dni ? `${p.name} (${p.dni})` : p.name,
+                    }))}
                     value={patientId}
-                    onChange={(e) => setPatientId(e.target.value)}
-                    required={patientMode === "existing"}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
-                  >
-                    <option value="">Selecciona un paciente</option>
-                    {availablePatients.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                        {p.dni ? ` (${p.dni})` : ""}
-                      </option>
-                    ))}
-                    {availablePatients.length === 0 && (
-                      <option value="" disabled>
-                        No hay pacientes disponibles (todos ya tienen el servicio)
-                      </option>
-                    )}
-                  </select>
+                    onValueChange={setPatientId}
+                    placeholder={
+                      availablePatients.length === 0
+                        ? "No hay pacientes disponibles (todos ya tienen el servicio)"
+                        : "Selecciona un paciente"
+                    }
+                    disabled={availablePatients.length === 0}
+                  />
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

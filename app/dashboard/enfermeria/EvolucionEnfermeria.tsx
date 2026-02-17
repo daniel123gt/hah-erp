@@ -7,10 +7,13 @@ import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { Combobox } from "~/components/ui/combobox";
 import { PainScaleSelector } from "~/components/ui/pain-scale-selector";
 import { toast } from "sonner";
 import { ArrowLeft, Search, Loader2, Plus, Trash2, Save } from "lucide-react";
 import patientsService from "~/services/patientsService";
+import { staffService } from "~/services/staffService";
+import { getDepartmentForCategory } from "~/dashboard/personal/categories";
 import nursingEvolutionsService, {
   type NursingEvolution,
   type NursingEvolutionRecord,
@@ -20,6 +23,7 @@ import nursingEvolutionsService, {
 
 export default function EvolucionEnfermeria() {
   const navigate = useNavigate();
+  const [nurses, setNurses] = useState<{ name: string }[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [patientResults, setPatientResults] = useState<any[]>([]);
@@ -63,6 +67,15 @@ export default function EvolucionEnfermeria() {
     observation: "",
     record_order: 0,
   });
+
+  useEffect(() => {
+    const department = getDepartmentForCategory("enfermeria");
+    if (department) {
+      staffService.getStaff({ limit: 200, department, status: "Activo" }).then((res) =>
+        setNurses(res.data.map((s) => ({ name: s.name })))
+      ).catch(() => setNurses([]));
+    }
+  }, []);
 
   const handleSearch = async () => {
     if (!searchTerm.trim()) return;
@@ -392,7 +405,12 @@ export default function EvolucionEnfermeria() {
                 </div>
                 <div>
                   <Label>Enfermera(o)</Label>
-                  <Input value={form.nurse_name} onChange={(e) => setForm({ ...form, nurse_name: e.target.value })} required />
+                  <Combobox
+                    options={nurses.map((n) => ({ value: n.name, label: n.name }))}
+                    value={form.nurse_name}
+                    onValueChange={(value) => setForm({ ...form, nurse_name: value })}
+                    placeholder="Nombre de la enfermera(o)"
+                  />
                 </div>
                 <div>
                   <Label>G. de Dependencia</Label>

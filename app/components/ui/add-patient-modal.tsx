@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./select";
+import { Combobox } from "./combobox";
 import { 
   User, 
   Mail, 
@@ -352,22 +353,14 @@ export function AddPatientModal({ onPatientAdded }: AddPatientModalProps) {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="district">Distrito</Label>
-                  <Select
+                  <Combobox
+                    id="district"
+                    options={districts.map((d) => ({ value: d.name, label: d.zone ? `${d.name} (${d.zone})` : d.name }))}
                     value={formData.district || "__none__"}
                     onValueChange={(value) => handleInputChange("district", value === "__none__" ? "" : value)}
-                  >
-                    <SelectTrigger id="district">
-                      <SelectValue placeholder="Seleccionar distrito" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">Sin especificar</SelectItem>
-                      {districts.map((d) => (
-                        <SelectItem key={d.name} value={d.name}>
-                          {d.name} {d.zone ? `(${d.zone})` : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    placeholder="Seleccionar distrito"
+                    emptyOption={{ value: "__none__", label: "Sin especificar" }}
+                  />
                 </div>
               </div>
             </CardContent>
