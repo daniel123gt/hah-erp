@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "./card";
 import { Avatar, AvatarFallback, AvatarImage } from "./avatar";
 import { Badge } from "./badge";
 import { ArrowUpDown, Settings, Calendar, Hash } from "lucide-react";
-import { useAuthStore } from "~/store/authStore";
+import { useAuthStore, getAppRole } from "~/store/authStore";
 import { useNavigate } from "react-router";
 
 interface Quote {
@@ -19,6 +19,7 @@ const recentQuotes: Quote[] = [
 
 export function RightSidebar() {
   const { user } = useAuthStore();
+  const role = getAppRole(user);
   const navigate = useNavigate();
 
   const handleCreateQuote = () => {
@@ -44,7 +45,7 @@ export function RightSidebar() {
                 {user?.user_metadata?.full_name || "Usuario"}
               </h3>
               <Badge variant="secondary" className="bg-accent-blue text-white">
-                Administrador
+                {role === "gestor" ? "Gestor" : "Administrador"}
               </Badge>
             </div>
           </div>
@@ -70,30 +71,31 @@ export function RightSidebar() {
         </CardContent>
       </Card>
 
-      {/* Últimas Cotizaciones */}
-      <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="text-lg font-semibold text-primary-blue">
-            Últimas Cotizaciones
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {recentQuotes.map((quote, index) => (
-            <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-              <span className="font-medium text-gray-900">{quote.code}</span>
-              <span className="font-semibold text-primary-blue">{quote.amount}</span>
-            </div>
-          ))}
-          
-          <Button 
-            className="w-full bg-primary-blue hover:bg-primary-blue/90 text-white mt-4"
-            onClick={handleCreateQuote}
-          >
-            <ArrowUpDown className="w-4 h-4 mr-2" />
-            Realizar Cotización
-          </Button>
-        </CardContent>
-      </Card>
+      {/* Últimas Cotizaciones - solo admin */}
+      {role !== "gestor" && (
+        <Card>
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg font-semibold text-primary-blue">
+              Últimas Cotizaciones
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {recentQuotes.map((quote, index) => (
+              <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                <span className="font-medium text-gray-900">{quote.code}</span>
+                <span className="font-semibold text-primary-blue">{quote.amount}</span>
+              </div>
+            ))}
+            <Button
+              className="w-full bg-primary-blue hover:bg-primary-blue/90 text-white mt-4"
+              onClick={handleCreateQuote}
+            >
+              <ArrowUpDown className="w-4 h-4 mr-2" />
+              Realizar Cotización
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Información del Sistema */}
       <Card className="bg-blue-50 border-blue-200">

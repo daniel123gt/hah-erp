@@ -5,6 +5,7 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Badge } from "~/components/ui/badge";
 import { getExams } from "~/services/labService";
+import { useAuthStore, getAppRole } from "~/store/authStore";
 import { toast } from "sonner";
 import {
   Search,
@@ -31,6 +32,8 @@ interface LaboratoryExam {
 
 export default function BuscarExamenes() {
   const navigate = useNavigate();
+  const user = useAuthStore((s) => s.user);
+  const isGestor = getAppRole(user) === "gestor";
   const [exams, setExams] = useState<LaboratoryExam[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -82,7 +85,7 @@ export default function BuscarExamenes() {
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Volver
               </Button>
-              <h1 className="text-2xl font-bold text-gray-900">🔍 Buscar Exámenes</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Catálogo de exámenes</h1>
             </div>
             <p className="text-gray-600">Consulta información detallada de los exámenes disponibles</p>
           </div>
@@ -144,9 +147,11 @@ export default function BuscarExamenes() {
                           {exam.codigo}
                         </Badge>
                       </div>
-                      <div className="text-lg font-bold text-green-600">
-                        {exam.precio}
-                      </div>
+                      {!isGestor && (
+                        <div className="text-lg font-bold text-green-600">
+                          {exam.precio}
+                        </div>
+                      )}
                     </div>
                     <FileText className="w-6 h-6 text-blue-500 flex-shrink-0" />
                   </div>

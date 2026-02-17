@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -28,40 +28,10 @@ import {
   ArrowLeft,
   HeartPulse,
 } from "lucide-react";
+import { toast } from "sonner";
+import { procedureService } from "~/services/procedureService";
+import { appointmentsService } from "~/services/appointmentsService";
 import type { Appointment } from "./MedicinaPage";
-
-const DOMICILIO = "Domicilio del paciente";
-
-const mockAppointments: Appointment[] = [
-  {
-    id: "P001",
-    patientName: "Carlos Rodríguez",
-    patientEmail: "carlos.rodriguez@email.com",
-    patientPhone: "+51 999 234 567",
-    doctorName: "Lic. Elena Morales",
-    doctorSpecialty: "Enfermería",
-    date: "2025-01-25",
-    time: "10:30",
-    duration: 45,
-    type: "examen",
-    status: "scheduled",
-    location: DOMICILIO,
-  },
-  {
-    id: "P002",
-    patientName: "Luis Mendoza",
-    patientEmail: "luis.mendoza@email.com",
-    patientPhone: "+51 999 456 789",
-    doctorName: "Lic. Miguel Torres",
-    doctorSpecialty: "Enfermería",
-    date: "2025-01-24",
-    time: "08:00",
-    duration: 20,
-    type: "examen",
-    status: "completed",
-    location: DOMICILIO,
-  },
-];
 
 export default function CitasProcedimientosPage() {
   const navigate = useNavigate();
@@ -69,7 +39,20 @@ export default function CitasProcedimientosPage() {
   const [filterDate, setFilterDate] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
-  const [appointments, setAppointments] = useState<Appointment[]>(mockAppointments);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    appointmentsService
+      .list("procedimientos")
+      .then(setAppointments)
+      .catch((err) => {
+        console.error(err);
+        toast.error("Error al cargar las citas");
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
   const filteredAppointments = appointments.filter((appointment) => {
     const matchesSearch =
@@ -77,18 +60,123 @@ export default function CitasProcedimientosPage() {
       appointment.doctorName.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesDate = !filterDate || appointment.date === filterDate;
     const matchesStatus = filterStatus === "all" || appointment.status === filterStatus;
-    const matchesType = filterType === "all" || appointment.type === filterType;
+    const matchesType =
+      filterType === "all" ||
+      appointment.type === filterType ||
+      (filterType === "procedimiento" && appointment.type === "procedimiento");
     return matchesSearch && matchesDate && matchesStatus && matchesType;
   });
 
+  const createProcedureRecordFromAppointment = (apt: Appointment) => {
+    if (!apt.procedure_catalog_id || !apt.procedure_name) return;
+    procedureService
+      .getCatalog(false)
+      .then((catalog) => {
+        const catalogItem = catalog.find((p) => p.id === apt.procedure_catalog_id);
+        if (!catalogItem) {
+          toast.error("No se encontró el procedimiento en el catálogo. No se creó el registro.");
+          return;
+        }
+        const ingreso = Number(catalogItem.base_price_soles ?? 0);
+        const gastosMaterial = Number(catalogItem.total_cost_soles ?? 0);
+        return procedureService.createRecord({
+          fecha: apt.date,
+          patient_id: apt.patient_id ?? null,
+          patient_name: apt.patientName ?? null,
+          procedure_catalog_id: apt.procedure_catalog_id,
+          procedure_name: apt.procedure_name,
+          district: null,
+          efectivo: ingreso,
+          gastos_material: gastosMaterial,
+          combustible: 0,
+          costo_adicional_servicio: 0,
+        });
+      })
+      .then((result) => {
+        if (result !== undefined) {
+          toast.success("Registro creado en el listado de procedimientos");
+        }
+      })
+      .catch((err) => {
+        console.error("Error creando registro de procedimiento:", err);
+        toast.error(err?.message || "Error al crear el registro en el listado de procedimientos");
+      });
+  };
+
   const handleAppointmentAdded = (newAppointment: Appointment) => {
-    setAppointments((prev) => [newAppointment, ...prev]);
+    appointmentsService
+      .create({
+        variant: "procedimientos",
+        patient_id: newAppointment.patient_id ?? null,
+        patientName: newAppointment.patientName,
+        patientEmail: newAppointment.patientEmail,
+        patientPhone: newAppointment.patientPhone,
+        doctorName: newAppointment.doctorName,
+        doctorSpecialty: newAppointment.doctorSpecialty,
+        date: newAppointment.date,
+        time: newAppointment.time,
+        duration: newAppointment.duration,
+        type: newAppointment.type,
+        status: newAppointment.status,
+        notes: newAppointment.notes,
+        location: newAppointment.location,
+        procedure_catalog_id: newAppointment.procedure_catalog_id ?? null,
+        procedure_name: newAppointment.procedure_name ?? null,
+      })
+      .then((created) => {
+        setAppointments((prev) => [created, ...prev]);
+        toast.success("Cita creada");
+        if (
+          created.status === "completed" &&
+          created.procedure_catalog_id &&
+          created.procedure_name
+        ) {
+          createProcedureRecordFromAppointment(created);
+        }
+      })
+      .catch((err) => {
+        toast.error(err?.message ?? "Error al crear la cita");
+      });
   };
 
   const handleAppointmentUpdated = (updatedAppointment: Appointment) => {
-    setAppointments((prev) =>
-      prev.map((a) => (a.id === updatedAppointment.id ? updatedAppointment : a))
-    );
+    const prevAppointment = appointments.find((a) => a.id === updatedAppointment.id);
+    appointmentsService
+      .update({
+        id: updatedAppointment.id,
+        patient_id: updatedAppointment.patient_id ?? null,
+        patientName: updatedAppointment.patientName,
+        patientEmail: updatedAppointment.patientEmail,
+        patientPhone: updatedAppointment.patientPhone,
+        doctorName: updatedAppointment.doctorName,
+        doctorSpecialty: updatedAppointment.doctorSpecialty,
+        date: updatedAppointment.date,
+        time: updatedAppointment.time,
+        duration: updatedAppointment.duration,
+        type: updatedAppointment.type,
+        status: updatedAppointment.status,
+        notes: updatedAppointment.notes,
+        location: updatedAppointment.location,
+        procedure_catalog_id: updatedAppointment.procedure_catalog_id ?? null,
+        procedure_name: updatedAppointment.procedure_name ?? null,
+      })
+      .then((updated) => {
+        setAppointments((prev) =>
+          prev.map((a) => (a.id === updated.id ? updated : a))
+        );
+        toast.success("Cita actualizada");
+        if (
+          prevAppointment?.status !== "completed" &&
+          updated.status === "completed" &&
+          updated.procedure_catalog_id &&
+          updated.procedure_name
+        ) {
+          createProcedureRecordFromAppointment(updated);
+        }
+      })
+      .catch((err) => {
+        toast.error(err?.message ?? "Error al actualizar la cita");
+      });
   };
 
   const getStatusBadge = (status: string) => {
@@ -108,7 +196,12 @@ export default function CitasProcedimientosPage() {
     }
   };
 
-  const getTypeBadge = (type: string) => {
+  const getTypeBadge = (appointment: Appointment) => {
+    const type = appointment.type;
+    const name = appointment.procedure_name;
+    if (type === "procedimiento") {
+      return <Badge className="bg-teal-100 text-teal-800">{name || "Procedimiento"}</Badge>;
+    }
     switch (type) {
       case "consulta":
         return <Badge className="bg-blue-100 text-blue-800">Consulta</Badge>;
@@ -297,10 +390,7 @@ export default function CitasProcedimientosPage() {
               className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
             >
               <option value="all">Todos los tipos</option>
-              <option value="consulta">Consulta</option>
-              <option value="examen">Examen</option>
-              <option value="emergencia">Emergencia</option>
-              <option value="seguimiento">Seguimiento</option>
+              <option value="procedimiento">Procedimiento</option>
             </select>
             <Button variant="outline">
               <Filter className="w-4 h-4 mr-2" />
@@ -331,7 +421,14 @@ export default function CitasProcedimientosPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredAppointments.map((appointment) => (
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                      Cargando citas...
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                filteredAppointments.map((appointment) => (
                   <TableRow key={appointment.id}>
                     <TableCell>
                       <div className="text-center">
@@ -358,7 +455,7 @@ export default function CitasProcedimientosPage() {
                         <p className="text-sm text-gray-500">{appointment.doctorSpecialty}</p>
                       </div>
                     </TableCell>
-                    <TableCell>{getTypeBadge(appointment.type)}</TableCell>
+                    <TableCell>{getTypeBadge(appointment)}</TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
                         <MapPin className="w-4 h-4 text-gray-400" />
@@ -382,7 +479,8 @@ export default function CitasProcedimientosPage() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                ))
+                )}
               </TableBody>
             </Table>
           </div>

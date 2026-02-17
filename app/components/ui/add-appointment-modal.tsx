@@ -12,6 +12,7 @@ import {
 } from "~/components/ui/dialog";
 import { Badge } from "~/components/ui/badge";
 import { patientsService, type Patient } from "~/services/patientsService";
+import { procedureService } from "~/services/procedureService";
 import { 
   Plus, 
   Calendar, 
@@ -35,10 +36,13 @@ interface Appointment {
   date: string;
   time: string;
   duration: number;
-  type: "consulta" | "examen" | "emergencia" | "seguimiento";
+  type: "consulta" | "examen" | "emergencia" | "seguimiento" | "procedimiento";
   status: "scheduled" | "confirmed" | "completed" | "cancelled" | "no-show";
   notes?: string;
   location: string;
+  patient_id?: string;
+  procedure_catalog_id?: string;
+  procedure_name?: string;
 }
 
 interface AddAppointmentModalProps {
@@ -70,6 +74,8 @@ export function AddAppointmentModal({
   const [isOpen, setIsOpen] = useState(false);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loadingPatients, setLoadingPatients] = useState(false);
+  const [procedureCatalog, setProcedureCatalog] = useState<{ id: string; name: string }[]>([]);
+  const [loadingCatalog, setLoadingCatalog] = useState(false);
   const [formData, setFormData] = useState({
     patientId: "",
     patientName: "",
@@ -80,10 +86,12 @@ export function AddAppointmentModal({
     date: "",
     time: "",
     duration: 30,
-    type: "consulta" as const,
+    type: "consulta" as "consulta" | "examen" | "emergencia" | "seguimiento" | "procedimiento",
     status: "scheduled" as const,
     notes: "",
     location: "",
+    procedureCatalogId: "",
+    procedureName: "",
   });
 
   useEffect(() => {
@@ -95,6 +103,16 @@ export function AddAppointmentModal({
       .catch(() => setPatients([]))
       .finally(() => setLoadingPatients(false));
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || variant !== "procedimientos") return;
+    setLoadingCatalog(true);
+    procedureService
+      .getCatalog(true)
+      .then((items) => setProcedureCatalog(items.map((p) => ({ id: p.id, name: p.name }))))
+      .catch(() => setProcedureCatalog([]))
+      .finally(() => setLoadingCatalog(false));
+  }, [isOpen, variant]);
 
   const handleInputChange = (field: string, value: string | number) => {
     setFormData(prev => ({
@@ -126,10 +144,16 @@ export function AddAppointmentModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const { patientId: _, ...rest } = formData;
+    const { patientId, procedureCatalogId, procedureName, ...rest } = formData;
     const newAppointment: Appointment = {
       id: `A${Date.now()}`,
       ...rest,
+      type: variant === "procedimientos" ? "procedimiento" : formData.type,
+      ...(variant === "procedimientos" && {
+        patient_id: patientId || undefined,
+        procedure_catalog_id: procedureCatalogId || undefined,
+        procedure_name: procedureName || undefined,
+      }),
     };
 
     onAppointmentAdded(newAppointment);
@@ -148,10 +172,15 @@ export function AddAppointmentModal({
       status: "scheduled",
       notes: "",
       location: "",
+      procedureCatalogId: "",
+      procedureName: "",
     });
   };
 
-  const getTypeBadge = (type: string) => {
+  const getTypeBadge = (type: string, procedureName?: string) => {
+    if (type === "procedimiento") {
+      return <Badge className="bg-teal-100 text-teal-800">{procedureName || "Procedimiento"}</Badge>;
+    }
     switch (type) {
       case "consulta":
         return <Badge className="bg-blue-100 text-blue-800">Consulta</Badge>;
@@ -302,19 +331,45 @@ export function AddAppointmentModal({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tipo de Cita *
+                  {variant === "procedimientos" ? "Procedimiento *" : "Tipo de Cita *"}
                 </label>
-                <select
-                  value={formData.type}
-                  onChange={(e) => handleInputChange("type", e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
-                  required
-                >
-                  <option value="consulta">Consulta</option>
-                  <option value="examen">Examen</option>
-                  <option value="emergencia">Emergencia</option>
-                  <option value="seguimiento">Seguimiento</option>
-                </select>
+                {variant === "procedimientos" ? (
+                  <select
+                    value={formData.procedureCatalogId}
+                    onChange={(e) => {
+                      const item = procedureCatalog.find((p) => p.id === e.target.value);
+                      setFormData((prev) => ({
+                        ...prev,
+                        procedureCatalogId: e.target.value,
+                        procedureName: item?.name ?? "",
+                      }));
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
+                    required
+                    disabled={loadingCatalog}
+                  >
+                    <option value="">
+                      {loadingCatalog ? "Cargando procedimientos..." : "Seleccionar procedimiento"}
+                    </option>
+                    {procedureCatalog.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <select
+                    value={formData.type}
+                    onChange={(e) => handleInputChange("type", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
+                    required
+                  >
+                    <option value="consulta">Consulta</option>
+                    <option value="examen">Examen</option>
+                    <option value="emergencia">Emergencia</option>
+                    <option value="seguimiento">Seguimiento</option>
+                  </select>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -445,7 +500,11 @@ export function AddAppointmentModal({
                 <div>
                   <p className="text-sm text-gray-600">Tipo y Estado:</p>
                   <div className="flex gap-2">
-                    {formData.type && getTypeBadge(formData.type)}
+                    {(variant === "procedimientos" ? formData.procedureName : formData.type) &&
+                      getTypeBadge(
+                        variant === "procedimientos" ? "procedimiento" : formData.type,
+                        formData.procedureName
+                      )}
                     {formData.status && (
                       <Badge className="bg-gray-100 text-gray-800">
                         {formData.status === "scheduled" ? "Programada" :

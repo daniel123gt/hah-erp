@@ -12,6 +12,7 @@ import {
 } from "~/components/ui/dialog";
 import { Badge } from "~/components/ui/badge";
 import { patientsService, type Patient } from "~/services/patientsService";
+import { procedureService } from "~/services/procedureService";
 import { 
   Edit, 
   Calendar, 
@@ -35,10 +36,13 @@ interface Appointment {
   date: string;
   time: string;
   duration: number;
-  type: "consulta" | "examen" | "emergencia" | "seguimiento";
+  type: "consulta" | "examen" | "emergencia" | "seguimiento" | "procedimiento";
   status: "scheduled" | "confirmed" | "completed" | "cancelled" | "no-show";
   notes?: string;
   location: string;
+  patient_id?: string;
+  procedure_catalog_id?: string;
+  procedure_name?: string;
 }
 
 interface EditAppointmentModalProps {
@@ -69,6 +73,8 @@ export function EditAppointmentModal({
   const [isOpen, setIsOpen] = useState(false);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loadingPatients, setLoadingPatients] = useState(false);
+  const [procedureCatalog, setProcedureCatalog] = useState<{ id: string; name: string }[]>([]);
+  const [loadingCatalog, setLoadingCatalog] = useState(false);
   const [formData, setFormData] = useState<Appointment>(appointment);
 
   useEffect(() => {
@@ -85,9 +91,19 @@ export function EditAppointmentModal({
       .finally(() => setLoadingPatients(false));
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen || variant !== "procedimientos") return;
+    setLoadingCatalog(true);
+    procedureService
+      .getCatalog(true)
+      .then((items) => setProcedureCatalog(items.map((p) => ({ id: p.id, name: p.name }))))
+      .catch(() => setProcedureCatalog([]))
+      .finally(() => setLoadingCatalog(false));
+  }, [isOpen, variant]);
+
   const selectedPatientId = useMemo(
-    () => patients.find((p) => p.name === formData.patientName)?.id ?? "",
-    [patients, formData.patientName]
+    () => formData.patient_id ?? patients.find((p) => p.name === formData.patientName)?.id ?? "",
+    [patients, formData.patientName, formData.patient_id]
   );
 
   const handleInputChange = (field: string, value: string | number) => {
@@ -110,6 +126,7 @@ export function EditAppointmentModal({
     const patient = patients.find((p) => p.id === patientId);
     setFormData((prev) => ({
       ...prev,
+      patient_id: patientId,
       patientName: patient?.name ?? prev.patientName,
       patientEmail: patient?.email ?? prev.patientEmail,
       patientPhone: patient?.phone ?? prev.patientPhone,
@@ -123,7 +140,10 @@ export function EditAppointmentModal({
     setIsOpen(false);
   };
 
-  const getTypeBadge = (type: string) => {
+  const getTypeBadge = (type: string, procedureName?: string) => {
+    if (type === "procedimiento") {
+      return <Badge className="bg-teal-100 text-teal-800">{procedureName || "Procedimiento"}</Badge>;
+    }
     switch (type) {
       case "consulta":
         return <Badge className="bg-blue-100 text-blue-800">Consulta</Badge>;
@@ -274,19 +294,46 @@ export function EditAppointmentModal({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tipo de Cita *
+                  {variant === "procedimientos" ? "Procedimiento *" : "Tipo de Cita *"}
                 </label>
-                <select
-                  value={formData.type}
-                  onChange={(e) => handleInputChange("type", e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
-                  required
-                >
-                  <option value="consulta">Consulta</option>
-                  <option value="examen">Examen</option>
-                  <option value="emergencia">Emergencia</option>
-                  <option value="seguimiento">Seguimiento</option>
-                </select>
+                {variant === "procedimientos" ? (
+                  <select
+                    value={formData.procedure_catalog_id ?? ""}
+                    onChange={(e) => {
+                      const item = procedureCatalog.find((p) => p.id === e.target.value);
+                      setFormData((prev) => ({
+                        ...prev,
+                        procedure_catalog_id: e.target.value || undefined,
+                        procedure_name: item?.name ?? "",
+                        type: "procedimiento",
+                      }));
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
+                    required
+                    disabled={loadingCatalog}
+                  >
+                    <option value="">
+                      {loadingCatalog ? "Cargando procedimientos..." : "Seleccionar procedimiento"}
+                    </option>
+                    {procedureCatalog.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <select
+                    value={formData.type}
+                    onChange={(e) => handleInputChange("type", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
+                    required
+                  >
+                    <option value="consulta">Consulta</option>
+                    <option value="examen">Examen</option>
+                    <option value="emergencia">Emergencia</option>
+                    <option value="seguimiento">Seguimiento</option>
+                  </select>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -417,7 +464,11 @@ export function EditAppointmentModal({
                 <div>
                   <p className="text-sm text-gray-600">Tipo y Estado:</p>
                   <div className="flex gap-2">
-                    {formData.type && getTypeBadge(formData.type)}
+                    {(variant === "procedimientos" ? formData.procedure_name : formData.type) &&
+                      getTypeBadge(
+                        variant === "procedimientos" ? "procedimiento" : formData.type,
+                        formData.procedure_name
+                      )}
                     {formData.status && (
                       <Badge className="bg-gray-100 text-gray-800">
                         {formData.status === "scheduled" ? "Programada" :

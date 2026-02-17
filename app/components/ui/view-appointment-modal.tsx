@@ -35,10 +35,11 @@ interface Appointment {
   date: string;
   time: string;
   duration: number;
-  type: "consulta" | "examen" | "emergencia" | "seguimiento";
+  type: "consulta" | "examen" | "emergencia" | "seguimiento" | "procedimiento";
   status: "scheduled" | "confirmed" | "completed" | "cancelled" | "no-show";
   notes?: string;
   location: string;
+  procedure_name?: string;
 }
 
 interface ViewAppointmentModalProps {
@@ -65,7 +66,10 @@ export function ViewAppointmentModal({ appointment, professionalLabel = "Médico
     }
   };
 
-  const getTypeBadge = (type: string) => {
+  const getTypeBadge = (type: string, procedureName?: string) => {
+    if (type === "procedimiento") {
+      return <Badge className="bg-teal-100 text-teal-800">{procedureName || "Procedimiento"}</Badge>;
+    }
     switch (type) {
       case "consulta":
         return <Badge className="bg-blue-100 text-blue-800">Consulta</Badge>;
@@ -263,7 +267,7 @@ export function ViewAppointmentModal({ appointment, professionalLabel = "Médico
                       Tipo de Cita
                     </label>
                     <div className="flex items-center space-x-2">
-                      {getTypeBadge(appointment.type)}
+                      {getTypeBadge(appointment.type, appointment.procedure_name)}
                     </div>
                   </div>
                   <div>

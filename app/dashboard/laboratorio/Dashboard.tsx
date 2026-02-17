@@ -69,8 +69,8 @@ export default function LaboratorioDashboard() {
       color: "bg-blue-50 border-blue-200 hover:bg-blue-100"
     },
     {
-      title: "Buscar Exámenes",
-      description: "Buscar y consultar exámenes disponibles",
+      title: "Catálogo de exámenes",
+      description: "Consultar exámenes disponibles",
       icon: <Search className="w-8 h-8 text-green-500" />,
       action: () => navigate('/laboratorio/buscar'),
       color: "bg-green-50 border-green-200 hover:bg-green-100"
@@ -102,7 +102,7 @@ export default function LaboratorioDashboard() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate('/dashboard')}>
+          <Button variant="outline" onClick={() => navigate('/')}>
             <X className="w-4 h-4 mr-2" />
             Volver
           </Button>
