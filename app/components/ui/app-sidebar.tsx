@@ -190,12 +190,12 @@ export function AppSidebar() {
   const handleLogout = async () => {
     try {
       await logout();
+    } catch {
+      // Ignorar: authService ya no lanza, pero por si acaso
+    } finally {
       logoutUser();
       toast.success("Sesión cerrada exitosamente");
       navigate("/login");
-    } catch (error) {
-      console.error("Error al cerrar sesión:", error);
-      toast.error("Error al cerrar sesión");
     }
   };
 

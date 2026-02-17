@@ -23,8 +23,12 @@ export const logout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
     return { success: true };
-  } catch (error) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    if (msg.includes("Auth session missing") || msg.includes("AuthSessionMissingError")) {
+      return { success: true };
+    }
     console.error("Error en logout:", error);
-    throw error;
+    return { success: true };
   }
 };

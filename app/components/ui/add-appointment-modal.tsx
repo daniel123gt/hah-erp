@@ -13,6 +13,8 @@ import {
 import { Badge } from "~/components/ui/badge";
 import { patientsService, type Patient } from "~/services/patientsService";
 import { procedureService } from "~/services/procedureService";
+import { staffService } from "~/services/staffService";
+import { getDepartmentForCategory } from "~/dashboard/personal/categories";
 import { 
   Plus, 
   Calendar, 
@@ -52,28 +54,17 @@ interface AddAppointmentModalProps {
   defaultLocation?: string;
 }
 
-const mockDoctors = [
-  { name: "Dr. Roberto Silva", specialty: "Medicina General" },
-  { name: "Dra. Elena Morales", specialty: "Medicina Interna" },
-  { name: "Dr. Carlos Mendoza", specialty: "Cardiología" },
-];
-
-const mockNurses = [
-  { name: "Lic. Elena Morales", specialty: "Enfermería" },
-  { name: "Lic. Miguel Torres", specialty: "Enfermería" },
-  { name: "Lic. Rosa Díaz", specialty: "Enfermería" },
-];
-
 export function AddAppointmentModal({
   onAppointmentAdded,
   variant = "medicina",
 }: AddAppointmentModalProps) {
-  const professionals = variant === "procedimientos" ? mockNurses : mockDoctors;
   const professionalLabel = variant === "procedimientos" ? "Enfermera" : "Médico";
 
   const [isOpen, setIsOpen] = useState(false);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loadingPatients, setLoadingPatients] = useState(false);
+  const [professionals, setProfessionals] = useState<{ name: string; specialty: string }[]>([]);
+  const [loadingProfessionals, setLoadingProfessionals] = useState(false);
   const [procedureCatalog, setProcedureCatalog] = useState<{ id: string; name: string }[]>([]);
   const [loadingCatalog, setLoadingCatalog] = useState(false);
   const [formData, setFormData] = useState({
@@ -103,6 +94,30 @@ export function AddAppointmentModal({
       .catch(() => setPatients([]))
       .finally(() => setLoadingPatients(false));
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const department = variant === "procedimientos"
+      ? getDepartmentForCategory("enfermeria")
+      : getDepartmentForCategory("medicina");
+    if (!department) {
+      setProfessionals([]);
+      return;
+    }
+    setLoadingProfessionals(true);
+    staffService
+      .getStaff({ limit: 200, department, status: "Activo" })
+      .then((res) =>
+        setProfessionals(
+          res.data.map((s) => ({
+            name: s.name,
+            specialty: s.position || s.department || "",
+          }))
+        )
+      )
+      .catch(() => setProfessionals([]))
+      .finally(() => setLoadingProfessionals(false));
+  }, [isOpen, variant]);
 
   useEffect(() => {
     if (!isOpen || variant !== "procedimientos") return;
@@ -423,8 +438,11 @@ export function AddAppointmentModal({
                   onChange={(e) => handleDoctorChange(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
                   required
+                  disabled={loadingProfessionals}
                 >
-                  <option value="">Seleccionar {professionalLabel.toLowerCase()}</option>
+                  <option value="">
+                    {loadingProfessionals ? "Cargando..." : `Seleccionar ${professionalLabel.toLowerCase()}`}
+                  </option>
                   {professionals.map((p) => (
                     <option key={p.name} value={p.name}>
                       {p.name}
