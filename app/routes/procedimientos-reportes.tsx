@@ -3,7 +3,7 @@ import ProcedimientosReportes from "~/dashboard/procedimientos/Reportes";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "Reportes de Procedimientos - Health At Home ERP" },
+    { title: "Reportes - Procedimientos | Health At Home ERP" },
     { name: "description", content: "Cierre mensual de ingresos y egresos" },
   ];
 }

@@ -17,7 +17,7 @@ import storageService from "~/services/storageService";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "Detalle de Paciente" },
+    { title: "Paciente | Health At Home ERP" },
   ];
 }
 

@@ -1,30 +1,36 @@
+import { useState, useEffect } from "react";
 import { Button } from "./button";
 import { Card, CardContent, CardHeader, CardTitle } from "./card";
 import { Avatar, AvatarFallback, AvatarImage } from "./avatar";
 import { Badge } from "./badge";
-import { ArrowUpDown, Settings, Calendar, Hash } from "lucide-react";
+import { Settings, Calendar, Hash, HeartPulse } from "lucide-react";
 import { useAuthStore, getAppRole } from "~/store/authStore";
 import { useNavigate } from "react-router";
-
-interface Quote {
-  code: string;
-  amount: string;
-}
-
-const recentQuotes: Quote[] = [
-  { code: "GF8934", amount: "2000s/" },
-  { code: "BG1234", amount: "500s/" },
-  { code: "FR12123", amount: "2400s/" },
-];
+import { appointmentsService } from "~/services/appointmentsService";
 
 export function RightSidebar() {
   const { user } = useAuthStore();
   const role = getAppRole(user);
   const navigate = useNavigate();
+  const [todayProcedimientos, setTodayProcedimientos] = useState<{ id: string; time: string; patientName: string; procedure_name?: string }[]>([]);
 
-  const handleCreateQuote = () => {
-    navigate('/cotizaciones');
-  };
+  useEffect(() => {
+    const today = new Date().toISOString().split("T")[0];
+    appointmentsService
+      .list("procedimientos")
+      .then((list) => list.filter((c) => c.date === today).sort((a, b) => a.time.localeCompare(b.time)))
+      .then((filtered) =>
+        setTodayProcedimientos(
+          filtered.map((c) => ({
+            id: c.id,
+            time: c.time,
+            patientName: c.patientName,
+            procedure_name: c.procedure_name,
+          }))
+        )
+      )
+      .catch(() => setTodayProcedimientos([]));
+  }, []);
 
   return (
     <div className="w-80 bg-white border-l border-gray-200 p-6 space-y-6">
@@ -71,31 +77,39 @@ export function RightSidebar() {
         </CardContent>
       </Card>
 
-      {/* Últimas Cotizaciones - solo admin */}
-      {role !== "gestor" && (
-        <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg font-semibold text-primary-blue">
-              Últimas Cotizaciones
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {recentQuotes.map((quote, index) => (
-              <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                <span className="font-medium text-gray-900">{quote.code}</span>
-                <span className="font-semibold text-primary-blue">{quote.amount}</span>
+      {/* Citas de procedimientos de hoy */}
+      <Card>
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg font-semibold text-primary-blue flex items-center gap-2">
+            <HeartPulse className="w-5 h-5" />
+            Citas de procedimientos hoy
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {todayProcedimientos.length === 0 ? (
+            <p className="text-sm text-gray-500 py-2">No hay citas de procedimientos hoy.</p>
+          ) : (
+            todayProcedimientos.slice(0, 5).map((cita) => (
+              <div key={cita.id} className="flex justify-between items-start p-3 bg-gray-50 rounded-lg gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-gray-900 truncate">{cita.patientName}</p>
+                  <p className="text-xs text-gray-500">
+                    {cita.time}
+                    {cita.procedure_name ? ` · ${cita.procedure_name}` : ""}
+                  </p>
+                </div>
               </div>
-            ))}
-            <Button
-              className="w-full bg-primary-blue hover:bg-primary-blue/90 text-white mt-4"
-              onClick={handleCreateQuote}
-            >
-              <ArrowUpDown className="w-4 h-4 mr-2" />
-              Realizar Cotización
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+            ))
+          )}
+          <Button
+            variant="outline"
+            className="w-full mt-2 border-primary-blue text-primary-blue hover:bg-primary-blue hover:text-white"
+            onClick={() => navigate("/citas/procedimientos")}
+          >
+            Ver todas las citas
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Información del Sistema */}
       <Card className="bg-blue-50 border-blue-200">

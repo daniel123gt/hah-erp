@@ -1,6 +1,11 @@
+import type { Route } from "./+types/pacientes-laboratorio-examen-detalle";
 import { Navigate } from "react-router";
 import { useAuthStore } from "~/store/authStore";
 import ExamenDetalle from "~/dashboard/pacientes-portal/ExamenDetalle";
+
+export function meta({}: Route.MetaArgs) {
+  return [{ title: "Resultado de examen | Health At Home ERP" }];
+}
 
 export default function PacientesLaboratorioExamenDetalleRoute() {
   const { isAuthenticated, hasHydrated } = useAuthStore();

@@ -3,8 +3,8 @@ import AuthPage from "~/auth/Page";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "New React Router App" },
-    { name: "description", content: "Welcome to React Router!" },
+    { title: "Iniciar sesión | Health At Home ERP" },
+    { name: "description", content: "Acceso al ERP" },
   ];
 }
 

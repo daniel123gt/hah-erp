@@ -3,7 +3,7 @@ import ListadoProcedimientos from "~/dashboard/procedimientos/Listado";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "Listado de Procedimientos - Health At Home ERP" },
+    { title: "Listado - Procedimientos | Health At Home ERP" },
     { name: "description", content: "Registro de procedimientos realizados" },
   ];
 }

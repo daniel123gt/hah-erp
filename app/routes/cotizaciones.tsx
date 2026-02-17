@@ -3,7 +3,7 @@ import CotizacionesPage from "~/dashboard/cotizaciones/Page";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "Gestión de Cotizaciones - Health At Home ERP" },
+    { title: "Cotizaciones | Health At Home ERP" },
     { name: "description", content: "Administra presupuestos y cotizaciones médicas" },
   ];
 }

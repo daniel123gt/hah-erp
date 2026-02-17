@@ -3,7 +3,7 @@ import ProcedimientoDetalle from "~/dashboard/procedimientos/ProcedimientoDetall
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "Detalle del Procedimiento - Health At Home ERP" },
+    { title: "Detalle - Procedimientos | Health At Home ERP" },
   ];
 }
 

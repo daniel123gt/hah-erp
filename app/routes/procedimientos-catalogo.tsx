@@ -3,7 +3,7 @@ import CatalogoProcedimientos from "~/dashboard/procedimientos/Catalogo";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "Catálogo de Procedimientos - Health At Home ERP" },
+    { title: "Catálogo - Procedimientos | Health At Home ERP" },
     { name: "description", content: "Procedimientos con costo y materiales" },
   ];
 }

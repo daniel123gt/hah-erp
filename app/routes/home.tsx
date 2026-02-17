@@ -3,8 +3,8 @@ import HomeDashboard from "~/dashboard/home/Home";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "New React Router App" },
-    { name: "description", content: "Welcome to React Router!" },
+    { title: "Inicio | Health At Home ERP" },
+    { name: "description", content: "Dashboard principal" },
   ];
 }
 
