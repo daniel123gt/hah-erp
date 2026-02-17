@@ -390,6 +390,89 @@ export default function LaboratorioPage() {
           </Card>
         </div>
       </div>
+
+      {/* Proforma de exámenes solicitados - ancho completo */}
+      {selectedExams.length > 0 && quote && (
+        <Card className="w-full mt-8 overflow-hidden">
+          <div className="p-6 md:p-8">
+            {/* Encabezado: título y fecha a la izquierda, logos a la derecha */}
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Proforma de exámenes solicitados
+                </h2>
+                <p className="text-gray-600 mt-1">
+                  Fecha: {new Date().toLocaleDateString("es-ES", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </p>
+              </div>
+              <div className="flex items-center gap-4 shrink-0">
+                <img
+                  src="/logo.svg"
+                  alt="Health At Home"
+                  className="h-12 object-contain"
+                />
+                <img
+                  src="/synlab-log.jpeg"
+                  alt="SYNLAB Analytics & Diagnostics"
+                  className="h-12 object-contain"
+                />
+              </div>
+            </div>
+
+            {/* Tabla Código | Nombre | Precio */}
+            <div className="rounded-lg border border-gray-200 overflow-hidden bg-white">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    <th className="text-left py-3 px-4 font-semibold text-gray-800">
+                      Código
+                    </th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-800">
+                      Nombre
+                    </th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-800">
+                      Precio
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedExams.map((exam) => {
+                    const precio = parsePrice(exam.precio);
+                    const precioCliente = precio * 1.2 + (quote?.recargoUnitario ?? 0);
+                    return (
+                      <tr
+                        key={exam.codigo}
+                        className="border-b border-gray-100 last:border-b-0"
+                      >
+                        <td className="py-3 px-4 text-gray-900 font-mono">
+                          {exam.codigo}
+                        </td>
+                        <td className="py-3 px-4 text-gray-800">
+                          {exam.nombre}
+                        </td>
+                        <td className="py-3 px-4 text-right font-medium text-gray-900">
+                          S/ {precioCliente.toFixed(2)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <div className="flex justify-between items-center py-3 px-4 bg-gray-50 border-t-2 border-gray-200">
+                <span className="font-bold text-gray-900">Precio Total</span>
+                <span className="font-bold text-gray-900">
+                  S/ {quote.totalFinal.toFixed(2)}
+                </span>
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }
