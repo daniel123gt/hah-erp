@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "~/components/ui/dialog";
-import { useAuthStore } from "~/store/authStore";
+import { useAuthStore, getAppRole } from "~/store/authStore";
 import { toast } from "sonner";
 import {
   Users,
@@ -183,6 +183,7 @@ export default function HomeDashboard() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const isTempUser = user?.email === "admin@healthathome.com";
+  const isGestor = getAppRole(user) === "gestor";
   const [selectedTab, setSelectedTab] = useState("overview");
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -457,10 +458,12 @@ ${data.citasDelDia.map((cita: any) =>
           <p className="text-gray-600 mt-2">Bienvenido de vuelta, {user?.email?.split('@')[0] || 'Usuario'}</p>
         </div>
         <div className="flex space-x-3">
-          <Button variant="outline" size="sm" onClick={handleGenerateReport}>
-            <FileText className="w-4 h-4 mr-2" />
-            Generar Reporte
-          </Button>
+          {!isGestor && (
+            <Button variant="outline" size="sm" onClick={handleGenerateReport}>
+              <FileText className="w-4 h-4 mr-2" />
+              Generar Reporte
+            </Button>
+          )}
           <Button size="sm" className="bg-primary-blue hover:bg-primary-blue/90" onClick={handleNewAppointment}>
             <Plus className="w-4 h-4 mr-2" />
             Nueva Cita
@@ -523,25 +526,27 @@ ${data.citasDelDia.map((cita: any) =>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Ingresos del Mes</p>
-                <p className="text-3xl font-bold text-gray-900">S/ {mockStats.monthlyRevenue.toLocaleString()}</p>
-                <div className="flex items-center mt-2">
-                  {getGrowthIcon(mockStats.revenueGrowth)}
-                  <span className={`text-sm font-medium ml-1 ${getGrowthColor(mockStats.revenueGrowth)}`}>
-                    +{mockStats.revenueGrowth}%
-                  </span>
+        {!isGestor && (
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Ingresos del Mes</p>
+                  <p className="text-3xl font-bold text-gray-900">S/ {mockStats.monthlyRevenue.toLocaleString()}</p>
+                  <div className="flex items-center mt-2">
+                    {getGrowthIcon(mockStats.revenueGrowth)}
+                    <span className={`text-sm font-medium ml-1 ${getGrowthColor(mockStats.revenueGrowth)}`}>
+                      +{mockStats.revenueGrowth}%
+                    </span>
+                  </div>
+                </div>
+                <div className="p-3 bg-purple-100 rounded-full">
+                  <DollarSign className="w-6 h-6 text-purple-600" />
                 </div>
               </div>
-              <div className="p-3 bg-purple-100 rounded-full">
-                <DollarSign className="w-6 h-6 text-purple-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardContent className="p-6">
@@ -658,43 +663,46 @@ ${data.citasDelDia.map((cita: any) =>
             </CardContent>
           </Card>
 
-          {/* Servicios Populares */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-primary-blue" />
-                Servicios Populares
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {topServices.map((service, index) => (
-                  <div key={service.name} className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <Badge className="bg-primary-blue text-white">{index + 1}</Badge>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{service.name}</p>
-                        <p className="text-xs text-gray-500">{service.count} realizados</p>
+          {/* Servicios Populares - solo admin */}
+          {!isGestor && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-primary-blue" />
+                  Servicios Populares
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {topServices.map((service, index) => (
+                    <div key={service.name} className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <Badge className="bg-primary-blue text-white">{index + 1}</Badge>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{service.name}</p>
+                          <p className="text-xs text-gray-500">{service.count} realizados</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-green-600">S/ {service.revenue.toFixed(0)}</p>
+                        <div className="flex items-center">
+                          {getGrowthIcon(service.growth)}
+                          <span className={`text-xs ml-1 ${getGrowthColor(service.growth)}`}>
+                            {service.growth > 0 ? '+' : ''}{service.growth}%
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-green-600">S/ {service.revenue.toFixed(0)}</p>
-                      <div className="flex items-center">
-                        {getGrowthIcon(service.growth)}
-                        <span className={`text-xs ml-1 ${getGrowthColor(service.growth)}`}>
-                          {service.growth > 0 ? '+' : ''}{service.growth}%
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
 
-      {/* Actividad Reciente */}
+      {/* Actividad Reciente - solo admin */}
+      {!isGestor && (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -721,6 +729,7 @@ ${data.citasDelDia.map((cita: any) =>
           </div>
         </CardContent>
       </Card>
+      )}
 
       {/* Modal para Ver Cita */}
       <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>

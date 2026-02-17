@@ -18,9 +18,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import { Plus, User, FileText, Calendar, Search, UserPlus, Loader2, X, Copy, KeyRound, ExternalLink, Home } from "lucide-react";
+import { Plus, User, FileText, Calendar, Search, UserPlus, Loader2, X, Copy, KeyRound, ExternalLink, Home, MapPin, MapPinned } from "lucide-react";
 import { toast } from "sonner";
 import patientsService, { type Patient } from "~/services/patientsService";
+import { staffService, type Staff } from "~/services/staffService";
+import { useAuthStore, getAppRole } from "~/store/authStore";
 import labOrderService from "~/services/labOrderService";
 import {
   ensurePatientPortalUser,
@@ -46,6 +48,8 @@ interface CreateOrderModalProps {
 }
 
 export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderModalProps) {
+  const user = useAuthStore((s) => s.user);
+  const isGestor = getAppRole(user) === "gestor";
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
@@ -67,6 +71,7 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
     district: "",
   });
   const [districts, setDistricts] = useState<Array<{ name: string; zone: string }>>([]);
+  const [doctors, setDoctors] = useState<Staff[]>([]);
 
   // Estados para información de la orden
   const [formData, setFormData] = useState({
@@ -76,8 +81,10 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
     observaciones: "",
   });
 
-  // Nro. documento para paciente que aún no lo tiene (al crear orden se pide para generar cuenta de portal)
+  // Nro. documento, dirección y distrito para paciente que aún no los tiene (requeridos para órdenes)
   const [dniParaOrden, setDniParaOrden] = useState("");
+  const [addressParaOrden, setAddressParaOrden] = useState("");
+  const [districtParaOrden, setDistrictParaOrden] = useState("");
   // Credenciales de portal creadas (mostrar en diálogo para copiar y navegar)
   const [portalCredentials, setPortalCredentials] = useState<{ dni: string; password: string; orderId?: string } | null>(null);
   const navigate = useNavigate();
@@ -85,6 +92,10 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
   useEffect(() => {
     if (open) {
       patientsService.getDistricts().then(setDistricts).catch(() => setDistricts([]));
+      staffService
+        .getStaff({ department: "Medicina General", limit: 200 })
+        .then((res) => setDoctors(res.data))
+        .catch(() => setDoctors([]));
     }
   }, [open]);
 
@@ -96,6 +107,8 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
       setSearchResults([]);
       setShowNewPatientForm(false);
       setDniParaOrden("");
+      setAddressParaOrden("");
+      setDistrictParaOrden("");
       setNewPatientData({
         name: "",
         dni: "",
@@ -195,6 +208,18 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
       return;
     }
 
+    const addressFinal = selectedPatient.address?.trim() || addressParaOrden.trim();
+    if (!addressFinal) {
+      toast.error("La dirección es requerida para la orden de exámenes. Ingrese la dirección del paciente.");
+      return;
+    }
+
+    const districtFinal = selectedPatient.district?.trim() || districtParaOrden.trim();
+    if (!districtFinal) {
+      toast.error("El distrito es requerido para la orden de exámenes. Seleccione el distrito del paciente.");
+      return;
+    }
+
     try {
       setIsLoading(true);
 
@@ -208,12 +233,13 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
       }
 
       let patientToUse = selectedPatient;
-      if (!selectedPatient.dni?.trim() && dniParaOrden.trim()) {
-        await patientsService.updatePatient({
-          id: selectedPatient.id,
-          dni: dniParaOrden.trim(),
-        });
-        patientToUse = { ...selectedPatient, dni: dniParaOrden.trim() };
+      const updates: { id: string; dni?: string; address?: string; district?: string } = { id: selectedPatient.id };
+      if (!selectedPatient.dni?.trim() && dniParaOrden.trim()) updates.dni = dniParaOrden.trim();
+      if (!selectedPatient.address?.trim() && addressParaOrden.trim()) updates.address = addressParaOrden.trim();
+      if (!selectedPatient.district?.trim() && districtParaOrden.trim()) updates.district = districtParaOrden.trim();
+      if (Object.keys(updates).length > 1) {
+        await patientsService.updatePatient(updates);
+        patientToUse = { ...selectedPatient, ...updates };
       }
 
       // Crear la orden de exámenes
@@ -264,6 +290,8 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
         setSearchResults([]);
         setShowNewPatientForm(false);
         setDniParaOrden("");
+        setAddressParaOrden("");
+        setDistrictParaOrden("");
         setFormData({
           fechaOrden: new Date().toISOString().split('T')[0],
           medicoSolicitante: "",
@@ -491,15 +519,6 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
                             />
                           </div>
                           <div>
-                            <Label>Email</Label>
-                            <Input
-                              type="email"
-                              value={newPatientData.email}
-                              onChange={(e) => setNewPatientData({ ...newPatientData, email: e.target.value })}
-                              placeholder="email@ejemplo.com"
-                            />
-                          </div>
-                          <div>
                             <Label>Teléfono</Label>
                             <Input
                               value={newPatientData.phone}
@@ -636,6 +655,45 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
                     />
                   </div>
                 )}
+                {!selectedPatient.address?.trim() && (
+                  <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
+                    <Label htmlFor="addressOrden" className="flex items-center gap-2 text-amber-800 font-medium">
+                      <MapPin className="w-4 h-4" />
+                      Dirección del paciente (requerida para la orden de exámenes)
+                    </Label>
+                    <Input
+                      id="addressOrden"
+                      value={addressParaOrden}
+                      onChange={(e) => setAddressParaOrden(e.target.value)}
+                      placeholder="Ej: Av. Principal 123, distrito"
+                      className="mt-2 w-full"
+                    />
+                  </div>
+                )}
+                {!selectedPatient.district?.trim() && (
+                  <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
+                    <Label htmlFor="districtOrden" className="flex items-center gap-2 text-amber-800 font-medium">
+                      <MapPinned className="w-4 h-4" />
+                      Distrito del paciente (requerido para la orden de exámenes)
+                    </Label>
+                    <Select
+                      value={districtParaOrden || "__none__"}
+                      onValueChange={(v) => setDistrictParaOrden(v === "__none__" ? "" : v)}
+                    >
+                      <SelectTrigger id="districtOrden" className="mt-2 max-w-xs">
+                        <SelectValue placeholder="Seleccionar distrito" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Seleccionar distrito</SelectItem>
+                        {districts.map((d) => (
+                          <SelectItem key={d.name} value={d.name}>
+                            {d.name} {d.zone ? `(${d.zone})` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -661,12 +719,24 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="medicoSolicitante">Médico Solicitante</Label>
-                    <Input
-                      id="medicoSolicitante"
-                      value={formData.medicoSolicitante}
-                      onChange={(e) => setFormData({ ...formData, medicoSolicitante: e.target.value })}
-                      placeholder="Nombre del médico"
-                    />
+                    <Select
+                      value={formData.medicoSolicitante || "__none__"}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, medicoSolicitante: value === "__none__" ? "" : value })
+                      }
+                    >
+                      <SelectTrigger id="medicoSolicitante">
+                        <SelectValue placeholder="Seleccionar médico" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Ninguno</SelectItem>
+                        {doctors.map((doc) => (
+                          <SelectItem key={doc.id} value={doc.name}>
+                            {doc.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="prioridad">Prioridad</Label>
@@ -710,10 +780,12 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
                       <span>Total de exámenes:</span>
                       <span className="font-semibold">{selectedExams.length}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span>Precio original:</span>
-                      <span className="font-semibold">S/ {total.original.toFixed(2)}</span>
-                    </div>
+                    {!isGestor && (
+                      <div className="flex justify-between">
+                        <span>Precio original:</span>
+                        <span className="font-semibold">S/ {total.original.toFixed(2)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between">
                       <span>Precio al cliente:</span>
                       <span className="font-semibold text-green-600">S/ {total.cliente.toFixed(2)}</span>
@@ -738,7 +810,9 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
               disabled={
                 isLoading ||
                 !selectedPatient ||
-                (!(selectedPatient.dni?.trim()) && !dniParaOrden.trim())
+                (!(selectedPatient.dni?.trim()) && !dniParaOrden.trim()) ||
+                (!(selectedPatient.address?.trim()) && !addressParaOrden.trim()) ||
+                (!(selectedPatient.district?.trim()) && !districtParaOrden.trim())
               }
             >
               {isLoading ? (

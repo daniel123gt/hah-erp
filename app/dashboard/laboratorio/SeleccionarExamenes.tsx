@@ -29,6 +29,7 @@ interface ExamQuote {
   totalFinal: number;
 }
 import { toast } from "sonner";
+import { useAuthStore, getAppRole } from "~/store/authStore";
 import { CreateOrderModal } from "~/components/ui/create-order-modal";
 import {
   Search,
@@ -43,6 +44,8 @@ import {
 
 export default function LaboratorioPage() {
   const navigate = useNavigate();
+  const user = useAuthStore((s) => s.user);
+  const isGestor = getAppRole(user) === "gestor";
   const [exams, setExams] = useState<LaboratoryExam[]>([]);
   const [selectedExams, setSelectedExams] = useState<LaboratoryExam[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -159,7 +162,7 @@ export default function LaboratorioPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate('/dashboard')}>
+          <Button variant="outline" onClick={() => navigate('/')}>
             <X className="w-4 h-4 mr-2" />
             Volver
           </Button>
@@ -245,7 +248,9 @@ export default function LaboratorioPage() {
                         <div className="font-medium text-gray-800">{exam.nombre}</div>
                         <div className="text-sm text-gray-500 flex items-center gap-4">
                           <span>Código: {exam.codigo}</span>
-                          <span className="font-semibold text-green-600">{exam.precio}</span>
+                          {!isGestor && (
+                            <span className="font-semibold text-green-600">{exam.precio}</span>
+                          )}
                         </div>
                       </div>
                       <Button
@@ -267,12 +272,12 @@ export default function LaboratorioPage() {
         {/* Cotización */}
         <div className="lg:col-span-1">
           <Card className="p-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
-              <h2 className="text-xl font-semibold text-gray-700 flex items-center gap-2 flex-shrink-0">
+            <div className="flex flex-col gap-3 mb-4">
+              <h2 className="text-xl font-semibold text-gray-700 flex items-center gap-2">
                 <Calculator className="w-5 h-5" /> Cotización
               </h2>
               {selectedExams.length > 0 && (
-                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto min-w-0">
+                <div className="flex flex-col gap-2 w-full">
                   <CreateOrderModal 
                     selectedExams={selectedExams}
                     onOrderCreated={() => {
@@ -284,10 +289,10 @@ export default function LaboratorioPage() {
                     onClick={handleClearSelection}
                     variant="outline"
                     size="sm"
-                    className="text-red-600 hover:text-red-700 flex-shrink-0"
+                    className="text-red-600 hover:text-red-700 w-full"
                   >
                     <RotateCcw className="w-4 h-4" />
-                    <span className="hidden sm:inline ml-2">Limpiar</span>
+                    <span className="ml-2">Limpiar</span>
                   </Button>
                 </div>
               )}
@@ -301,34 +306,36 @@ export default function LaboratorioPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {/* Proforma Interna */}
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <h3 className="font-bold text-red-800 mb-2">
-                    Proforma Interna (NO MOSTRAR AL CLIENTE)
-                  </h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span>Precio Original:</span>
-                      <span className="font-semibold">S/ {quote?.precioOriginal.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Precio Cliente:</span>
-                      <span className="font-semibold">S/ {quote?.precioCliente.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Recargo Total:</span>
-                      <span className="font-semibold">S/ {quote?.recargoTotal.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Costo Domicilio:</span>
-                      <span className="font-semibold">S/ {quote?.costoDomicilio.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between border-t pt-2 font-bold text-red-800">
-                      <span>Total Final:</span>
-                      <span>S/ {quote?.totalFinal.toFixed(2)}</span>
+                {/* Proforma Interna - solo admin */}
+                {!isGestor && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <h3 className="font-bold text-red-800 mb-2">
+                      Proforma Interna (NO MOSTRAR AL CLIENTE)
+                    </h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span>Precio Original:</span>
+                        <span className="font-semibold">S/ {quote?.precioOriginal.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Precio Cliente:</span>
+                        <span className="font-semibold">S/ {quote?.precioCliente.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Recargo Total:</span>
+                        <span className="font-semibold">S/ {quote?.recargoTotal.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Costo Domicilio:</span>
+                        <span className="font-semibold">S/ {quote?.costoDomicilio.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between border-t pt-2 font-bold text-red-800">
+                        <span>Total Final:</span>
+                        <span>S/ {quote?.totalFinal.toFixed(2)}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 {/* Lista de Exámenes Seleccionados */}
                 <div>
@@ -337,7 +344,6 @@ export default function LaboratorioPage() {
                     {selectedExams.map((exam) => {
                       const precio = parsePrice(exam.precio);
                       const cliente = precio * 1.2 + (quote?.recargoUnitario || 0);
-                      
                       return (
                         <div
                           key={exam.codigo}
@@ -346,7 +352,8 @@ export default function LaboratorioPage() {
                           <div className="flex-1">
                             <div className="font-medium text-sm">{exam.nombre}</div>
                             <div className="text-xs text-gray-500">
-                              {exam.codigo} - S/ {cliente.toFixed(2)}
+                              {exam.codigo}
+                              {!isGestor && ` - S/ ${cliente.toFixed(2)}`}
                             </div>
                           </div>
                           <Button

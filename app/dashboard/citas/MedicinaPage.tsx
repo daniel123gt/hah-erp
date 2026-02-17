@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
+import { toast } from "sonner";
+import { appointmentsService } from "~/services/appointmentsService";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -42,57 +44,16 @@ export interface Appointment {
   date: string;
   time: string;
   duration: number;
-  type: "consulta" | "examen" | "emergencia" | "seguimiento";
+  type: "consulta" | "examen" | "emergencia" | "seguimiento" | "procedimiento";
   status: "scheduled" | "confirmed" | "completed" | "cancelled" | "no-show";
   notes?: string;
   location: string;
+  /** Solo citas de procedimientos: id del paciente (para crear registro en listado) */
+  patient_id?: string;
+  /** Solo citas de procedimientos: id y nombre del procedimiento del catálogo */
+  procedure_catalog_id?: string;
+  procedure_name?: string;
 }
-
-const mockAppointments: Appointment[] = [
-  {
-    id: "M001",
-    patientName: "María González",
-    patientEmail: "maria.gonzalez@email.com",
-    patientPhone: "+51 999 123 456",
-    doctorName: "Dr. Roberto Silva",
-    doctorSpecialty: "Medicina General",
-    date: "2025-01-25",
-    time: "09:00",
-    duration: 30,
-    type: "consulta",
-    status: "confirmed",
-    location: DOMICILIO,
-  },
-  {
-    id: "M002",
-    patientName: "Ana Torres",
-    patientEmail: "ana.torres@email.com",
-    patientPhone: "+51 999 345 678",
-    doctorName: "Dr. Carlos Mendoza",
-    doctorSpecialty: "Cardiología",
-    date: "2025-01-25",
-    time: "14:00",
-    duration: 60,
-    type: "seguimiento",
-    status: "scheduled",
-    location: DOMICILIO,
-  },
-  {
-    id: "M003",
-    patientName: "Carmen Silva",
-    patientEmail: "carmen.silva@email.com",
-    patientPhone: "+51 999 567 890",
-    doctorName: "Dr. Roberto Silva",
-    doctorSpecialty: "Medicina General",
-    date: "2025-01-23",
-    time: "16:30",
-    duration: 30,
-    type: "consulta",
-    status: "cancelled",
-    notes: "Paciente canceló por enfermedad",
-    location: DOMICILIO,
-  },
-];
 
 export default function CitasMedicinaPage() {
   const navigate = useNavigate();
@@ -100,7 +61,20 @@ export default function CitasMedicinaPage() {
   const [filterDate, setFilterDate] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
-  const [appointments, setAppointments] = useState<Appointment[]>(mockAppointments);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    appointmentsService
+      .list("medicina")
+      .then(setAppointments)
+      .catch((err) => {
+        console.error(err);
+        toast.error("Error al cargar las citas");
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
   const filteredAppointments = appointments.filter((appointment) => {
     const matchesSearch =
@@ -113,13 +87,57 @@ export default function CitasMedicinaPage() {
   });
 
   const handleAppointmentAdded = (newAppointment: Appointment) => {
-    setAppointments((prev) => [newAppointment, ...prev]);
+    appointmentsService
+      .create({
+        variant: "medicina",
+        patientName: newAppointment.patientName,
+        patientEmail: newAppointment.patientEmail,
+        patientPhone: newAppointment.patientPhone,
+        doctorName: newAppointment.doctorName,
+        doctorSpecialty: newAppointment.doctorSpecialty,
+        date: newAppointment.date,
+        time: newAppointment.time,
+        duration: newAppointment.duration,
+        type: newAppointment.type,
+        status: newAppointment.status,
+        notes: newAppointment.notes,
+        location: newAppointment.location,
+      })
+      .then((created) => {
+        setAppointments((prev) => [created, ...prev]);
+        toast.success("Cita creada");
+      })
+      .catch((err) => {
+        toast.error(err?.message ?? "Error al crear la cita");
+      });
   };
 
   const handleAppointmentUpdated = (updatedAppointment: Appointment) => {
-    setAppointments((prev) =>
-      prev.map((a) => (a.id === updatedAppointment.id ? updatedAppointment : a))
-    );
+    appointmentsService
+      .update({
+        id: updatedAppointment.id,
+        patientName: updatedAppointment.patientName,
+        patientEmail: updatedAppointment.patientEmail,
+        patientPhone: updatedAppointment.patientPhone,
+        doctorName: updatedAppointment.doctorName,
+        doctorSpecialty: updatedAppointment.doctorSpecialty,
+        date: updatedAppointment.date,
+        time: updatedAppointment.time,
+        duration: updatedAppointment.duration,
+        type: updatedAppointment.type,
+        status: updatedAppointment.status,
+        notes: updatedAppointment.notes,
+        location: updatedAppointment.location,
+      })
+      .then((updated) => {
+        setAppointments((prev) =>
+          prev.map((a) => (a.id === updated.id ? updated : a))
+        );
+        toast.success("Cita actualizada");
+      })
+      .catch((err) => {
+        toast.error(err?.message ?? "Error al actualizar la cita");
+      });
   };
 
   const getStatusBadge = (status: string) => {

@@ -4,10 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Search, Loader2, Save } from "lucide-react";
+import { ArrowLeft, Search, Loader2, Save, Trash2 } from "lucide-react";
 import patientsService from "~/services/patientsService";
 import eliminationRecordsService, {
   type EliminationRecord,
@@ -25,7 +24,6 @@ export default function EliminacionHecesOrina() {
   const [isSaving, setIsSaving] = useState(false);
   const [historyRecords, setHistoryRecords] = useState<EliminationRecord[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
-  const [selectedShift, setSelectedShift] = useState<'Mañana' | 'Tarde' | 'Noche'>('Mañana');
 
   const [form, setForm] = useState<CreateEliminationRecordData>({
     patient_id: "",
@@ -73,28 +71,29 @@ export default function EliminacionHecesOrina() {
     }
   };
 
-  const handleSelectPatient = async (patient: any) => {
+  const handleSelectPatient = (patient: any) => {
     setSelectedPatient(patient);
-    
-    const fullName = patient.name 
-      ? patient.name 
-      : `${patient.nombre || ''} ${patient.apellido_paterno || ''} ${patient.apellido_materno || ''}`.trim();
-    
+
+    const fullName = patient.name
+      ? patient.name
+      : `${patient.nombre || ""} ${patient.apellido_paterno || ""} ${patient.apellido_materno || ""}`.trim();
+
     const patientAge = patient.age || patient.edad || undefined;
-    
+
     setForm((f) => ({
       ...f,
       patient_id: patient.id,
       patient_name: fullName,
       age: patientAge,
     }));
-
-    // Cargar registro del día seleccionado
-    await loadRecordForDate(form.record_date);
-    
-    // Cargar historial de registros
-    await loadHistory();
   };
+
+  // Cargar registro del día e historial cuando hay paciente (evita que historial no se muestre hasta guardar)
+  useEffect(() => {
+    if (!selectedPatient?.id) return;
+    loadRecordForDate(form.record_date);
+    loadHistory();
+  }, [selectedPatient?.id, form.record_date]);
 
   const loadHistory = async () => {
     if (!selectedPatient) return;
@@ -110,8 +109,6 @@ export default function EliminacionHecesOrina() {
       setLoadingHistory(false);
     }
   };
-
-  // useEffect se maneja en handleSelectPatient
 
   const loadRecordForDate = async (date: string) => {
     if (!selectedPatient) return;
@@ -370,186 +367,41 @@ export default function EliminacionHecesOrina() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {/* Solo mostrar la fila del turno seleccionado */}
+                  {/* Fila Mañana */}
                   <TableRow>
-                    <TableCell className="border border-gray-300 font-semibold bg-gray-50 p-2">
-                      <Select value={selectedShift} onValueChange={(value: 'Mañana' | 'Tarde' | 'Noche') => setSelectedShift(value)}>
-                        <SelectTrigger className="w-32 h-8 text-sm">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Mañana">Mañana</SelectItem>
-                          <SelectItem value="Tarde">Tarde</SelectItem>
-                          <SelectItem value="Noche">Noche</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    {/* Heces - Campos dinámicos según el turno */}
-                    <TableCell className="border border-gray-300 p-1">
-                      <Input
-                        type="number"
-                        value={
-                          selectedShift === 'Mañana' ? (form.feces_morning_count ?? '') :
-                          selectedShift === 'Tarde' ? (form.feces_afternoon_count ?? '') :
-                          (form.feces_night_count ?? '')
-                        }
-                        onChange={(e) => {
-                          const value = e.target.value ? Number(e.target.value) : undefined;
-                          if (selectedShift === 'Mañana') {
-                            setForm({ ...form, feces_morning_count: value });
-                          } else if (selectedShift === 'Tarde') {
-                            setForm({ ...form, feces_afternoon_count: value });
-                          } else {
-                            setForm({ ...form, feces_night_count: value });
-                          }
-                        }}
-                        className="w-20 h-8 text-sm"
-                        min="0"
-                      />
-                    </TableCell>
-                    <TableCell className="border border-gray-300 p-1">
-                      <Input
-                        value={
-                          selectedShift === 'Mañana' ? (form.feces_morning_color || '') :
-                          selectedShift === 'Tarde' ? (form.feces_afternoon_color || '') :
-                          (form.feces_night_color || '')
-                        }
-                        onChange={(e) => {
-                          if (selectedShift === 'Mañana') {
-                            setForm({ ...form, feces_morning_color: e.target.value });
-                          } else if (selectedShift === 'Tarde') {
-                            setForm({ ...form, feces_afternoon_color: e.target.value });
-                          } else {
-                            setForm({ ...form, feces_night_color: e.target.value });
-                          }
-                        }}
-                        className="w-24 h-8 text-sm"
-                        placeholder="Color"
-                      />
-                    </TableCell>
-                    <TableCell className="border border-gray-300 p-1">
-                      <Input
-                        value={
-                          selectedShift === 'Mañana' ? (form.feces_morning_appearance || '') :
-                          selectedShift === 'Tarde' ? (form.feces_afternoon_appearance || '') :
-                          (form.feces_night_appearance || '')
-                        }
-                        onChange={(e) => {
-                          if (selectedShift === 'Mañana') {
-                            setForm({ ...form, feces_morning_appearance: e.target.value });
-                          } else if (selectedShift === 'Tarde') {
-                            setForm({ ...form, feces_afternoon_appearance: e.target.value });
-                          } else {
-                            setForm({ ...form, feces_night_appearance: e.target.value });
-                          }
-                        }}
-                        className="w-24 h-8 text-sm"
-                        placeholder="Aspecto"
-                      />
-                    </TableCell>
-                    <TableCell className="border border-gray-300 p-1">
-                      <Input
-                        value={
-                          selectedShift === 'Mañana' ? (form.feces_morning_quantity || '') :
-                          selectedShift === 'Tarde' ? (form.feces_afternoon_quantity || '') :
-                          (form.feces_night_quantity || '')
-                        }
-                        onChange={(e) => {
-                          if (selectedShift === 'Mañana') {
-                            setForm({ ...form, feces_morning_quantity: e.target.value });
-                          } else if (selectedShift === 'Tarde') {
-                            setForm({ ...form, feces_afternoon_quantity: e.target.value });
-                          } else {
-                            setForm({ ...form, feces_night_quantity: e.target.value });
-                          }
-                        }}
-                        className="w-24 h-8 text-sm"
-                        placeholder="Cantidad"
-                      />
-                    </TableCell>
-                    {/* Orina - Campos dinámicos según el turno */}
-                    <TableCell className="border border-gray-300 p-1">
-                      <Input
-                        type="number"
-                        value={
-                          selectedShift === 'Mañana' ? (form.urine_morning_count ?? '') :
-                          selectedShift === 'Tarde' ? (form.urine_afternoon_count ?? '') :
-                          (form.urine_night_count ?? '')
-                        }
-                        onChange={(e) => {
-                          const value = e.target.value ? Number(e.target.value) : undefined;
-                          if (selectedShift === 'Mañana') {
-                            setForm({ ...form, urine_morning_count: value });
-                          } else if (selectedShift === 'Tarde') {
-                            setForm({ ...form, urine_afternoon_count: value });
-                          } else {
-                            setForm({ ...form, urine_night_count: value });
-                          }
-                        }}
-                        className="w-20 h-8 text-sm"
-                        min="0"
-                      />
-                    </TableCell>
-                    <TableCell className="border border-gray-300 p-1">
-                      <Input
-                        value={
-                          selectedShift === 'Mañana' ? (form.urine_morning_color || '') :
-                          selectedShift === 'Tarde' ? (form.urine_afternoon_color || '') :
-                          (form.urine_night_color || '')
-                        }
-                        onChange={(e) => {
-                          if (selectedShift === 'Mañana') {
-                            setForm({ ...form, urine_morning_color: e.target.value });
-                          } else if (selectedShift === 'Tarde') {
-                            setForm({ ...form, urine_afternoon_color: e.target.value });
-                          } else {
-                            setForm({ ...form, urine_night_color: e.target.value });
-                          }
-                        }}
-                        className="w-24 h-8 text-sm"
-                        placeholder="Color"
-                      />
-                    </TableCell>
-                    <TableCell className="border border-gray-300 p-1">
-                      <Input
-                        value={
-                          selectedShift === 'Mañana' ? (form.urine_morning_odor || '') :
-                          selectedShift === 'Tarde' ? (form.urine_afternoon_odor || '') :
-                          (form.urine_night_odor || '')
-                        }
-                        onChange={(e) => {
-                          if (selectedShift === 'Mañana') {
-                            setForm({ ...form, urine_morning_odor: e.target.value });
-                          } else if (selectedShift === 'Tarde') {
-                            setForm({ ...form, urine_afternoon_odor: e.target.value });
-                          } else {
-                            setForm({ ...form, urine_night_odor: e.target.value });
-                          }
-                        }}
-                        className="w-24 h-8 text-sm"
-                        placeholder="Olor"
-                      />
-                    </TableCell>
-                    <TableCell className="border border-gray-300 p-1">
-                      <Input
-                        value={
-                          selectedShift === 'Mañana' ? (form.urine_morning_quantity || '') :
-                          selectedShift === 'Tarde' ? (form.urine_afternoon_quantity || '') :
-                          (form.urine_night_quantity || '')
-                        }
-                        onChange={(e) => {
-                          if (selectedShift === 'Mañana') {
-                            setForm({ ...form, urine_morning_quantity: e.target.value });
-                          } else if (selectedShift === 'Tarde') {
-                            setForm({ ...form, urine_afternoon_quantity: e.target.value });
-                          } else {
-                            setForm({ ...form, urine_night_quantity: e.target.value });
-                          }
-                        }}
-                        className="w-24 h-8 text-sm"
-                        placeholder="Cantidad"
-                      />
-                    </TableCell>
+                    <TableCell className="border border-gray-300 font-semibold bg-gray-50 p-2 align-top">Mañana</TableCell>
+                    <TableCell className="border border-gray-300 p-1"><Input type="number" value={form.feces_morning_count ?? ''} onChange={(e) => setForm({ ...form, feces_morning_count: e.target.value ? Number(e.target.value) : undefined })} className="w-20 h-8 text-sm" min="0" /></TableCell>
+                    <TableCell className="border border-gray-300 p-1"><Input value={form.feces_morning_color || ''} onChange={(e) => setForm({ ...form, feces_morning_color: e.target.value })} className="w-24 h-8 text-sm" placeholder="Color" /></TableCell>
+                    <TableCell className="border border-gray-300 p-1"><Input value={form.feces_morning_appearance || ''} onChange={(e) => setForm({ ...form, feces_morning_appearance: e.target.value })} className="w-24 h-8 text-sm" placeholder="Aspecto" /></TableCell>
+                    <TableCell className="border border-gray-300 p-1"><Input value={form.feces_morning_quantity || ''} onChange={(e) => setForm({ ...form, feces_morning_quantity: e.target.value })} className="w-24 h-8 text-sm" placeholder="Cantidad" /></TableCell>
+                    <TableCell className="border border-gray-300 p-1"><Input type="number" value={form.urine_morning_count ?? ''} onChange={(e) => setForm({ ...form, urine_morning_count: e.target.value ? Number(e.target.value) : undefined })} className="w-20 h-8 text-sm" min="0" /></TableCell>
+                    <TableCell className="border border-gray-300 p-1"><Input value={form.urine_morning_color || ''} onChange={(e) => setForm({ ...form, urine_morning_color: e.target.value })} className="w-24 h-8 text-sm" placeholder="Color" /></TableCell>
+                    <TableCell className="border border-gray-300 p-1"><Input value={form.urine_morning_odor || ''} onChange={(e) => setForm({ ...form, urine_morning_odor: e.target.value })} className="w-24 h-8 text-sm" placeholder="Olor" /></TableCell>
+                    <TableCell className="border border-gray-300 p-1"><Input value={form.urine_morning_quantity || ''} onChange={(e) => setForm({ ...form, urine_morning_quantity: e.target.value })} className="w-24 h-8 text-sm" placeholder="Cantidad" /></TableCell>
+                  </TableRow>
+                  {/* Fila Tarde */}
+                  <TableRow>
+                    <TableCell className="border border-gray-300 font-semibold bg-gray-50 p-2 align-top">Tarde</TableCell>
+                    <TableCell className="border border-gray-300 p-1"><Input type="number" value={form.feces_afternoon_count ?? ''} onChange={(e) => setForm({ ...form, feces_afternoon_count: e.target.value ? Number(e.target.value) : undefined })} className="w-20 h-8 text-sm" min="0" /></TableCell>
+                    <TableCell className="border border-gray-300 p-1"><Input value={form.feces_afternoon_color || ''} onChange={(e) => setForm({ ...form, feces_afternoon_color: e.target.value })} className="w-24 h-8 text-sm" placeholder="Color" /></TableCell>
+                    <TableCell className="border border-gray-300 p-1"><Input value={form.feces_afternoon_appearance || ''} onChange={(e) => setForm({ ...form, feces_afternoon_appearance: e.target.value })} className="w-24 h-8 text-sm" placeholder="Aspecto" /></TableCell>
+                    <TableCell className="border border-gray-300 p-1"><Input value={form.feces_afternoon_quantity || ''} onChange={(e) => setForm({ ...form, feces_afternoon_quantity: e.target.value })} className="w-24 h-8 text-sm" placeholder="Cantidad" /></TableCell>
+                    <TableCell className="border border-gray-300 p-1"><Input type="number" value={form.urine_afternoon_count ?? ''} onChange={(e) => setForm({ ...form, urine_afternoon_count: e.target.value ? Number(e.target.value) : undefined })} className="w-20 h-8 text-sm" min="0" /></TableCell>
+                    <TableCell className="border border-gray-300 p-1"><Input value={form.urine_afternoon_color || ''} onChange={(e) => setForm({ ...form, urine_afternoon_color: e.target.value })} className="w-24 h-8 text-sm" placeholder="Color" /></TableCell>
+                    <TableCell className="border border-gray-300 p-1"><Input value={form.urine_afternoon_odor || ''} onChange={(e) => setForm({ ...form, urine_afternoon_odor: e.target.value })} className="w-24 h-8 text-sm" placeholder="Olor" /></TableCell>
+                    <TableCell className="border border-gray-300 p-1"><Input value={form.urine_afternoon_quantity || ''} onChange={(e) => setForm({ ...form, urine_afternoon_quantity: e.target.value })} className="w-24 h-8 text-sm" placeholder="Cantidad" /></TableCell>
+                  </TableRow>
+                  {/* Fila Noche */}
+                  <TableRow>
+                    <TableCell className="border border-gray-300 font-semibold bg-gray-50 p-2 align-top">Noche</TableCell>
+                    <TableCell className="border border-gray-300 p-1"><Input type="number" value={form.feces_night_count ?? ''} onChange={(e) => setForm({ ...form, feces_night_count: e.target.value ? Number(e.target.value) : undefined })} className="w-20 h-8 text-sm" min="0" /></TableCell>
+                    <TableCell className="border border-gray-300 p-1"><Input value={form.feces_night_color || ''} onChange={(e) => setForm({ ...form, feces_night_color: e.target.value })} className="w-24 h-8 text-sm" placeholder="Color" /></TableCell>
+                    <TableCell className="border border-gray-300 p-1"><Input value={form.feces_night_appearance || ''} onChange={(e) => setForm({ ...form, feces_night_appearance: e.target.value })} className="w-24 h-8 text-sm" placeholder="Aspecto" /></TableCell>
+                    <TableCell className="border border-gray-300 p-1"><Input value={form.feces_night_quantity || ''} onChange={(e) => setForm({ ...form, feces_night_quantity: e.target.value })} className="w-24 h-8 text-sm" placeholder="Cantidad" /></TableCell>
+                    <TableCell className="border border-gray-300 p-1"><Input type="number" value={form.urine_night_count ?? ''} onChange={(e) => setForm({ ...form, urine_night_count: e.target.value ? Number(e.target.value) : undefined })} className="w-20 h-8 text-sm" min="0" /></TableCell>
+                    <TableCell className="border border-gray-300 p-1"><Input value={form.urine_night_color || ''} onChange={(e) => setForm({ ...form, urine_night_color: e.target.value })} className="w-24 h-8 text-sm" placeholder="Color" /></TableCell>
+                    <TableCell className="border border-gray-300 p-1"><Input value={form.urine_night_odor || ''} onChange={(e) => setForm({ ...form, urine_night_odor: e.target.value })} className="w-24 h-8 text-sm" placeholder="Olor" /></TableCell>
+                    <TableCell className="border border-gray-300 p-1"><Input value={form.urine_night_quantity || ''} onChange={(e) => setForm({ ...form, urine_night_quantity: e.target.value })} className="w-24 h-8 text-sm" placeholder="Cantidad" /></TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
@@ -576,25 +428,39 @@ export default function EliminacionHecesOrina() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Fecha</TableHead>
-                      <TableHead>Enfermera</TableHead>
-                      <TableHead>Heces - Mañana</TableHead>
-                      <TableHead>Heces - Tarde</TableHead>
-                      <TableHead>Heces - Noche</TableHead>
-                      <TableHead>Orina - Mañana</TableHead>
-                      <TableHead>Orina - Tarde</TableHead>
-                      <TableHead>Orina - Noche</TableHead>
-                      <TableHead className="whitespace-nowrap sticky right-0 bg-muted shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10 min-w-[100px]">Acciones</TableHead>
+                      <TableHead rowSpan={2} className="border-b border-r border-gray-300 bg-gray-100 align-middle">
+                        Fecha
+                      </TableHead>
+                      <TableHead rowSpan={2} className="border-b border-r border-gray-300 bg-gray-100 align-middle">
+                        Enfermera
+                      </TableHead>
+                      <TableHead colSpan={3} className="border border-gray-300 bg-amber-50 text-center font-semibold text-amber-900">
+                        Heces
+                      </TableHead>
+                      <TableHead colSpan={3} className="border border-gray-300 bg-sky-50 text-center font-semibold text-sky-900">
+                        Orina
+                      </TableHead>
+                      <TableHead rowSpan={2} className="whitespace-nowrap sticky right-0 bg-gray-100 border border-gray-300 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10 min-w-[90px] align-middle">
+                        Acciones
+                      </TableHead>
+                    </TableRow>
+                    <TableRow>
+                      <TableHead className="border border-gray-300 bg-amber-100/70 text-center text-sm font-medium">Mañana</TableHead>
+                      <TableHead className="border border-gray-300 bg-amber-100/70 text-center text-sm font-medium">Tarde</TableHead>
+                      <TableHead className="border border-gray-300 bg-amber-100/70 text-center text-sm font-medium">Noche</TableHead>
+                      <TableHead className="border border-gray-300 bg-sky-100/70 text-center text-sm font-medium">Mañana</TableHead>
+                      <TableHead className="border border-gray-300 bg-sky-100/70 text-center text-sm font-medium">Tarde</TableHead>
+                      <TableHead className="border border-gray-300 bg-sky-100/70 text-center text-sm font-medium">Noche</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {historyRecords.map((record) => (
                       <TableRow key={record.id}>
-                        <TableCell>
+                        <TableCell className="border border-gray-300">
                           {new Date(record.record_date).toLocaleDateString('es-ES')}
                         </TableCell>
-                        <TableCell>{record.nurse_name}</TableCell>
-                        <TableCell>
+                        <TableCell className="border border-gray-300">{record.nurse_name}</TableCell>
+                        <TableCell className="border border-gray-300 bg-amber-50/40">
                           {record.feces_morning_count !== undefined || record.feces_morning_color || record.feces_morning_appearance || record.feces_morning_quantity ? (
                             <div className="text-xs space-y-1">
                               {record.feces_morning_count !== undefined && <div>N°: {record.feces_morning_count}</div>}
@@ -604,7 +470,7 @@ export default function EliminacionHecesOrina() {
                             </div>
                           ) : '-'}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="border border-gray-300 bg-amber-50/40">
                           {record.feces_afternoon_count !== undefined || record.feces_afternoon_color || record.feces_afternoon_appearance || record.feces_afternoon_quantity ? (
                             <div className="text-xs space-y-1">
                               {record.feces_afternoon_count !== undefined && <div>N°: {record.feces_afternoon_count}</div>}
@@ -614,7 +480,7 @@ export default function EliminacionHecesOrina() {
                             </div>
                           ) : '-'}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="border border-gray-300 bg-amber-50/40">
                           {record.feces_night_count !== undefined || record.feces_night_color || record.feces_night_appearance || record.feces_night_quantity ? (
                             <div className="text-xs space-y-1">
                               {record.feces_night_count !== undefined && <div>N°: {record.feces_night_count}</div>}
@@ -624,7 +490,7 @@ export default function EliminacionHecesOrina() {
                             </div>
                           ) : '-'}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="border border-gray-300 bg-sky-50/40">
                           {record.urine_morning_count !== undefined || record.urine_morning_color || record.urine_morning_odor || record.urine_morning_quantity ? (
                             <div className="text-xs space-y-1">
                               {record.urine_morning_count !== undefined && <div>N°: {record.urine_morning_count}</div>}
@@ -634,7 +500,7 @@ export default function EliminacionHecesOrina() {
                             </div>
                           ) : '-'}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="border border-gray-300 bg-sky-50/40">
                           {record.urine_afternoon_count !== undefined || record.urine_afternoon_color || record.urine_afternoon_odor || record.urine_afternoon_quantity ? (
                             <div className="text-xs space-y-1">
                               {record.urine_afternoon_count !== undefined && <div>N°: {record.urine_afternoon_count}</div>}
@@ -644,7 +510,7 @@ export default function EliminacionHecesOrina() {
                             </div>
                           ) : '-'}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="border border-gray-300 bg-sky-50/40">
                           {record.urine_night_count !== undefined || record.urine_night_color || record.urine_night_odor || record.urine_night_quantity ? (
                             <div className="text-xs space-y-1">
                               {record.urine_night_count !== undefined && <div>N°: {record.urine_night_count}</div>}
@@ -659,33 +525,22 @@ export default function EliminacionHecesOrina() {
                             variant="ghost"
                             size="sm"
                             onClick={async () => {
-                              // Cambiar la fecha del formulario
-                              const dateStr = record.record_date;
-                              setForm((f) => ({ ...f, record_date: dateStr }));
-                              
-                              // Cargar el registro completo
-                              await loadRecordForDate(dateStr);
-                              
-                              // Determinar qué turno tiene datos para seleccionarlo automáticamente
-                              if (record.feces_morning_count !== undefined || record.feces_morning_color || 
-                                  record.urine_morning_count !== undefined || record.urine_morning_color) {
-                                setSelectedShift('Mañana');
-                              } else if (record.feces_afternoon_count !== undefined || record.feces_afternoon_color ||
-                                        record.urine_afternoon_count !== undefined || record.urine_afternoon_color) {
-                                setSelectedShift('Tarde');
-                              } else if (record.feces_night_count !== undefined || record.feces_night_color ||
-                                        record.urine_night_count !== undefined || record.urine_night_color) {
-                                setSelectedShift('Noche');
+                              if (!confirm("¿Eliminar este registro?")) return;
+                              try {
+                                await eliminationRecordsService.delete(record.id);
+                                toast.success("Registro eliminado");
+                                await loadHistory();
+                                if (currentRecord?.id === record.id) {
+                                  await loadRecordForDate(form.record_date);
+                                }
+                              } catch (e: any) {
+                                toast.error(e?.message || "Error al eliminar");
                               }
-                              
-                              // Scroll al formulario
-                              setTimeout(() => {
-                                window.scrollTo({ top: 0, behavior: 'smooth' });
-                              }, 100);
                             }}
-                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
                           >
-                            Ver/Editar
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            Eliminar
                           </Button>
                         </TableCell>
                       </TableRow>

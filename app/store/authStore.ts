@@ -1,15 +1,25 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-interface User {
+export type AppRole = "admin" | "gestor";
+
+export interface User {
   id: string;
   email: string;
   user_metadata?: {
     full_name?: string;
     avatar_url?: string;
+    role?: AppRole;
   };
   created_at: string;
   updated_at: string;
+}
+
+/** Rol del usuario en el ERP. Por defecto "admin" si no viene en user_metadata. */
+export function getAppRole(user: User | null): AppRole {
+  const role = user?.user_metadata?.role;
+  if (role === "gestor" || role === "admin") return role;
+  return "admin";
 }
 
 interface AuthState {
