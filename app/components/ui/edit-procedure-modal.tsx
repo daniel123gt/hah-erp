@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
+import { Combobox } from "~/components/ui/combobox";
 import { procedureService, type ProcedureRecordWithDetails, type ProcedureCatalogItem, PAYMENT_METHOD_OPTIONS, type PaymentMethodKey, getPaymentFromRecord, recordToPaymentPayload } from "~/services/procedureService";
 import { patientsService } from "~/services/patientsService";
 import { toast } from "sonner";
@@ -172,25 +173,19 @@ export function EditProcedureModal({ record, onClose, onUpdated }: EditProcedure
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Procedimiento (catálogo)</label>
-                  <select
+                  <Combobox
+                    options={catalog.map((c) => ({ value: c.id, label: `${c.name} (S/ ${Number(c.base_price_soles).toFixed(2)})` }))}
                     value={form.procedure_catalog_id}
-                    onChange={(e) => {
-                      const v = e.target.value;
+                    onValueChange={(v) =>
                       setForm((f) => ({
                         ...f,
                         procedure_catalog_id: v,
                         procedure_name: v ? catalog.find((c) => c.id === v)?.name ?? f.procedure_name : f.procedure_name,
-                      }));
-                    }}
-                    className="w-full border rounded-md px-3 py-2"
-                  >
-                    <option value="">Seleccionar...</option>
-                    {catalog.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} (S/ {Number(c.base_price_soles).toFixed(2)})
-                      </option>
-                    ))}
-                  </select>
+                      }))
+                    }
+                    placeholder="Seleccionar procedimiento"
+                    emptyOption={{ value: "", label: "Seleccionar..." }}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Procedimiento (texto)</label>
@@ -201,18 +196,13 @@ export function EditProcedureModal({ record, onClose, onUpdated }: EditProcedure
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium mb-1">Distrito / Ubicación</label>
-                  <select
+                  <Combobox
+                    options={districts.map((d) => ({ value: d.name, label: d.name }))}
                     value={form.district}
-                    onChange={(e) => setForm((f) => ({ ...f, district: e.target.value }))}
-                    className="w-full border rounded-md px-3 py-2"
-                  >
-                    <option value="">Seleccionar...</option>
-                    {districts.map((d) => (
-                      <option key={d.name} value={d.name}>
-                        {d.name}
-                      </option>
-                    ))}
-                  </select>
+                    onValueChange={(value) => setForm((f) => ({ ...f, district: value }))}
+                    placeholder="Seleccionar distrito"
+                    emptyOption={{ value: "", label: "Seleccionar..." }}
+                  />
                 </div>
               </CardContent>
             </Card>

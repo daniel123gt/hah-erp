@@ -7,14 +7,18 @@ import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { toast } from "sonner";
 import { ArrowLeft, Save, Search, UserPlus } from "lucide-react";
+import { Combobox } from "~/components/ui/combobox";
 import patientsService, { type Patient } from "~/services/patientsService";
 import nursingInitialAssessmentService from "~/services/nursingInitialAssessmentService";
+import { staffService } from "~/services/staffService";
+import { getDepartmentForCategory } from "~/dashboard/personal/categories";
 
 export default function ValoracionInicial() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const patientIdFromUrl = searchParams.get("patientId");
 
+  const [nurses, setNurses] = useState<{ name: string }[]>([]);
   const [patient, setPatient] = useState<Patient | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<Patient[]>([]);
@@ -70,6 +74,15 @@ export default function ValoracionInicial() {
     phone: "",
     address: "",
   });
+
+  useEffect(() => {
+    const department = getDepartmentForCategory("enfermeria");
+    if (department) {
+      staffService.getStaff({ limit: 200, department, status: "Activo" }).then((res) =>
+        setNurses(res.data.map((s) => ({ name: s.name })))
+      ).catch(() => setNurses([]));
+    }
+  }, []);
 
   useEffect(() => {
     if (patientIdFromUrl) {
@@ -348,11 +361,11 @@ export default function ValoracionInicial() {
                 </div>
                 <div>
                   <Label>Enfermero/a *</Label>
-                  <Input
+                  <Combobox
+                    options={nurses.map((n) => ({ value: n.name, label: n.name }))}
                     value={formData.nurse_name}
-                    onChange={(e) => setFormData({ ...formData, nurse_name: e.target.value })}
+                    onValueChange={(value) => setFormData({ ...formData, nurse_name: value })}
                     placeholder="Nombre del enfermero/a"
-                    required
                   />
                 </div>
               </div>

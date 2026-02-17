@@ -11,6 +11,7 @@ import {
   DialogTrigger,
 } from "~/components/ui/dialog";
 import { Badge } from "~/components/ui/badge";
+import { Combobox } from "~/components/ui/combobox";
 import { patientsService, type Patient } from "~/services/patientsService";
 import { procedureService } from "~/services/procedureService";
 import { staffService } from "~/services/staffService";
@@ -64,7 +65,7 @@ export function EditAppointmentModal({
   const [loadingPatients, setLoadingPatients] = useState(false);
   const [professionals, setProfessionals] = useState<{ name: string; specialty: string }[]>([]);
   const [loadingProfessionals, setLoadingProfessionals] = useState(false);
-  const [procedureCatalog, setProcedureCatalog] = useState<{ id: string; name: string }[]>([]);
+  const [procedureCatalog, setProcedureCatalog] = useState<{ id: string; name: string; base_price_soles: number }[]>([]);
   const [loadingCatalog, setLoadingCatalog] = useState(false);
   const [formData, setFormData] = useState<Appointment>(appointment);
 
@@ -111,7 +112,7 @@ export function EditAppointmentModal({
     setLoadingCatalog(true);
     procedureService
       .getCatalog(true)
-      .then((items) => setProcedureCatalog(items.map((p) => ({ id: p.id, name: p.name }))))
+      .then((items) => setProcedureCatalog(items.map((p) => ({ id: p.id, name: p.name, base_price_soles: Number(p.base_price_soles) || 0 }))))
       .catch(() => setProcedureCatalog([]))
       .finally(() => setLoadingCatalog(false));
   }, [isOpen, variant]);
@@ -205,22 +206,13 @@ export function EditAppointmentModal({
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Paciente *
                 </label>
-                <select
+                <Combobox
+                  options={patients.map((p) => ({ value: p.id, label: p.name }))}
                   value={selectedPatientId}
-                  onChange={(e) => handlePatientChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
-                  required
+                  onValueChange={handlePatientChange}
+                  placeholder={loadingPatients ? "Cargando pacientes..." : "Seleccionar paciente"}
                   disabled={loadingPatients}
-                >
-                  <option value="">
-                    {loadingPatients ? "Cargando pacientes..." : "Seleccionar paciente"}
-                  </option>
-                  {patients.map((patient) => (
-                    <option key={patient.id} value={patient.id}>
-                      {patient.name}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -312,30 +304,21 @@ export function EditAppointmentModal({
                   {variant === "procedimientos" ? "Procedimiento *" : "Tipo de Cita *"}
                 </label>
                 {variant === "procedimientos" ? (
-                  <select
+                  <Combobox
+                    options={procedureCatalog.map((p) => ({ value: p.id, label: `${p.name} (S/ ${p.base_price_soles.toFixed(2)})` }))}
                     value={formData.procedure_catalog_id ?? ""}
-                    onChange={(e) => {
-                      const item = procedureCatalog.find((p) => p.id === e.target.value);
+                    onValueChange={(value) => {
+                      const item = procedureCatalog.find((p) => p.id === value);
                       setFormData((prev) => ({
                         ...prev,
-                        procedure_catalog_id: e.target.value || undefined,
+                        procedure_catalog_id: value || undefined,
                         procedure_name: item?.name ?? "",
                         type: "procedimiento",
                       }));
                     }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
-                    required
+                    placeholder={loadingCatalog ? "Cargando procedimientos..." : "Seleccionar procedimiento"}
                     disabled={loadingCatalog}
-                  >
-                    <option value="">
-                      {loadingCatalog ? "Cargando procedimientos..." : "Seleccionar procedimiento"}
-                    </option>
-                    {procedureCatalog.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 ) : (
                   <select
                     value={formData.type}
@@ -397,26 +380,17 @@ export function EditAppointmentModal({
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   {professionalLabel} *
                 </label>
-                <select
+                <Combobox
+                  options={
+                    formData.doctorName && !professionals.some((p) => p.name === formData.doctorName)
+                      ? [{ value: formData.doctorName, label: formData.doctorName }, ...professionals.map((p) => ({ value: p.name, label: p.name }))]
+                      : professionals.map((p) => ({ value: p.name, label: p.name }))
+                  }
                   value={formData.doctorName}
-                  onChange={(e) => handleDoctorChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
-                  required
+                  onValueChange={handleDoctorChange}
+                  placeholder={loadingProfessionals ? "Cargando..." : `Seleccionar ${professionalLabel.toLowerCase()}`}
                   disabled={loadingProfessionals}
-                >
-                  <option value="">
-                    {loadingProfessionals ? "Cargando..." : `Seleccionar ${professionalLabel.toLowerCase()}`}
-                  </option>
-                  {formData.doctorName &&
-                    !professionals.some((p) => p.name === formData.doctorName) && (
-                    <option value={formData.doctorName}>{formData.doctorName}</option>
-                  )}
-                  {professionals.map((p) => (
-                    <option key={p.name} value={p.name}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">

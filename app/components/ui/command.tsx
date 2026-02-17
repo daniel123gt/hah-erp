@@ -75,8 +75,26 @@ function CommandInput({
 
 function CommandList({
   className,
+  onWheel,
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.List>) {
+  const handleWheel = React.useCallback(
+    (e: React.WheelEvent<HTMLDivElement>) => {
+      const target = e.currentTarget
+      const canScrollUp = target.scrollTop > 0
+      const canScrollDown = target.scrollTop + target.clientHeight < target.scrollHeight
+      const scrollingDown = e.deltaY > 0
+      const scrollingUp = e.deltaY < 0
+      if ((scrollingUp && canScrollUp) || (scrollingDown && canScrollDown)) {
+        e.preventDefault()
+        e.stopPropagation()
+        target.scrollTop += e.deltaY
+      }
+      onWheel?.(e)
+    },
+    [onWheel]
+  )
+
   return (
     <CommandPrimitive.List
       data-slot="command-list"
@@ -84,6 +102,7 @@ function CommandList({
         "max-h-[300px] scroll-py-1 overflow-x-hidden overflow-y-auto",
         className
       )}
+      onWheel={handleWheel}
       {...props}
     />
   )
