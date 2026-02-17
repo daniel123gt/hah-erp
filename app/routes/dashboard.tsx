@@ -3,8 +3,8 @@ import Layout from "~/dashboard/layout";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "About Pagce" },
-    { name: "description", content: "Welcome to about page" },
+    { title: "Health At Home ERP" },
+    { name: "description", content: "ERP de salud" },
   ];
 }
 

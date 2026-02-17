@@ -3,7 +3,7 @@ import MiPerfilPage from "~/dashboard/mi-perfil/MiPerfilPage";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "Datos y configuración" },
+    { title: "Mi perfil | Health At Home ERP" },
     { name: "description", content: "Información y configuración de tu cuenta" },
   ];
 }

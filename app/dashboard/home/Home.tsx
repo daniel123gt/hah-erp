@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
@@ -15,169 +15,25 @@ import {
   Clock,
   AlertCircle,
   CheckCircle,
-  UserPlus,
   FileText,
   Stethoscope,
-  Heart,
-  Zap,
   ArrowUpRight,
   ArrowDownRight,
   Eye,
   Edit,
-  Plus
+  Plus,
+  Loader2,
 } from "lucide-react";
+import {
+  getDashboardData,
+  type TodayAppointmentItem,
+  type TopServiceItem,
+  type RecentActivityItem,
+} from "~/services/dashboardService";
 
-// Datos mock para el dashboard
-const mockStats = {
-  totalPatients: 1247,
-  totalAppointments: 89,
-  monthlyRevenue: 45680,
-  activeServices: 156,
-  patientGrowth: 12.5,
-  appointmentGrowth: 8.3,
-  revenueGrowth: 15.2,
-  serviceGrowth: 6.7
-};
-
-const todayAppointments = [
-  {
-    id: 1,
-    patient: "María González",
-    time: "09:00",
-    doctor: "Dr. Carlos Mendoza",
-    type: "Consulta General",
-    status: "confirmada",
-    priority: "normal"
-  },
-  {
-    id: 2,
-    patient: "Juan Pérez",
-    time: "10:30",
-    doctor: "Dra. Ana Silva",
-    type: "Control",
-    status: "en_progreso",
-    priority: "alta"
-  },
-  {
-    id: 3,
-    patient: "Luis Rodríguez",
-    time: "11:15",
-    doctor: "Dr. Miguel Torres",
-    type: "Seguimiento",
-    status: "pendiente",
-    priority: "normal"
-  },
-  {
-    id: 4,
-    patient: "Carmen López",
-    time: "14:00",
-    doctor: "Dra. Ana Silva",
-    type: "Consulta Especializada",
-    status: "confirmada",
-    priority: "normal"
-  },
-  {
-    id: 5,
-    patient: "Roberto Martín",
-    time: "15:30",
-    doctor: "Dr. Carlos Mendoza",
-    type: "Revisión",
-    status: "pendiente",
-    priority: "baja"
-  }
-];
-
-const recentActivity = [
-  {
-    id: 1,
-    type: "nuevo_paciente",
-    description: "Nuevo paciente registrado: Sofia Herrera",
-    time: "Hace 15 minutos",
-    icon: UserPlus,
-    color: "text-green-600",
-    bgColor: "bg-green-50"
-  },
-  {
-    id: 2,
-    type: "cita_completada",
-    description: "Cita completada: María González - Consulta General",
-    time: "Hace 1 hora",
-    icon: CheckCircle,
-    color: "text-blue-600",
-    bgColor: "bg-blue-50"
-  },
-  {
-    id: 3,
-    type: "resultado_lab",
-    description: "Resultado de laboratorio disponible: Hemograma - Juan Pérez",
-    time: "Hace 2 horas",
-    icon: Stethoscope,
-    color: "text-purple-600",
-    bgColor: "bg-purple-50"
-  },
-  {
-    id: 4,
-    type: "emergencia",
-    description: "Nueva emergencia registrada: Caso crítico - Paciente anónimo",
-    time: "Hace 3 horas",
-    icon: AlertCircle,
-    color: "text-red-600",
-    bgColor: "bg-red-50"
-  },
-  {
-    id: 5,
-    type: "factura_generada",
-    description: "Factura generada: #FAC-2025-001 - S/ 450.00",
-    time: "Hace 4 horas",
-    icon: FileText,
-    color: "text-orange-600",
-    bgColor: "bg-orange-50"
-  }
-];
-
-const topServices = [
-  { name: "Consulta Médica General", count: 45, revenue: 3600, growth: 8.2 },
-  { name: "Hemograma Completo", count: 38, revenue: 1710, growth: 12.5 },
-  { name: "Radiografía de Tórax", count: 32, revenue: 3040, growth: -2.1 },
-  { name: "Electrocardiograma", count: 28, revenue: 3360, growth: 15.3 },
-  { name: "Vacuna contra la Influenza", count: 25, revenue: 875, growth: 22.1 }
-];
-
-const alerts = [
-  {
-    id: 1,
-    type: "warning",
-    title: "Stock Bajo",
-    message: "5 productos con stock bajo en inventario",
-    action: "Revisar Inventario",
-    icon: AlertCircle,
-    color: "text-yellow-600",
-    bgColor: "bg-yellow-50",
-    borderColor: "border-yellow-200"
-  },
-  {
-    id: 2,
-    type: "info",
-    title: "Mantenimiento Programado",
-    message: "Sistema de backup programado para mañana a las 2:00 AM",
-    action: "Ver Detalles",
-    icon: Clock,
-    color: "text-blue-600",
-    bgColor: "bg-blue-50",
-    borderColor: "border-blue-200"
-  },
-  {
-    id: 3,
-    type: "success",
-    title: "Meta Mensual Alcanzada",
-    message: "Se ha alcanzado el 105% de la meta de ingresos mensual",
-    action: "Ver Reporte",
-    icon: CheckCircle,
-    color: "text-green-600",
-    bgColor: "bg-green-50",
-    borderColor: "border-green-200"
-  }
-];
+const ACTIVITY_ICON = { procedimiento: Stethoscope };
+const ACTIVITY_COLOR = { procedimiento: "text-purple-600" };
+const ACTIVITY_BG = { procedimiento: "bg-purple-50" };
 
 export default function HomeDashboard() {
   const { user } = useAuthStore();
@@ -185,19 +41,56 @@ export default function HomeDashboard() {
   const isTempUser = user?.email === "admin@healthathome.com";
   const isGestor = getAppRole(user) === "gestor";
   const [selectedTab, setSelectedTab] = useState("overview");
-  const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
+  const [selectedAppointment, setSelectedAppointment] = useState<TodayAppointmentItem | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalPatients: 0,
+    patientGrowth: 0,
+    citasHoy: 0,
+    appointmentGrowth: 0,
+    monthlyRevenue: 0,
+    revenueGrowth: 0,
+    activeServices: 0,
+    serviceGrowth: 0,
+  });
+  const [todayAppointments, setTodayAppointments] = useState<TodayAppointmentItem[]>([]);
+  const [topServices, setTopServices] = useState<TopServiceItem[]>([]);
+  const [recentActivity, setRecentActivity] = useState<RecentActivityItem[]>([]);
+  const alerts: { id: number; type: string; title: string; message: string; action: string; icon: typeof AlertCircle; color: string; bgColor: string; borderColor: string }[] = [];
+
+  useEffect(() => {
+    setLoading(true);
+    getDashboardData()
+      .then((data) => {
+        setStats(data.stats);
+        setTodayAppointments(data.todayAppointments);
+        setTopServices(data.topServices);
+        setRecentActivity(data.recentActivity);
+      })
+      .catch((err) => {
+        console.error(err);
+        toast.error("Error al cargar el dashboard");
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
   const getStatusBadge = (status: string) => {
-    const statusConfig = {
+    const statusConfig: Record<string, { label: string; color: string }> = {
       confirmada: { label: "Confirmada", color: "bg-green-100 text-green-800" },
+      confirmed: { label: "Confirmada", color: "bg-green-100 text-green-800" },
       en_progreso: { label: "En Progreso", color: "bg-blue-100 text-blue-800" },
       pendiente: { label: "Pendiente", color: "bg-yellow-100 text-yellow-800" },
-      cancelada: { label: "Cancelada", color: "bg-red-100 text-red-800" }
+      scheduled: { label: "Programada", color: "bg-yellow-100 text-yellow-800" },
+      cancelada: { label: "Cancelada", color: "bg-red-100 text-red-800" },
+      cancelled: { label: "Cancelada", color: "bg-red-100 text-red-800" },
+      completed: { label: "Completada", color: "bg-gray-100 text-gray-800" },
+      "no-show": { label: "No Asistió", color: "bg-orange-100 text-orange-800" },
     };
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pendiente;
+    const config = statusConfig[status] || { label: status, color: "bg-gray-100 text-gray-800" };
     return <Badge className={config.color}>{config.label}</Badge>;
   };
 
@@ -233,12 +126,12 @@ export default function HomeDashboard() {
     toast.success("Redirigiendo a la página de citas para crear una nueva cita");
   };
 
-  const handleViewAppointment = (appointment: any) => {
+  const handleViewAppointment = (appointment: TodayAppointmentItem) => {
     setSelectedAppointment(appointment);
     setIsViewModalOpen(true);
   };
 
-  const handleEditAppointment = (appointment: any) => {
+  const handleEditAppointment = (appointment: TodayAppointmentItem) => {
     setSelectedAppointment(appointment);
     setIsEditModalOpen(true);
   };
@@ -270,10 +163,10 @@ export default function HomeDashboard() {
       hora: new Date().toLocaleTimeString('es-ES'),
       usuario: user?.email || 'Usuario',
       metricas: {
-        totalPacientes: mockStats.totalPatients,
-        citasHoy: mockStats.totalAppointments,
-        ingresosMes: mockStats.monthlyRevenue,
-        serviciosActivos: mockStats.activeServices
+        totalPacientes: stats.totalPatients,
+        citasHoy: stats.citasHoy,
+        ingresosMes: stats.monthlyRevenue,
+        serviciosActivos: stats.activeServices
       },
       citasDelDia: todayAppointments,
       serviciosPopulares: topServices,
@@ -485,19 +378,26 @@ ${data.citasDelDia.map((cita: any) =>
       )}
 
       {/* Métricas Principales */}
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-primary-blue" />
+        </div>
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Pacientes</p>
-                <p className="text-3xl font-bold text-gray-900">{mockStats.totalPatients.toLocaleString()}</p>
-                <div className="flex items-center mt-2">
-                  {getGrowthIcon(mockStats.patientGrowth)}
-                  <span className={`text-sm font-medium ml-1 ${getGrowthColor(mockStats.patientGrowth)}`}>
-                    +{mockStats.patientGrowth}%
-                  </span>
-                </div>
+                <p className="text-3xl font-bold text-gray-900">{stats.totalPatients.toLocaleString()}</p>
+                {stats.patientGrowth !== 0 && (
+                  <div className="flex items-center mt-2">
+                    {getGrowthIcon(stats.patientGrowth)}
+                    <span className={`text-sm font-medium ml-1 ${getGrowthColor(stats.patientGrowth)}`}>
+                      +{stats.patientGrowth}%
+                    </span>
+                  </div>
+                )}
               </div>
               <div className="p-3 bg-blue-100 rounded-full">
                 <Users className="w-6 h-6 text-blue-600" />
@@ -511,13 +411,15 @@ ${data.citasDelDia.map((cita: any) =>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Citas Hoy</p>
-                <p className="text-3xl font-bold text-gray-900">{mockStats.totalAppointments}</p>
-                <div className="flex items-center mt-2">
-                  {getGrowthIcon(mockStats.appointmentGrowth)}
-                  <span className={`text-sm font-medium ml-1 ${getGrowthColor(mockStats.appointmentGrowth)}`}>
-                    +{mockStats.appointmentGrowth}%
-                  </span>
-                </div>
+                <p className="text-3xl font-bold text-gray-900">{stats.citasHoy}</p>
+                {stats.appointmentGrowth !== 0 && (
+                  <div className="flex items-center mt-2">
+                    {getGrowthIcon(stats.appointmentGrowth)}
+                    <span className={`text-sm font-medium ml-1 ${getGrowthColor(stats.appointmentGrowth)}`}>
+                      +{stats.appointmentGrowth}%
+                    </span>
+                  </div>
+                )}
               </div>
               <div className="p-3 bg-green-100 rounded-full">
                 <Calendar className="w-6 h-6 text-green-600" />
@@ -532,13 +434,15 @@ ${data.citasDelDia.map((cita: any) =>
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Ingresos del Mes</p>
-                  <p className="text-3xl font-bold text-gray-900">S/ {mockStats.monthlyRevenue.toLocaleString()}</p>
-                  <div className="flex items-center mt-2">
-                    {getGrowthIcon(mockStats.revenueGrowth)}
-                    <span className={`text-sm font-medium ml-1 ${getGrowthColor(mockStats.revenueGrowth)}`}>
-                      +{mockStats.revenueGrowth}%
-                    </span>
-                  </div>
+                  <p className="text-3xl font-bold text-gray-900">S/ {stats.monthlyRevenue.toLocaleString()}</p>
+                  {stats.revenueGrowth !== 0 && (
+                    <div className="flex items-center mt-2">
+                      {getGrowthIcon(stats.revenueGrowth)}
+                      <span className={`text-sm font-medium ml-1 ${getGrowthColor(stats.revenueGrowth)}`}>
+                        +{stats.revenueGrowth}%
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div className="p-3 bg-purple-100 rounded-full">
                   <DollarSign className="w-6 h-6 text-purple-600" />
@@ -553,13 +457,15 @@ ${data.citasDelDia.map((cita: any) =>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Servicios Activos</p>
-                <p className="text-3xl font-bold text-gray-900">{mockStats.activeServices}</p>
-                <div className="flex items-center mt-2">
-                  {getGrowthIcon(mockStats.serviceGrowth)}
-                  <span className={`text-sm font-medium ml-1 ${getGrowthColor(mockStats.serviceGrowth)}`}>
-                    +{mockStats.serviceGrowth}%
-                  </span>
-                </div>
+                <p className="text-3xl font-bold text-gray-900">{stats.activeServices}</p>
+                {stats.serviceGrowth !== 0 && (
+                  <div className="flex items-center mt-2">
+                    {getGrowthIcon(stats.serviceGrowth)}
+                    <span className={`text-sm font-medium ml-1 ${getGrowthColor(stats.serviceGrowth)}`}>
+                      +{stats.serviceGrowth}%
+                    </span>
+                  </div>
+                )}
               </div>
               <div className="p-3 bg-orange-100 rounded-full">
                 <Activity className="w-6 h-6 text-orange-600" />
@@ -568,8 +474,10 @@ ${data.citasDelDia.map((cita: any) =>
           </CardContent>
         </Card>
       </div>
+      )}
 
       {/* Contenido Principal */}
+      {!loading && (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Citas del Día */}
         <div className="lg:col-span-2">
@@ -582,7 +490,10 @@ ${data.citasDelDia.map((cita: any) =>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {todayAppointments.map((appointment) => (
+                {todayAppointments.length === 0 ? (
+                  <p className="text-gray-500 text-center py-6">No hay citas programadas para hoy.</p>
+                ) : (
+                todayAppointments.map((appointment) => (
                   <div key={appointment.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                     <div className="flex items-center space-x-4">
                       <div className="text-center">
@@ -619,7 +530,8 @@ ${data.citasDelDia.map((cita: any) =>
                       </div>
                     </div>
                   </div>
-                ))}
+                ))
+                )}
               </div>
             </CardContent>
           </Card>
@@ -637,28 +549,32 @@ ${data.citasDelDia.map((cita: any) =>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {alerts.map((alert) => {
-                  const IconComponent = alert.icon;
-                  return (
-                    <div key={alert.id} className={`p-3 rounded-lg border ${alert.bgColor} ${alert.borderColor}`}>
-                      <div className="flex items-start space-x-3">
-                        <IconComponent className={`w-5 h-5 mt-0.5 ${alert.color}`} />
-                        <div className="flex-1">
-                          <h4 className="font-medium text-gray-900">{alert.title}</h4>
-                          <p className="text-sm text-gray-600 mt-1">{alert.message}</p>
-                          <Button 
-                            variant="link" 
-                            size="sm" 
-                            className="p-0 h-auto text-xs mt-2"
-                            onClick={() => handleAlertAction(alert.type)}
-                          >
-                            {alert.action}
-                          </Button>
+                {alerts.length === 0 ? (
+                  <p className="text-gray-500 text-sm py-2">No hay alertas.</p>
+                ) : (
+                  alerts.map((alert) => {
+                    const IconComponent = alert.icon;
+                    return (
+                      <div key={alert.id} className={`p-3 rounded-lg border ${alert.bgColor} ${alert.borderColor}`}>
+                        <div className="flex items-start space-x-3">
+                          <IconComponent className={`w-5 h-5 mt-0.5 ${alert.color}`} />
+                          <div className="flex-1">
+                            <h4 className="font-medium text-gray-900">{alert.title}</h4>
+                            <p className="text-sm text-gray-600 mt-1">{alert.message}</p>
+                            <Button 
+                              variant="link" 
+                              size="sm" 
+                              className="p-0 h-auto text-xs mt-2"
+                              onClick={() => handleAlertAction(alert.type)}
+                            >
+                              {alert.action}
+                            </Button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
               </div>
             </CardContent>
           </Card>
@@ -669,40 +585,47 @@ ${data.citasDelDia.map((cita: any) =>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <TrendingUp className="w-5 h-5 text-primary-blue" />
-                  Servicios Populares
+                  Servicios Populares (este mes)
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {topServices.map((service, index) => (
-                    <div key={service.name} className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <Badge className="bg-primary-blue text-white">{index + 1}</Badge>
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">{service.name}</p>
-                          <p className="text-xs text-gray-500">{service.count} realizados</p>
+                  {topServices.length === 0 ? (
+                    <p className="text-gray-500 text-sm">No hay datos del mes.</p>
+                  ) : (
+                    topServices.map((service, index) => (
+                      <div key={service.name} className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <Badge className="bg-primary-blue text-white">{index + 1}</Badge>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{service.name}</p>
+                            <p className="text-xs text-gray-500">{service.count} realizados</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-semibold text-green-600">S/ {service.revenue.toFixed(0)}</p>
+                          {service.growth !== 0 && (
+                            <div className="flex items-center">
+                              {getGrowthIcon(service.growth)}
+                              <span className={`text-xs ml-1 ${getGrowthColor(service.growth)}`}>
+                                {service.growth > 0 ? '+' : ''}{service.growth}%
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm font-semibold text-green-600">S/ {service.revenue.toFixed(0)}</p>
-                        <div className="flex items-center">
-                          {getGrowthIcon(service.growth)}
-                          <span className={`text-xs ml-1 ${getGrowthColor(service.growth)}`}>
-                            {service.growth > 0 ? '+' : ''}{service.growth}%
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>
           )}
         </div>
       </div>
+      )}
 
       {/* Actividad Reciente - solo admin */}
-      {!isGestor && (
+      {!loading && !isGestor && (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -712,20 +635,26 @@ ${data.citasDelDia.map((cita: any) =>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {recentActivity.map((activity) => {
-              const IconComponent = activity.icon;
-              return (
-                <div key={activity.id} className="flex items-center space-x-4 p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                  <div className={`p-2 rounded-full ${activity.bgColor}`}>
-                    <IconComponent className={`w-4 h-4 ${activity.color}`} />
+            {recentActivity.length === 0 ? (
+              <p className="text-gray-500 text-sm py-2">No hay actividad reciente.</p>
+            ) : (
+              recentActivity.map((activity) => {
+                const IconComponent = (ACTIVITY_ICON as Record<string, typeof Stethoscope>)[activity.type] || Stethoscope;
+                const color = (ACTIVITY_COLOR as Record<string, string>)[activity.type] || "text-gray-600";
+                const bgColor = (ACTIVITY_BG as Record<string, string>)[activity.type] || "bg-gray-50";
+                return (
+                  <div key={activity.id} className="flex items-center space-x-4 p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                    <div className={`p-2 rounded-full ${bgColor}`}>
+                      <IconComponent className={`w-4 h-4 ${color}`} />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-900">{activity.description}</p>
+                      <p className="text-xs text-gray-500">{activity.time}</p>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm text-gray-900">{activity.description}</p>
-                    <p className="text-xs text-gray-500">{activity.time}</p>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </CardContent>
       </Card>

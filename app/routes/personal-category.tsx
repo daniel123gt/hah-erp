@@ -3,7 +3,7 @@ import PersonalCategory from "~/dashboard/personal/PersonalCategory";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "Personal - Áreas - Health At Home ERP" },
+    { title: "Personal | Health At Home ERP" },
     { name: "description", content: "Áreas de personal" },
   ];
 }

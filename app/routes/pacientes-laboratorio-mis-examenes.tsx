@@ -1,6 +1,11 @@
+import type { Route } from "./+types/pacientes-laboratorio-mis-examenes";
 import { Navigate } from "react-router";
 import { useAuthStore } from "~/store/authStore";
 import MisExamenes from "~/dashboard/pacientes-portal/MisExamenes";
+
+export function meta({}: Route.MetaArgs) {
+  return [{ title: "Mis exámenes | Health At Home ERP" }];
+}
 
 export default function PacientesLaboratorioMisExamenesRoute() {
   const { isAuthenticated, hasHydrated } = useAuthStore();
