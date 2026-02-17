@@ -15,7 +15,11 @@ import labOrderService, {
   type LabOrderPaymentStatus,
 } from "~/services/labOrderService";
 import patientsService, { type Patient } from "~/services/patientsService";
-import { getPortalCredentialsByOrder } from "~/services/patientPortalService";
+import {
+  getPortalCredentialsByOrder,
+  ensurePatientPortalUser,
+  generatePortalPassword,
+} from "~/services/patientPortalService";
 import { UploadResultPdf } from "~/components/ui/upload-result-pdf";
 import { getExams } from "~/services/labService";
 import {
@@ -494,8 +498,37 @@ export default function OrdenDetalle() {
                   onClick={async () => {
                     setCredentialsLoading(true);
                     try {
-                      const result = await getPortalCredentialsByOrder(order.id);
+                      let result = await getPortalCredentialsByOrder(order.id);
                       if ("error" in result) {
+                        const noAccount =
+                          result.error.includes("404") ||
+                          result.error.includes("no tiene cuenta") ||
+                          result.error.includes("no existe") ||
+                          result.error.includes("not found");
+                        if (noAccount && order.patient_id && patient?.dni?.trim()) {
+                          const password = generatePortalPassword();
+                          const ensureResult = await ensurePatientPortalUser({
+                            patient_id: order.patient_id,
+                            dni: patient.dni.trim(),
+                            full_name: patient.name || "",
+                            email: patient.email?.trim(),
+                            phone: patient.phone?.trim(),
+                            password,
+                          });
+                          if (!ensureResult.ok) {
+                            toast.error(ensureResult.error || "No se pudo crear la cuenta del portal");
+                            return;
+                          }
+                          setCredentialsModal({ dni: patient.dni.trim(), password });
+                          toast.success("Se creó la cuenta del portal. Entregue estas credenciales al paciente.");
+                          return;
+                        }
+                        if (noAccount && (!patient || !patient.dni?.trim())) {
+                          toast.error(
+                            "Este paciente no tiene cuenta en el portal. Para crearla, el paciente debe tener DNI registrado (edite el perfil del paciente)."
+                          );
+                          return;
+                        }
                         toast.error(result.error);
                         return;
                       }
