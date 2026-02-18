@@ -32,6 +32,16 @@ interface LaboratoryExam {
 const parsePrice = (precio: string) =>
   parseFloat(precio.replace("S/", "").replace(",", "").trim()) || 0;
 
+/** Homologa tiempo de resultado para mostrar en catálogo */
+function displayTiempoResultado(tiempo: string | null | undefined): string {
+  if (!tiempo?.trim()) return "";
+  const t = tiempo.trim();
+  if (t.includes("1 día") && t.includes("Programación continua")) {
+    return "8 Horas, 12 horas o 16 horas";
+  }
+  return t;
+}
+
 export default function BuscarExamenes() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
@@ -186,7 +196,7 @@ export default function BuscarExamenes() {
                         <p
                           className={`text-sm text-gray-600 ${!expandedTiempo.has(exam.id) ? "line-clamp-3" : ""}`}
                         >
-                          {exam.tiempo_resultado}
+                          {displayTiempoResultado(exam.tiempo_resultado)}
                         </p>
                         <button
                           type="button"

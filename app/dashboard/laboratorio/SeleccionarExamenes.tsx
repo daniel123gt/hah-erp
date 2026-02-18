@@ -48,7 +48,8 @@ export default function LaboratorioPage() {
   const isGestor = getAppRole(user) === "gestor";
   const [exams, setExams] = useState<LaboratoryExam[]>([]);
   const [selectedExams, setSelectedExams] = useState<LaboratoryExam[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchByName, setSearchByName] = useState("");
+  const [searchByCode, setSearchByCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [stats, setStats] = useState({ total: 0, categories: 0 });
   const [quote, setQuote] = useState<ExamQuote | null>(null);
@@ -57,14 +58,15 @@ export default function LaboratorioPage() {
   const normalize = (text: string) =>
     text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
-  // Cargar exámenes desde Supabase
+  // Cargar exámenes desde Supabase (enviamos nombre o código al API; el otro filtro se aplica en cliente)
+  const searchParam = searchByName.trim() || searchByCode.trim();
   const loadExams = useCallback(async () => {
     try {
       setIsLoading(true);
       const result = await getExams({
         page: 1,
-        limit: 1000, // Cargar muchos para tener búsqueda rápida
-        search: searchQuery
+        limit: 1000,
+        search: searchParam || undefined
       });
       
       setExams(result.data);
@@ -74,7 +76,7 @@ export default function LaboratorioPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [searchQuery]);
+  }, [searchParam]);
 
   // Cargar estadísticas
   const loadStats = useCallback(async () => {
@@ -105,11 +107,12 @@ export default function LaboratorioPage() {
     }
   }, [selectedExams]);
 
-  // Filtrar exámenes localmente (como en tu MVP)
-  const filteredExams = exams.filter((exam) =>
-    normalize(exam.nombre).includes(normalize(searchQuery)) ||
-    normalize(exam.codigo).includes(normalize(searchQuery))
-  );
+  // Filtrar exámenes: debe coincidir por nombre (si hay texto) y por código (si hay texto)
+  const filteredExams = exams.filter((exam) => {
+    const matchName = !searchByName.trim() || normalize(exam.nombre).includes(normalize(searchByName));
+    const matchCode = !searchByCode.trim() || normalize(exam.codigo).includes(normalize(searchByCode));
+    return matchName && matchCode;
+  });
 
   // Manejar agregar examen a selección (igual que tu MVP)
   const handleAddToSelected = (exam: LaboratoryExam) => {
@@ -200,16 +203,33 @@ export default function LaboratorioPage() {
         </Card>
       </div>
 
-      {/* Búsqueda */}
+      {/* Búsqueda por nombre y por código */}
       <Card className="p-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <Input
-            placeholder="Buscar examen por nombre o código..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Buscar por nombre</label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input
+                placeholder="Ej. Glucosa, Hemograma..."
+                value={searchByName}
+                onChange={(e) => setSearchByName(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Buscar por código</label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input
+                placeholder="Ej. 1001, 2002..."
+                value={searchByCode}
+                onChange={(e) => setSearchByCode(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
         </div>
       </Card>
 
