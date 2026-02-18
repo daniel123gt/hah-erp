@@ -61,6 +61,22 @@ export default function LaboratorioDashboard() {
     loadRecentOrders();
   }, []);
 
+  const getStatusBadgeClassName = (status: string) => {
+    switch (status) {
+      case "Pendiente":
+        return "bg-amber-100 text-amber-800 border-amber-300";
+      case "Completado":
+        return "bg-emerald-100 text-emerald-800 border-emerald-300";
+      case "En Proceso":
+      case "En toma de muestra":
+        return "bg-blue-100 text-blue-800 border-blue-300";
+      case "Cancelado":
+        return "bg-red-100 text-red-800 border-red-300";
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-300";
+    }
+  };
+
   const dashboardCards = [
     {
       title: "Nueva Orden de Exámenes",
@@ -196,12 +212,7 @@ export default function LaboratorioDashboard() {
                     <span className="font-medium text-sm">
                       Orden #{order.id.slice(0, 8)}
                     </span>
-                    <Badge variant={
-                      order.status === 'Completado' ? 'default' :
-                      order.status === 'Pendiente' ? 'outline' :
-                      order.status === 'En toma de muestra' ? 'secondary' :
-                      'secondary'
-                    }>
+                    <Badge variant="secondary" className={getStatusBadgeClassName(order.status)}>
                       {order.status}
                     </Badge>
                   </div>

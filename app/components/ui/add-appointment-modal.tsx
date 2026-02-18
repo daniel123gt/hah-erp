@@ -160,6 +160,10 @@ export function AddAppointmentModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (variant === "procedimientos" && !formData.doctorName?.trim()) {
+      toast.error("La enfermera es obligatoria");
+      return;
+    }
     const { patientId, procedureCatalogId, procedureName, ...rest } = formData;
     const newAppointment: Appointment = {
       id: `A${Date.now()}`,

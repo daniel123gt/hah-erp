@@ -72,18 +72,19 @@ export default function OrdenesLaboratorio() {
     }
   };
 
-  const getStatusBadgeVariant = (status: string) => {
+  const getStatusBadgeClassName = (status: string) => {
     switch (status) {
+      case "Pendiente":
+        return "bg-amber-100 text-amber-800 border-amber-300";
       case "Completado":
-        return "default";
+        return "bg-emerald-100 text-emerald-800 border-emerald-300";
       case "En Proceso":
-        return "secondary";
       case "En toma de muestra":
-        return "secondary";
+        return "bg-blue-100 text-blue-800 border-blue-300";
       case "Cancelado":
-        return "destructive";
+        return "bg-red-100 text-red-800 border-red-300";
       default:
-        return "outline";
+        return "bg-gray-100 text-gray-800 border-gray-300";
     }
   };
 
@@ -147,7 +148,6 @@ export default function OrdenesLaboratorio() {
                 <SelectContent>
                   <SelectItem value="all">Todos los estados</SelectItem>
                   <SelectItem value="Pendiente">Pendiente</SelectItem>
-                  <SelectItem value="En toma de muestra">En toma de muestra</SelectItem>
                   <SelectItem value="En Proceso">En Proceso</SelectItem>
                   <SelectItem value="Completado">Completado</SelectItem>
                   <SelectItem value="Cancelado">Cancelado</SelectItem>
@@ -225,7 +225,7 @@ export default function OrdenesLaboratorio() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <Badge variant={getStatusBadgeVariant(order.status)}>
+                            <Badge variant="secondary" className={getStatusBadgeClassName(order.status)}>
                               {order.status}
                             </Badge>
                           </TableCell>

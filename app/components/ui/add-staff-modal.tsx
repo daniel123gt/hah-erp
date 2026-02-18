@@ -129,7 +129,7 @@ export function AddStaffModal({ onStaffAdded }: AddStaffModalProps) {
       // Crear empleado usando el servicio de Supabase
       const createdStaff = await staffService.createStaff({
         name: formData.name,
-        email: formData.email,
+        email: formData.email.trim() || undefined,
         phone: formData.phone,
         position: formData.position,
         department: formData.department,
@@ -221,14 +221,13 @@ export function AddStaffModal({ onStaffAdded }: AddStaffModalProps) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email *</Label>
+                  <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
                     type="email"
                     value={formData.email}
                     onChange={(e) => handleInputChange("email", e.target.value)}
                     placeholder="Ej: roberto.silva@healthathome.com"
-                    required
                   />
                 </div>
                 <div className="space-y-2">

@@ -222,14 +222,13 @@ export function EditStaffModal({ staff, onStaffUpdated }: EditStaffModalProps) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-email">Email *</Label>
+                  <Label htmlFor="edit-email">Email</Label>
                   <Input
                     id="edit-email"
                     type="email"
                     value={formData.email}
                     onChange={(e) => handleInputChange("email", e.target.value)}
                     placeholder="Ej: roberto.silva@healthathome.com"
-                    required
                   />
                 </div>
                 <div className="space-y-2">

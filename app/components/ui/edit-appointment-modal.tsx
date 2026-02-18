@@ -16,6 +16,7 @@ import { patientsService, type Patient } from "~/services/patientsService";
 import { procedureService } from "~/services/procedureService";
 import { staffService } from "~/services/staffService";
 import { getDepartmentForCategory } from "~/dashboard/personal/categories";
+import { toast } from "sonner";
 import { 
   Edit, 
   Calendar, 
@@ -152,6 +153,10 @@ export function EditAppointmentModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (variant === "procedimientos" && !formData.doctorName?.trim()) {
+      toast.error("La enfermera es obligatoria");
+      return;
+    }
     onAppointmentUpdated(formData);
     setIsOpen(false);
   };

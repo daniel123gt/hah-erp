@@ -6,6 +6,8 @@
 import patientsService from "~/services/patientsService";
 import { appointmentsService } from "~/services/appointmentsService";
 import { procedureService, type ProcedureRecord } from "~/services/procedureService";
+import labOrderService from "~/services/labOrderService";
+import { homeCareService } from "~/services/homeCareService";
 
 function sumRecordRevenue(r: ProcedureRecord): number {
   return (
@@ -74,18 +76,27 @@ export async function getDashboardData(): Promise<DashboardData> {
   const today = new Date().toISOString().split("T")[0];
   const { from: monthFrom, to: monthTo } = getMonthRange();
 
-  const [patientStats, medicinaCitas, procedimientosCitas, procedureCatalog, procedureRecords] =
-    await Promise.all([
-      patientsService.getPatientStats().catch(() => ({ total: 0, thisMonth: 0 })),
-      appointmentsService.list("medicina"),
-      appointmentsService.list("procedimientos"),
-      procedureService.getCatalog(true),
-      procedureService.getRecords({
-        fromDate: monthFrom,
-        toDate: monthTo,
-        limit: 500,
-      }),
-    ]);
+  const [
+    patientStats,
+    medicinaCitas,
+    procedimientosCitas,
+    procedureCatalog,
+    procedureRecords,
+    labRevenue,
+    homeCareRevenue,
+  ] = await Promise.all([
+    patientsService.getPatientStats().catch(() => ({ total: 0, thisMonth: 0 })),
+    appointmentsService.list("medicina"),
+    appointmentsService.list("procedimientos"),
+    procedureService.getCatalog(true),
+    procedureService.getRecords({
+      fromDate: monthFrom,
+      toDate: monthTo,
+      limit: 500,
+    }),
+    labOrderService.getMonthlyRevenue(monthFrom, monthTo),
+    homeCareService.getMonthlyRevenue(monthFrom, monthTo),
+  ]);
 
   const todayMedicina = medicinaCitas.filter((c) => c.date === today);
   const todayProcedimientos = procedimientosCitas.filter((c) => c.date === today);
@@ -112,10 +123,12 @@ export async function getDashboardData(): Promise<DashboardData> {
     })),
   ].sort((a, b) => a.time.localeCompare(b.time));
 
-  const monthlyRevenue = procedureRecords.data.reduce(
+  // Solo procedimientos con pago registrado (ingreso > 0); los pendientes suman 0 y no se cuentan como "completados"
+  const procedureRevenue = procedureRecords.data.reduce(
     (sum, r) => sum + sumRecordRevenue(r),
     0
   );
+  const monthlyRevenue = procedureRevenue + labRevenue + homeCareRevenue;
 
   const byProcedure = new Map<string, { count: number; revenue: number }>();
   procedureRecords.data.forEach((r) => {
