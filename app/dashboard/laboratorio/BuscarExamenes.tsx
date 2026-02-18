@@ -39,6 +39,9 @@ function displayTiempoResultado(tiempo: string | null | undefined): string {
   if (t.includes("1 día") && t.includes("Programación continua")) {
     return "8 Horas, 12 horas o 16 horas";
   }
+  if (t.includes("1 día") && t.includes("Programación: diario")) {
+    return "8 Horas, 12 horas o 16 horas";
+  }
   return t;
 }
 
