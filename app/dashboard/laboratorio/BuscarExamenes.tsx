@@ -13,7 +13,6 @@ import {
   Clock,
   AlertCircle,
   Loader2,
-  Info,
   ArrowLeft
 } from "lucide-react";
 
@@ -30,10 +29,14 @@ interface LaboratoryExam {
   updated_at: string;
 }
 
+const parsePrice = (precio: string) =>
+  parseFloat(precio.replace("S/", "").replace(",", "").trim()) || 0;
+
 export default function BuscarExamenes() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const isGestor = getAppRole(user) === "gestor";
+  const isAdmin = !isGestor;
   const [exams, setExams] = useState<LaboratoryExam[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -41,6 +44,16 @@ export default function BuscarExamenes() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const itemsPerPage = 20; // Limitar a 20 exámenes por página para mejor rendimiento
+  const [expandedTiempo, setExpandedTiempo] = useState<Set<string>>(new Set());
+
+  const toggleTiempo = (id: string) => {
+    setExpandedTiempo((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   // Cargar exámenes desde Supabase con paginación
   const loadExams = useCallback(async () => {
@@ -147,27 +160,21 @@ export default function BuscarExamenes() {
                           {exam.codigo}
                         </Badge>
                       </div>
-                      {!isGestor && (
+                      <div className="space-y-0.5">
+                        {isAdmin && (
+                          <div className="text-sm text-gray-600">
+                            Precio original: <span className="font-medium">{exam.precio}</span>
+                          </div>
+                        )}
                         <div className="text-lg font-bold text-green-600">
-                          {exam.precio}
+                          Precio venta: S/ {(parsePrice(exam.precio) * 1.2).toFixed(2)}
                         </div>
-                      )}
+                      </div>
                     </div>
                     <FileText className="w-6 h-6 text-blue-500 flex-shrink-0" />
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Descripción */}
-                  {exam.descripcion && (
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <Info className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm font-medium text-gray-700">Descripción</span>
-                      </div>
-                      <p className="text-sm text-gray-600 pl-6">{exam.descripcion}</p>
-                    </div>
-                  )}
-
                   {/* Tiempo de resultado */}
                   {exam.tiempo_resultado && (
                     <div>
@@ -175,7 +182,20 @@ export default function BuscarExamenes() {
                         <Clock className="w-4 h-4 text-gray-400" />
                         <span className="text-sm font-medium text-gray-700">Tiempo de Resultado</span>
                       </div>
-                      <p className="text-sm text-gray-600 pl-6">{exam.tiempo_resultado}</p>
+                      <div className="pl-6">
+                        <p
+                          className={`text-sm text-gray-600 ${!expandedTiempo.has(exam.id) ? "line-clamp-3" : ""}`}
+                        >
+                          {exam.tiempo_resultado}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => toggleTiempo(exam.id)}
+                          className="text-xs text-primary-blue underline font-bold mt-1"
+                        >
+                          {expandedTiempo.has(exam.id) ? "Ver menos" : "Ver más"}
+                        </button>
+                      </div>
                     </div>
                   )}
 
@@ -192,7 +212,7 @@ export default function BuscarExamenes() {
                     </div>
                   )}
 
-                  {!exam.descripcion && !exam.tiempo_resultado && !exam.preparacion && (
+                  {!exam.tiempo_resultado && !exam.preparacion && (
                     <p className="text-sm text-gray-500 italic">
                       No hay información adicional disponible para este examen
                     </p>

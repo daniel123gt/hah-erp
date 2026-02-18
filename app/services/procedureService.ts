@@ -342,8 +342,9 @@ export const procedureService = {
     fromDate?: string;
     toDate?: string;
     search?: string;
+    paymentStatus?: "pendiente" | "cancelado";
   } = {}): Promise<{ data: ProcedureRecordWithDetails[]; total: number }> {
-    const { page = 1, limit = 20, fromDate, toDate, search = "" } = options;
+    const { page = 1, limit = 20, fromDate, toDate, search = "", paymentStatus } = options;
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 
@@ -362,6 +363,16 @@ export const procedureService = {
       query = query.or(
         `patient_name.ilike.%${search}%,procedure_name.ilike.%${search}%,district.ilike.%${search}%,numero_operacion.ilike.%${search}%`
       );
+    }
+    if (paymentStatus === "pendiente") {
+      query = query
+        .eq("yape", 0)
+        .eq("plin", 0)
+        .eq("transfer_deposito", 0)
+        .eq("tarjeta_link_pos", 0)
+        .eq("efectivo", 0);
+    } else if (paymentStatus === "cancelado") {
+      query = query.or("yape.gt.0,plin.gt.0,transfer_deposito.gt.0,tarjeta_link_pos.gt.0,efectivo.gt.0");
     }
 
     const { data, error, count } = await query;

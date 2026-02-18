@@ -20,6 +20,7 @@ import { formatDateOnly } from "~/lib/utils";
 import { patientsService } from "~/services/patientsService";
 import { AddProcedureModal } from "~/components/ui/add-procedure-modal";
 import { EditProcedureModal } from "~/components/ui/edit-procedure-modal";
+import { Badge } from "~/components/ui/badge";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -51,6 +52,7 @@ export default function ListadoProcedimientos() {
   const [search, setSearch] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [paymentStatus, setPaymentStatus] = useState<"" | "pendiente" | "cancelado">("");
   const [page, setPage] = useState(1);
   const limit = 10;
   const [editRecord, setEditRecord] = useState<ProcedureRecordWithDetails | null>(null);
@@ -64,6 +66,7 @@ export default function ListadoProcedimientos() {
         search: search || undefined,
         fromDate: fromDate || undefined,
         toDate: toDate || undefined,
+        paymentStatus: paymentStatus || undefined,
       });
       setRecords(res.data);
       setTotal(res.total);
@@ -73,7 +76,7 @@ export default function ListadoProcedimientos() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, fromDate, toDate]);
+  }, [page, search, fromDate, toDate, paymentStatus]);
 
   useEffect(() => {
     loadRecords();
@@ -140,6 +143,15 @@ export default function ListadoProcedimientos() {
             onChange={(e) => setToDate(e.target.value)}
             className="px-3 py-2 border rounded-md"
           />
+          <select
+            value={paymentStatus}
+            onChange={(e) => setPaymentStatus((e.target.value || "") as "" | "pendiente" | "cancelado")}
+            className="px-3 py-2 border rounded-md min-w-[140px]"
+          >
+            <option value="">Estado pago: Todos</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
         </div>
       </Card>
 
@@ -162,6 +174,7 @@ export default function ListadoProcedimientos() {
                   <TableHead>Paciente</TableHead>
                   <TableHead>Procedimiento</TableHead>
                   <TableHead>Distrito</TableHead>
+                  <TableHead>Estado Pago</TableHead>
                   <TableHead className="text-right">Ingreso (S/.)</TableHead>
                   <TableHead className="text-right">Material</TableHead>
                   <TableHead className="text-right">Combustible</TableHead>
@@ -175,6 +188,7 @@ export default function ListadoProcedimientos() {
                   const util = r.utilidad ?? ing - Number(r.gastos_material || 0) - Number(r.combustible || 0);
                   const displayName = (r.patient as { name?: string } | null)?.name ?? r.patient_name ?? "-";
                   const procName = (r.procedure_catalog as ProcedureCatalogItem | null)?.name ?? r.procedure_name ?? "-";
+                  const estadoPago = ing === 0 ? "Pendiente" : "Cancelado";
                   return (
                     <TableRow key={r.id}>
                       <TableCell className="whitespace-nowrap">
@@ -183,6 +197,14 @@ export default function ListadoProcedimientos() {
                       <TableCell>{displayName}</TableCell>
                       <TableCell>{procName}</TableCell>
                       <TableCell>{r.district ?? "-"}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="secondary"
+                          className={estadoPago === "Pendiente" ? "bg-amber-100 text-amber-800 border-amber-300" : "bg-emerald-100 text-emerald-800 border-emerald-300"}
+                        >
+                          {estadoPago}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="text-right">{ing.toFixed(2)}</TableCell>
                       <TableCell className="text-right">{Number(r.gastos_material || 0).toFixed(2)}</TableCell>
                       <TableCell className="text-right">{Number(r.combustible || 0).toFixed(2)}</TableCell>
