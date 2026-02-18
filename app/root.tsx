@@ -8,6 +8,7 @@ import {
 } from "react-router";
 import Loading from "./components/root/Loading/Loading";
 import { Toaster } from "~/components/ui/sonner";
+import { VersionUpdateBanner } from "~/components/VersionUpdateBanner";
 
 import type { Route } from "./+types/root";
 import "./app.css";
@@ -39,6 +40,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Loading />
         {children}
         <Toaster richColors position="top-center" theme="light" />
+        <VersionUpdateBanner />
         <ScrollRestoration />
         <Scripts />
       </body>
