@@ -318,7 +318,6 @@ export function AddStaffModal({ onStaffAdded }: AddStaffModalProps) {
                     placeholder="Ej: 4500"
                     min="0"
                     step="0.01"
-                    required
                   />
                 </div>
                 <div className="space-y-2">
