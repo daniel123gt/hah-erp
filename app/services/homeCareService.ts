@@ -325,6 +325,21 @@ export const homeCareService = {
     const dates = (data ?? []) as { date: string }[];
     return dates.map((r) => (typeof r.date === "string" ? r.date : String(r.date)).slice(0, 10));
   },
+
+  /** Ingresos del mes: suma de monto_total en periodos con fecha_pago en [fromDate, toDate]. */
+  async getMonthlyRevenue(fromDate: string, toDate: string): Promise<number> {
+    const { data, error } = await supabase
+      .from("home_care_periods")
+      .select("monto_total")
+      .gte("fecha_pago", fromDate)
+      .lte("fecha_pago", toDate)
+      .not("fecha_pago", "is", null);
+    if (error) {
+      console.error("Error al obtener ingresos de cuidados en casa:", error);
+      return 0;
+    }
+    return (data ?? []).reduce((sum, row) => sum + Number(row.monto_total ?? 0), 0);
+  },
 };
 
 export default homeCareService;

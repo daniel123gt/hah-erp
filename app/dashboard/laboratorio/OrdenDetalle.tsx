@@ -192,18 +192,19 @@ export default function OrdenDetalle() {
     }
   }, [searchQuery, isAddingExams, order]);
 
-  const getStatusBadgeVariant = (status: string) => {
+  const getStatusBadgeClassName = (status: string) => {
     switch (status) {
+      case "Pendiente":
+        return "bg-amber-100 text-amber-800 border-amber-300";
       case "Completado":
-        return "default";
+        return "bg-emerald-100 text-emerald-800 border-emerald-300";
       case "En Proceso":
-        return "secondary";
       case "En toma de muestra":
-        return "secondary";
+        return "bg-blue-100 text-blue-800 border-blue-300";
       case "Cancelado":
-        return "destructive";
+        return "bg-red-100 text-red-800 border-red-300";
       default:
-        return "outline";
+        return "bg-gray-100 text-gray-800 border-gray-300";
     }
   };
 
@@ -270,7 +271,7 @@ export default function OrdenDetalle() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant={getStatusBadgeVariant(order.status)} className="text-sm px-3 py-1">
+          <Badge variant="secondary" className={`text-sm px-3 py-1 ${getStatusBadgeClassName(order.status)}`}>
             {order.status}
           </Badge>
           <Badge variant={getPriorityBadgeVariant(order.priority)} className="text-sm px-3 py-1">
@@ -681,7 +682,7 @@ export default function OrdenDetalle() {
                           <span className="font-semibold">S/ {item.price.toFixed(2)}</span>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={getStatusBadgeVariant(item.status)}>
+                          <Badge variant="secondary" className={getStatusBadgeClassName(item.status)}>
                             {item.status}
                           </Badge>
                         </TableCell>

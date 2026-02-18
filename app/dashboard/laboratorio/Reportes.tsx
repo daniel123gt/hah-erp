@@ -63,6 +63,22 @@ export default function LaboratorioReportes() {
   });
   const [examStats, setExamStats] = useState<ExamStats[]>([]);
 
+  const getStatusBadgeClassName = (status: string) => {
+    switch (status) {
+      case "Pendiente":
+        return "bg-amber-100 text-amber-800 border-amber-300";
+      case "Completado":
+        return "bg-emerald-100 text-emerald-800 border-emerald-300";
+      case "En Proceso":
+      case "En toma de muestra":
+        return "bg-blue-100 text-blue-800 border-blue-300";
+      case "Cancelado":
+        return "bg-red-100 text-red-800 border-red-300";
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-300";
+    }
+  };
+
   const loadReportData = async () => {
     try {
       setIsLoading(true);
@@ -366,12 +382,7 @@ export default function LaboratorioReportes() {
                             <td className="p-2">{formatDateOnly(order.order_date)}</td>
                             <td className="p-2">{order.physician_name || '-'}</td>
                             <td className="p-2">
-                              <Badge variant={
-                                order.status === 'Completado' ? 'default' :
-                                order.status === 'Pendiente' ? 'outline' :
-                                order.status === 'En toma de muestra' ? 'secondary' :
-                                'secondary'
-                              }>
+                              <Badge variant="secondary" className={getStatusBadgeClassName(order.status)}>
                                 {order.status}
                               </Badge>
                             </td>

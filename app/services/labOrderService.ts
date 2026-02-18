@@ -559,7 +559,24 @@ export const labOrderService = {
       console.error('Error al eliminar examen:', error);
       throw new Error(error?.message || 'Error al eliminar examen de la orden');
     }
-  }
+  },
+
+  /** Ingresos totales de órdenes con order_date en el rango y payment_status = 'Pagado'. */
+  async getMonthlyRevenue(fromDate: string, toDate: string): Promise<number> {
+    try {
+      const { data, error } = await supabase
+        .from('lab_exam_orders')
+        .select('total_amount')
+        .gte('order_date', fromDate)
+        .lte('order_date', toDate)
+        .eq('payment_status', 'Pagado');
+      if (error) throw error;
+      return (data ?? []).reduce((sum, row) => sum + Number(row.total_amount ?? 0), 0);
+    } catch (error: any) {
+      console.error('Error al obtener ingresos de laboratorio:', error);
+      return 0;
+    }
+  },
 };
 
 export default labOrderService;
