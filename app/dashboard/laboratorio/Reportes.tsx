@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import labOrderService, { type LabExamOrder } from "~/services/labOrderService";
+import { formatDateOnly } from "~/lib/utils";
 import { getExams } from "~/services/labService";
 import { toast } from "sonner";
 import {
@@ -74,11 +75,8 @@ export default function LaboratorioReportes() {
 
       // Filtrar por rango de fechas
       const filteredOrders = result.data.filter(order => {
-        const orderDate = new Date(order.order_date);
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999); // Incluir todo el día final
-        return orderDate >= start && orderDate <= end;
+        const orderDateStr = String(order.order_date).trim().slice(0, 10);
+        return orderDateStr >= startDate && orderDateStr <= endDate;
       });
 
       setOrders(filteredOrders);
@@ -365,7 +363,7 @@ export default function LaboratorioReportes() {
                         {orders.map((order) => (
                           <tr key={order.id} className="border-b hover:bg-gray-50">
                             <td className="p-2 font-mono text-xs">{order.id.slice(0, 8)}</td>
-                            <td className="p-2">{new Date(order.order_date).toLocaleDateString('es-ES')}</td>
+                            <td className="p-2">{formatDateOnly(order.order_date)}</td>
                             <td className="p-2">{order.physician_name || '-'}</td>
                             <td className="p-2">
                               <Badge variant={
@@ -485,7 +483,7 @@ export default function LaboratorioReportes() {
                             .sort((a, b) => a[0].localeCompare(b[0]))
                             .map(([date, data]) => (
                               <tr key={date} className="border-b hover:bg-gray-50">
-                                <td className="p-2">{new Date(date).toLocaleDateString('es-ES')}</td>
+                                <td className="p-2">{formatDateOnly(date)}</td>
                                 <td className="p-2 text-right">{data.orders}</td>
                                 <td className="p-2 text-right">{data.exams}</td>
                                 <td className="p-2 text-right font-semibold text-green-600">S/ {data.revenue.toFixed(2)}</td>

@@ -12,6 +12,7 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import { procedureService, type ProcedureRecordWithDetails, type ProcedureCatalogItem } from "~/services/procedureService";
+import { formatDateOnly } from "~/lib/utils";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
 function totalIngreso(r: ProcedureRecordWithDetails): number {
@@ -194,7 +195,7 @@ export default function ProcedimientosReportes() {
                         return (
                           <TableRow key={r.id}>
                             <TableCell className="whitespace-nowrap">
-                              {new Date(r.fecha).toLocaleDateString("es-PE")}
+                              {formatDateOnly(r.fecha, "es-PE")}
                             </TableCell>
                             <TableCell>{displayName}</TableCell>
                             <TableCell>{procName}</TableCell>

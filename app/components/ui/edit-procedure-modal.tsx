@@ -24,7 +24,7 @@ interface EditProcedureModalProps {
 export function EditProcedureModal({ record, onClose, onUpdated }: EditProcedureModalProps) {
   const initialPayment = getPaymentFromRecord(record);
   const [form, setForm] = useState({
-    fecha: record.fecha,
+    fecha: String(record.fecha).trim().slice(0, 10),
     patient_id: record.patient_id ?? "",
     patient_name: record.patient_name ?? "",
     quantity: record.quantity,
@@ -69,12 +69,26 @@ export function EditProcedureModal({ record, onClose, onUpdated }: EditProcedure
     e.preventDefault();
     setLoading(true);
     try {
+      let patientId: string | null = form.patient_id || null;
+      let patientName: string | null = form.patient_name?.trim() || null;
+
+      // Si no hay paciente seleccionado pero sí nombre, crear nuevo paciente
+      let createdNewPatient = false;
+      if (!patientId && form.patient_name?.trim()) {
+        const newPatient = await patientsService.createPatient({
+          name: form.patient_name.trim(),
+        });
+        patientId = newPatient.id;
+        patientName = null;
+        createdNewPatient = true;
+      }
+
       const payment = recordToPaymentPayload(form.paymentMethod, form.paymentAmount);
       await procedureService.updateRecord({
         id: record.id,
         fecha: form.fecha,
-        patient_id: form.patient_id || null,
-        patient_name: form.patient_name || null,
+        patient_id: patientId,
+        patient_name: patientName,
         quantity: form.quantity,
         procedure_catalog_id: form.procedure_catalog_id || null,
         procedure_name: form.procedure_name || null,
@@ -86,7 +100,7 @@ export function EditProcedureModal({ record, onClose, onUpdated }: EditProcedure
         costo_adicional_servicio: form.costo_adicional_servicio,
         observacion: form.observacion || null,
       });
-      toast.success("Procedimiento actualizado");
+      toast.success(createdNewPatient ? "Paciente creado y procedimiento actualizado" : "Procedimiento actualizado");
       onClose();
       onUpdated();
     } catch (err) {
@@ -147,10 +161,11 @@ export function EditProcedureModal({ record, onClose, onUpdated }: EditProcedure
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Nombre (si no está en la lista)</label>
+                  <label className="block text-sm font-medium mb-1">Si no está en la lista, nombre para crear nuevo paciente</label>
                   <Input
                     value={form.patient_name}
                     onChange={(e) => setForm((f) => ({ ...f, patient_name: e.target.value }))}
+                    placeholder="Solo si dará de alta al paciente"
                   />
                 </div>
                 <div>
