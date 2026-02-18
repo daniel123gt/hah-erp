@@ -20,8 +20,12 @@ interface AddProcedureModalProps {
   onCreated: () => void;
 }
 
-const emptyForm = {
-  fecha: new Date().toISOString().split("T")[0],
+function getLocalDateString() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+const emptyFormBase = {
   patient_id: "" as string | null,
   patient_name: "",
   procedure_catalog_id: "" as string | null,
@@ -36,9 +40,13 @@ const emptyForm = {
   observacion: "",
 };
 
+function getEmptyForm() {
+  return { ...emptyFormBase, fecha: getLocalDateString() };
+}
+
 export function AddProcedureModal({ onCreated }: AddProcedureModalProps) {
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(getEmptyForm());
   const [patients, setPatients] = useState<Array<{ id: string; name: string }>>([]);
   const [catalog, setCatalog] = useState<ProcedureCatalogItem[]>([]);
   const [districts, setDistricts] = useState<Array<{ name: string }>>([]);
@@ -70,11 +78,25 @@ export function AddProcedureModal({ onCreated }: AddProcedureModalProps) {
     e.preventDefault();
     setLoading(true);
     try {
+      let patientId: string | null = form.patient_id || null;
+      let patientName: string | null = form.patient_name?.trim() || null;
+
+      // Si no hay paciente seleccionado pero sí nombre, crear nuevo paciente
+      let createdNewPatient = false;
+      if (!patientId && form.patient_name?.trim()) {
+        const newPatient = await patientsService.createPatient({
+          name: form.patient_name.trim(),
+        });
+        patientId = newPatient.id;
+        patientName = null;
+        createdNewPatient = true;
+      }
+
       const payment = recordToPaymentPayload(form.paymentMethod, form.paymentAmount);
       await procedureService.createRecord({
         fecha: form.fecha,
-        patient_id: form.patient_id || null,
-        patient_name: form.patient_name || null,
+        patient_id: patientId,
+        patient_name: patientName,
         quantity: 1,
         procedure_catalog_id: form.procedure_catalog_id || null,
         procedure_name: form.procedure_name || null,
@@ -86,8 +108,8 @@ export function AddProcedureModal({ onCreated }: AddProcedureModalProps) {
         costo_adicional_servicio: form.costo_adicional_servicio,
         observacion: form.observacion || null,
       });
-      toast.success("Procedimiento registrado");
-      setForm(emptyForm);
+      toast.success(createdNewPatient ? "Paciente creado y procedimiento registrado" : "Procedimiento registrado");
+      setForm(getEmptyForm());
       setOpen(false);
       onCreated();
     } catch (err) {
@@ -154,11 +176,11 @@ export function AddProcedureModal({ onCreated }: AddProcedureModalProps) {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Nombre (si no está en la lista)</label>
+                  <label className="block text-sm font-medium mb-1">Si no está en la lista, nombre para crear nuevo paciente</label>
                   <Input
                     value={form.patient_name}
                     onChange={(e) => setForm((f) => ({ ...f, patient_name: e.target.value }))}
-                    placeholder="Ej. Juan Pérez"
+                    placeholder="Ej. Juan Pérez (solo si dará de alta al paciente)"
                   />
                 </div>
                 <div>

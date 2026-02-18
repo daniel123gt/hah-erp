@@ -16,6 +16,7 @@ import {
   type ProcedureRecordWithDetails,
   type ProcedureCatalogItem,
 } from "~/services/procedureService";
+import { formatDateOnly } from "~/lib/utils";
 import { patientsService } from "~/services/patientsService";
 import { AddProcedureModal } from "~/components/ui/add-procedure-modal";
 import { EditProcedureModal } from "~/components/ui/edit-procedure-modal";
@@ -177,7 +178,7 @@ export default function ListadoProcedimientos() {
                   return (
                     <TableRow key={r.id}>
                       <TableCell className="whitespace-nowrap">
-                        {new Date(r.fecha).toLocaleDateString("es-PE")}
+                        {formatDateOnly(r.fecha)}
                       </TableCell>
                       <TableCell>{displayName}</TableCell>
                       <TableCell>{procName}</TableCell>

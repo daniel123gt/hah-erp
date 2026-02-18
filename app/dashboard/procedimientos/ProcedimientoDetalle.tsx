@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { procedureService, type ProcedureRecordWithDetails, type ProcedureCatalogItem, getPaymentFromRecord, PAYMENT_METHOD_OPTIONS } from "~/services/procedureService";
+import { formatDateOnly } from "~/lib/utils";
 import { ArrowLeft, Loader2, User, FileText, DollarSign } from "lucide-react";
 
 function totalIngreso(r: ProcedureRecordWithDetails): number {
@@ -76,12 +77,16 @@ export default function ProcedimientoDetalle() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Detalle del procedimiento</h1>
           <p className="text-gray-600 mt-1">
-            {new Date(record.fecha).toLocaleDateString("es-PE", {
-              weekday: "long",
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
+            {(() => {
+              const s = String(record.fecha).trim().slice(0, 10);
+              const [y, m, d] = s.split("-").map(Number);
+              return new Date(y, m - 1, d).toLocaleDateString("es-PE", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              });
+            })()}
           </p>
         </div>
         <Button variant="outline" onClick={() => navigate("/procedimientos/listado")}>
@@ -104,7 +109,7 @@ export default function ProcedimientoDetalle() {
           </div>
           <div>
             <p className="text-sm text-gray-500">Fecha</p>
-            <p className="font-medium">{new Date(record.fecha).toLocaleDateString("es-PE")}</p>
+            <p className="font-medium">{formatDateOnly(record.fecha, "es-PE")}</p>
           </div>
           <div>
             <p className="text-sm text-gray-500">Cantidad</p>

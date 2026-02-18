@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Search, Eye, Calendar, FileText, Loader2, Filter } from "lucide-react";
 import labOrderService, { type LabExamOrder } from "~/services/labOrderService";
 import patientsService, { type Patient } from "~/services/patientsService";
+import { formatDateOnly } from "~/lib/utils";
 import {
   Select,
   SelectContent,
@@ -207,7 +208,7 @@ export default function OrdenesLaboratorio() {
                             {order.id.slice(0, 8)}...
                           </TableCell>
                           <TableCell>
-                            {new Date(order.order_date).toLocaleDateString('es-ES')}
+                            {formatDateOnly(order.order_date)}
                           </TableCell>
                           <TableCell className="font-medium">
                             {patient?.name || 'Paciente no encontrado'}

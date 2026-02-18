@@ -203,6 +203,7 @@ export const labOrderService = {
         .from('lab_exam_orders')
         .select('*', { count: 'exact' })
         .order('order_date', { ascending: false })
+        .order('created_at', { ascending: false })
         .range(from, to);
 
       if (status) {

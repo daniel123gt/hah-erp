@@ -9,6 +9,7 @@ import { Label } from "~/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "~/components/ui/dialog";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2, FileText, User, Calendar, Edit, Plus, X, Search, Trash2, KeyRound, Copy } from "lucide-react";
+import { formatDateOnly } from "~/lib/utils";
 import labOrderService, {
   type LabExamOrder,
   type LabOrderPaymentMethod,
@@ -300,7 +301,7 @@ export default function OrdenDetalle() {
             <CardContent className="space-y-4">
               <div>
                 <span className="text-sm text-gray-500">Fecha de Orden:</span>
-                <p className="font-medium">{new Date(order.order_date).toLocaleDateString('es-ES')}</p>
+                <p className="font-medium">{formatDateOnly(order.order_date)}</p>
               </div>
               {order.physician_name && (
                 <div>

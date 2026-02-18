@@ -5,6 +5,7 @@ import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { getExamStats } from "~/services/labService";
 import labOrderService, { type LabExamOrder } from "~/services/labOrderService";
+import { formatDateOnly } from "~/lib/utils";
 import { toast } from "sonner";
 import {
   FileText,
@@ -205,7 +206,7 @@ export default function LaboratorioDashboard() {
                     </Badge>
                   </div>
                   <p className="text-sm text-gray-600">
-                    {new Date(order.order_date).toLocaleDateString('es-ES')} • {order.items.length} exámenes • S/ {order.total_amount.toFixed(2)}
+                    {formatDateOnly(order.order_date)} • {order.items.length} exámenes • S/ {order.total_amount.toFixed(2)}
                   </p>
                 </div>
                 <Button variant="ghost" size="sm">
