@@ -11,6 +11,13 @@ import {
   DialogTrigger,
 } from "~/components/ui/dialog";
 import { Badge } from "~/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
 import { Combobox } from "~/components/ui/combobox";
 import { patientsService, type Patient } from "~/services/patientsService";
 import { procedureService } from "~/services/procedureService";
@@ -60,7 +67,10 @@ export function EditAppointmentModal({
   onAppointmentUpdated,
   variant = "medicina",
 }: EditAppointmentModalProps) {
-  const professionalLabel = variant === "procedimientos" ? "Enfermera" : "Médico";
+  const [procedureProfessionalKind, setProcedureProfessionalKind] = useState<"enfermera" | "medico">("enfermera");
+  const professionalLabel = variant === "procedimientos"
+    ? (procedureProfessionalKind === "enfermera" ? "Enfermera" : "Médico")
+    : "Médico";
   const [isOpen, setIsOpen] = useState(false);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loadingPatients, setLoadingPatients] = useState(false);
@@ -87,7 +97,9 @@ export function EditAppointmentModal({
   useEffect(() => {
     if (!isOpen) return;
     const department = variant === "procedimientos"
-      ? getDepartmentForCategory("enfermeria")
+      ? (procedureProfessionalKind === "enfermera"
+          ? getDepartmentForCategory("enfermeria")
+          : getDepartmentForCategory("medicina"))
       : getDepartmentForCategory("medicina");
     if (!department) {
       setProfessionals([]);
@@ -106,7 +118,7 @@ export function EditAppointmentModal({
       )
       .catch(() => setProfessionals([]))
       .finally(() => setLoadingProfessionals(false));
-  }, [isOpen, variant]);
+  }, [isOpen, variant, procedureProfessionalKind]);
 
   useEffect(() => {
     if (!isOpen || variant !== "procedimientos") return;
@@ -154,7 +166,7 @@ export function EditAppointmentModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (variant === "procedimientos" && !formData.doctorName?.trim()) {
-      toast.error("La enfermera es obligatoria");
+      toast.error("Debe asignar un profesional (enfermera o médico).");
       return;
     }
     onAppointmentUpdated(formData);
@@ -381,6 +393,28 @@ export function EditAppointmentModal({
               </CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {variant === "procedimientos" && (
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Asignar
+                  </label>
+                  <Select
+                    value={procedureProfessionalKind}
+                    onValueChange={(value: "enfermera" | "medico") => {
+                      setProcedureProfessionalKind(value);
+                      setFormData((prev) => ({ ...prev, doctorName: "", doctorSpecialty: "" }));
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Enfermera o médico" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="enfermera">Enfermera</SelectItem>
+                      <SelectItem value="medico">Médico</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   {professionalLabel} *
@@ -457,7 +491,7 @@ export function EditAppointmentModal({
                   <p className="text-sm text-gray-600">Fecha y Hora:</p>
                   <p className="font-medium">
                     {formData.date && formData.time 
-                      ? `${new Date(formData.date).toLocaleDateString('es-ES')} a las ${formData.time}`
+                      ? `${formData.date.split('-').reverse().join('/')} a las ${formData.time}`
                       : "No seleccionado"
                     }
                   </p>

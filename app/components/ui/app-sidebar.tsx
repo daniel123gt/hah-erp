@@ -11,6 +11,7 @@ import {
   HeartPulse,
   ClipboardList,
   Building2,
+  Clock,
   ChevronDown,
 } from "lucide-react";
 
@@ -114,6 +115,11 @@ const items: NavItem[] = [
     title: "Cuidados en casa",
     url: "/cuidados-en-casa",
     icon: Building2,
+  },
+  {
+    title: "Cuidados por turnos",
+    url: "/cuidados-por-turnos",
+    icon: Clock,
   },
   {
     title: "Inventario",

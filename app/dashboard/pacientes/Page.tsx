@@ -18,6 +18,7 @@ import { AddPatientModal } from "~/components/ui/add-patient-modal";
 import { EditPatientModal } from "~/components/ui/edit-patient-modal";
 import { Combobox } from "~/components/ui/combobox";
 import { patientsService, type Patient } from "~/services/patientsService";
+import { formatDateOnly, parseDateOnlyAsLocal } from "~/lib/dateUtils";
 import { toast } from "sonner";
 import { 
   Search, 
@@ -324,7 +325,7 @@ export default function PacientesPage() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Visitas Este Mes</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {patients.filter(p => p.last_visit && new Date(p.last_visit).getMonth() === new Date().getMonth()).length}
+                  {patients.filter(p => p.last_visit && parseDateOnlyAsLocal(p.last_visit).getMonth() === new Date().getMonth()).length}
                 </p>
               </div>
             </div>
@@ -526,7 +527,7 @@ export default function PacientesPage() {
                         <TableCell>
                           <div className="flex items-center space-x-2">
                             <Calendar className="w-4 h-4 text-gray-400" />
-                            <span className="text-sm">{patient.last_visit ? new Date(patient.last_visit).toLocaleDateString('es-ES') : '-'}</span>
+                            <span className="text-sm">{patient.last_visit ? formatDateOnly(patient.last_visit) : '-'}</span>
                           </div>
                         </TableCell>
                         <TableCell>

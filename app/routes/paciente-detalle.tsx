@@ -14,6 +14,7 @@ import { nursingInitialAssessmentService, type NursingInitialAssessment } from "
 import medicalRestsService, { type MedicalRest } from "~/services/medicalRestsService";
 import medicalPrescriptionsService, { type MedicalPrescription } from "~/services/medicalPrescriptionsService";
 import storageService from "~/services/storageService";
+import { formatDateOnly } from "~/lib/dateUtils";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -144,7 +145,7 @@ export default function PacienteDetalleRoute() {
             <p><span className="text-gray-500">Email:</span> {patient.email || "-"}</p>
             <p><span className="text-gray-500">Teléfono:</span> {patient.phone || "-"}</p>
             <p><span className="text-gray-500">Dirección:</span> {patient.address || "-"}</p>
-            <p><span className="text-gray-500">Última visita:</span> {patient.last_visit || "-"}</p>
+            <p><span className="text-gray-500">Última visita:</span> {patient.last_visit ? formatDateOnly(patient.last_visit) : "-"}</p>
             <p><span className="text-gray-500">Fecha de creación:</span> {new Date(patient.created_at).toLocaleDateString('es-ES')}</p>
             <p><span className="text-gray-500">Fecha de actualización:</span> {new Date(patient.updated_at).toLocaleDateString('es-ES')}</p>
           </CardContent>

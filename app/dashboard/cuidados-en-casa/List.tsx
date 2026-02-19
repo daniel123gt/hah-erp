@@ -5,7 +5,7 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Eye, Loader2, Building2, Search } from "lucide-react";
+import { ArrowLeft, Eye, Loader2, Building2, Search, Users, FileText, DollarSign } from "lucide-react";
 import homeCareService, { type HomeCareContractWithPatient } from "~/services/homeCareService";
 import { AddHomeCarePatientModal } from "~/components/ui/add-home-care-patient-modal";
 
@@ -23,6 +23,8 @@ export default function CuidadosEnCasaList() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [estadoFilter, setEstadoFilter] = useState<EstadoFilter>("activos");
+  const [plansCount, setPlansCount] = useState(0);
+  const [revenueThisMonth, setRevenueThisMonth] = useState(0);
 
   useEffect(() => {
     loadContracts();
@@ -35,8 +37,21 @@ export default function CuidadosEnCasaList() {
         estadoFilter === "todos"
           ? undefined
           : { is_active: estadoFilter === "activos" };
-      const data = await homeCareService.getContracts(options);
+      const [data, plans, revenue] = await Promise.all([
+        homeCareService.getContracts(options),
+        homeCareService.getPlans().catch(() => []),
+        (() => {
+          const now = new Date();
+          const y = now.getFullYear();
+          const m = now.getMonth();
+          const from = `${y}-${String(m + 1).padStart(2, "0")}-01`;
+          const to = `${y}-${String(m + 1).padStart(2, "0")}-${String(new Date(y, m + 1, 0).getDate()).padStart(2, "0")}`;
+          return homeCareService.getMonthlyRevenue(from, to).catch(() => 0);
+        })(),
+      ]);
       setContracts(data);
+      setPlansCount(plans.length);
+      setRevenueThisMonth(revenue);
     } catch (error) {
       console.error("Error al cargar contratos:", error);
       toast.error("Error al cargar la lista de cuidados en casa");
@@ -73,6 +88,50 @@ export default function CuidadosEnCasaList() {
             navigate(`/cuidados-en-casa/${patientId}`);
           }}
         />
+      </div>
+
+      {/* Cards informativos */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Contratos activos</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {contracts.filter((c) => c.is_active).length}
+              </p>
+            </div>
+            <Users className="w-8 h-8 text-blue-500" />
+          </div>
+        </Card>
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total contratos</p>
+              <p className="text-2xl font-bold text-gray-900">{contracts.length}</p>
+            </div>
+            <Building2 className="w-8 h-8 text-green-500" />
+          </div>
+        </Card>
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Planes disponibles</p>
+              <p className="text-2xl font-bold text-gray-900">{plansCount}</p>
+            </div>
+            <FileText className="w-8 h-8 text-purple-500" />
+          </div>
+        </Card>
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Ingresos del mes (S/.)</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {revenueThisMonth.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+            <DollarSign className="w-8 h-8 text-amber-500" />
+          </div>
+        </Card>
       </div>
 
       <Card>

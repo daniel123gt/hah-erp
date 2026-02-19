@@ -21,6 +21,7 @@ import {
   getCategoryBySlug,
   getDepartmentForCategory,
 } from "./categories";
+import { formatDateOnly } from "~/lib/dateUtils";
 import { Search, Users, Phone, Mail, Calendar, ChevronLeft, ChevronRight, ArrowLeft } from "lucide-react";
 import { staffService, type Staff as SupabaseStaff } from "~/services/staffService";
 import { toast } from "sonner";
@@ -104,7 +105,7 @@ export default function PersonalCategoryPage() {
     if (!department || !category) return;
     const filter = subcategorySlug
       ? getFilterForSubcategory(category, subcategorySlug)
-      : { department, positionPattern: undefined as string | undefined };
+      : { department, position: undefined as string | undefined, positionPattern: undefined as string | undefined };
     if (subcategorySlug && !filter) return;
     try {
       setLoading(true);
@@ -114,8 +115,8 @@ export default function PersonalCategoryPage() {
         search: debouncedSearchTerm,
         status: filterStatus,
         department: filter.department,
-        positionPattern:
-          filter.positionPattern && filter.positionPattern !== "%" ? filter.positionPattern : undefined,
+        position: filter.position ?? undefined,
+        positionPattern: filter.position ? undefined : (filter.positionPattern && filter.positionPattern !== "%" ? filter.positionPattern : undefined),
       });
       setStaff(result.data);
       setPagination((prev) => ({
@@ -173,9 +174,9 @@ export default function PersonalCategoryPage() {
   };
 
   const getDepartmentColor = (d: string) => {
-    if (d === "Medicina General") return "bg-blue-100 text-blue-800";
-    if (d === "Enfermería") return "bg-green-100 text-green-800";
-    if (d === "Administración") return "bg-orange-100 text-orange-800";
+    if (d === "Medicina") return "bg-blue-100 text-blue-800";
+    if (d === "Enfermeria") return "bg-green-100 text-green-800";
+    if (d === "Administracion") return "bg-orange-100 text-orange-800";
     return "bg-gray-100 text-gray-800";
   };
 
@@ -341,7 +342,7 @@ export default function PersonalCategoryPage() {
                         <div className="flex items-center gap-2">
                           <Calendar className="w-4 h-4 text-gray-400" />
                           {member.hire_date
-                            ? new Date(member.hire_date).toLocaleDateString("es-ES")
+                            ? formatDateOnly(member.hire_date)
                             : "—"}
                         </div>
                       </TableCell>

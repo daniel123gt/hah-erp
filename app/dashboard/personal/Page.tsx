@@ -34,6 +34,8 @@ import {
   X
 } from "lucide-react";
 import { staffService, type Staff as SupabaseStaff } from "~/services/staffService";
+import { OFFICIAL_POSITIONS } from "~/dashboard/personal/categories";
+import { formatDateOnly } from "~/lib/dateUtils";
 import { toast } from "sonner";
 
 // Interfaz para la UI (compatible con modales existentes)
@@ -96,8 +98,11 @@ export default function PersonalPage() {
     male: 0,
     female: 0,
     active: 0,
-    thisMonth: 0
+    thisMonth: 0,
+    thisYear: 0
   });
+  const [staffHiredThisYear, setStaffHiredThisYear] = useState<SupabaseStaff[]>([]);
+  const [loadingHiredThisYear, setLoadingHiredThisYear] = useState(false);
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
@@ -121,6 +126,7 @@ export default function PersonalPage() {
   useEffect(() => {
     loadStaff();
     loadStats();
+    loadStaffHiredThisYear();
   }, []);
 
   // Recargar personal cuando cambien los filtros o paginación
@@ -163,6 +169,18 @@ export default function PersonalPage() {
       setStats(statsData);
     } catch (error) {
       console.error('Error al cargar estadísticas:', error);
+    }
+  }, []);
+
+  const loadStaffHiredThisYear = useCallback(async () => {
+    try {
+      setLoadingHiredThisYear(true);
+      const list = await staffService.getStaffHiredThisYear();
+      setStaffHiredThisYear(list);
+    } catch (error) {
+      console.error('Error al cargar personal contratado este año:', error);
+    } finally {
+      setLoadingHiredThisYear(false);
     }
   }, []);
 
@@ -238,16 +256,12 @@ export default function PersonalPage() {
 
   const getDepartmentColor = (department: string) => {
     switch (department) {
-      case "Medicina General":
+      case "Medicina":
         return "bg-blue-100 text-blue-800";
-      case "Enfermería":
+      case "Enfermeria":
         return "bg-green-100 text-green-800";
-      case "Laboratorio":
-        return "bg-purple-100 text-purple-800";
-      case "Administración":
+      case "Administracion":
         return "bg-orange-100 text-orange-800";
-      case "Cardiología":
-        return "bg-red-100 text-red-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -303,7 +317,7 @@ export default function PersonalPage() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Médicos</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {staff.filter(s => s.position.includes("Dr.") || s.position.includes("Dra.") || s.position.includes("Médico")).length}
+                  {staff.filter(s => s.position === "Medico General").length}
                 </p>
               </div>
             </div>
@@ -317,13 +331,59 @@ export default function PersonalPage() {
                 <Calendar className="w-6 h-6 text-orange-600" />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-600">Contratados Este Mes</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.thisMonth}</p>
+                <p className="text-sm font-medium text-gray-600">Contratados Este Año</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.thisYear}</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Tabla resumen: Empleados que ingresaron este año */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-primary-blue" />
+            Empleados que ingresaron este año
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loadingHiredThisYear ? (
+            <div className="flex justify-center py-8 text-gray-500">Cargando...</div>
+          ) : staffHiredThisYear.length === 0 ? (
+            <p className="text-gray-500 text-center py-6">Ningún empleado ingresó este año.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nombre</TableHead>
+                    <TableHead>Posición</TableHead>
+                    <TableHead>Departamento</TableHead>
+                    <TableHead>Fecha de contratación</TableHead>
+                    <TableHead>Estado</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {staffHiredThisYear.map((member) => (
+                    <TableRow key={member.id}>
+                      <TableCell className="font-medium">{member.name}</TableCell>
+                      <TableCell>{member.position}</TableCell>
+                      <TableCell>{member.department ?? "—"}</TableCell>
+                      <TableCell>{member.hire_date ? formatDateOnly(member.hire_date) : "—"}</TableCell>
+                      <TableCell>
+                        <Badge className={member.status === "Activo" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}>
+                          {member.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Filters and Search */}
       <Card>
@@ -351,7 +411,7 @@ export default function PersonalPage() {
             </div>
 
             {/* Filtros avanzados */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Departamento
@@ -362,20 +422,26 @@ export default function PersonalPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
                 >
                   <option value="all">Todos los departamentos</option>
-                  <option value="Medicina General">Medicina General</option>
-                  <option value="Enfermería">Enfermería</option>
-                  <option value="Laboratorio">Laboratorio</option>
-                  <option value="Administración">Administración</option>
-                  <option value="Cardiología">Cardiología</option>
-                  <option value="Pediatría">Pediatría</option>
-                  <option value="Contabilidad">Contabilidad</option>
-                  <option value="Radiología">Radiología</option>
-                  <option value="Farmacia">Farmacia</option>
-                  <option value="Limpieza">Limpieza</option>
-                  <option value="Mantenimiento">Mantenimiento</option>
+                  <option value="Medicina">Medicina</option>
+                  <option value="Enfermeria">Enfermeria</option>
+                  <option value="Administracion">Administracion</option>
                 </select>
               </div>
-
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Posición
+                </label>
+                <select
+                  value={filterPosition}
+                  onChange={(e) => setFilterPosition(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
+                >
+                  <option value="all">Todas las posiciones</option>
+                  {OFFICIAL_POSITIONS.map((p) => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Estado
@@ -511,7 +577,7 @@ export default function PersonalPage() {
                     <TableCell>
                       <div className="flex items-center space-x-2">
                         <Calendar className="w-4 h-4 text-gray-400" />
-                        <span>{staffMember.hire_date ? new Date(staffMember.hire_date).toLocaleDateString('es-ES') : 'Sin fecha'}</span>
+                        <span>{staffMember.hire_date ? formatDateOnly(staffMember.hire_date) : 'Sin fecha'}</span>
                       </div>
                     </TableCell>
                     <TableCell>{getStatusBadge(staffMember.status)}</TableCell>

@@ -25,6 +25,7 @@ import patientsService, { type Patient } from "~/services/patientsService";
 import { staffService, type Staff } from "~/services/staffService";
 import { useAuthStore, getAppRole } from "~/store/authStore";
 import labOrderService from "~/services/labOrderService";
+import { getTodayLocal } from "~/lib/dateUtils";
 import {
   ensurePatientPortalUser,
   generatePortalPassword,
@@ -76,7 +77,8 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
 
   // Estados para información de la orden
   const [formData, setFormData] = useState({
-    fechaOrden: new Date().toISOString().split('T')[0],
+    fechaOrden: getTodayLocal(),
+    fechaTomaMuestra: getTodayLocal(),
     medicoSolicitante: "",
     prioridad: "normal" as 'urgente' | 'normal' | 'programada',
     observaciones: "",
@@ -120,7 +122,8 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
         district: "",
       });
       setFormData({
-        fechaOrden: new Date().toISOString().split('T')[0],
+        fechaOrden: getTodayLocal(),
+        fechaTomaMuestra: getTodayLocal(),
         medicoSolicitante: "",
         prioridad: "normal",
         observaciones: "",
@@ -247,6 +250,7 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
       const orderCreated = await labOrderService.createOrder({
         patient_id: patientToUse.id,
         order_date: formData.fechaOrden,
+        sample_date: formData.fechaTomaMuestra || formData.fechaOrden,
         physician_name: formData.medicoSolicitante || undefined,
         priority: formData.prioridad,
         observations: formData.observaciones || undefined,
@@ -294,7 +298,8 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
         setAddressParaOrden("");
         setDistrictParaOrden("");
         setFormData({
-          fechaOrden: new Date().toISOString().split('T')[0],
+          fechaOrden: getTodayLocal(),
+          fechaTomaMuestra: getTodayLocal(),
           medicoSolicitante: "",
           prioridad: "normal",
           observaciones: "",
@@ -700,6 +705,15 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
                       type="date"
                       value={formData.fechaOrden}
                       onChange={(e) => setFormData({ ...formData, fechaOrden: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="fechaTomaMuestra">Fecha de toma de muestra (programación)</Label>
+                    <Input
+                      id="fechaTomaMuestra"
+                      type="date"
+                      value={formData.fechaTomaMuestra}
+                      onChange={(e) => setFormData({ ...formData, fechaTomaMuestra: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">

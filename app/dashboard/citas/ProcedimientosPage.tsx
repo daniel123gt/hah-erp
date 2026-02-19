@@ -30,7 +30,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { procedureService } from "~/services/procedureService";
-import { appointmentsService } from "~/services/appointmentsService";
+import { appointmentsService, formatDateOnly } from "~/services/appointmentsService";
+import { getTodayLocal } from "~/lib/dateUtils";
 import type { Appointment } from "./MedicinaPage";
 
 export default function CitasProcedimientosPage() {
@@ -233,9 +234,7 @@ export default function CitasProcedimientosPage() {
     }
   };
 
-  const todayAppointments = appointments.filter(
-    (a) => a.date === new Date().toISOString().split("T")[0]
-  );
+  const todayAppointments = appointments.filter((a) => a.date === getTodayLocal());
 
   return (
     <div className="space-y-6">
@@ -433,7 +432,7 @@ export default function CitasProcedimientosPage() {
                     <TableCell>
                       <div className="text-center">
                         <p className="font-medium">
-                          {new Date(appointment.date).toLocaleDateString("es-ES")}
+                          {formatDateOnly(appointment.date)}
                         </p>
                         <p className="text-sm text-gray-500">
                           {appointment.time} ({appointment.duration} min)

@@ -1,3 +1,16 @@
+/** Valores oficiales para BD y formularios (personal) */
+export const OFFICIAL_DEPARTMENTS = ["Medicina", "Enfermeria", "Administracion"] as const;
+export const OFFICIAL_POSITIONS = [
+  "Enfermera Tecnica",
+  "Enfermera Licenciada",
+  "Enfermera Jefe",
+  "Supervisor",
+  "Secretaria",
+  "Medico General",
+  "Administrador",
+  "Chofer",
+] as const;
+
 /** Categorías y subcategorías de personal para el menú y filtros */
 export interface SubcategoryDef {
   slug: string;
@@ -17,6 +30,7 @@ export const PERSONAL_CATEGORIES: CategoryDef[] = [
     subcategories: [
       { slug: "tecnicas", title: "Técnicas" },
       { slug: "licenciadas", title: "Licenciadas" },
+      { slug: "jefe", title: "Jefe" },
     ],
   },
   {
@@ -30,32 +44,39 @@ export const PERSONAL_CATEGORIES: CategoryDef[] = [
     slug: "administracion",
     title: "Administración",
     subcategories: [
-      { slug: "conductores", title: "Conductores" },
-      { slug: "asistentes", title: "Asistentes" },
+      { slug: "supervisores", title: "Supervisores" },
       { slug: "secretarios", title: "Secretarios" },
-      { slug: "limpieza", title: "Limpieza" },
+      { slug: "administradores", title: "Administradores" },
+      { slug: "conductores", title: "Conductores" },
     ],
   },
 ];
 
-/** Mapeo para filtrar en BD: department + position (ilike o exacto) */
+export interface SubcategoryFilter {
+  department: string;
+  position?: string;
+  positionPattern?: string;
+}
+
+/** Mapeo para filtrar en BD: department + position (exacto) o positionPattern */
 export function getFilterForSubcategory(
   categorySlug: string,
   subcategorySlug: string
-): { department: string; positionPattern: string } | null {
-  const map: Record<string, Record<string, { department: string; positionPattern: string }>> = {
+): SubcategoryFilter | null {
+  const map: Record<string, Record<string, SubcategoryFilter>> = {
     enfermeria: {
-      tecnicas: { department: "Enfermería", positionPattern: "%Técnic%" },
-      licenciadas: { department: "Enfermería", positionPattern: "%Licenciad%" },
+      tecnicas: { department: "Enfermeria", position: "Enfermera Tecnica" },
+      licenciadas: { department: "Enfermeria", position: "Enfermera Licenciada" },
+      jefe: { department: "Enfermeria", position: "Enfermera Jefe" },
     },
     medicina: {
-      general: { department: "Medicina General", positionPattern: "%" },
+      general: { department: "Medicina", position: "Medico General" },
     },
     administracion: {
-      conductores: { department: "Administración", positionPattern: "%Conductor%" },
-      asistentes: { department: "Administración", positionPattern: "%Asistente%" },
-      secretarios: { department: "Administración", positionPattern: "%Secretari%" },
-      limpieza: { department: "Administración", positionPattern: "%Limpieza%" },
+      supervisores: { department: "Administracion", position: "Supervisor" },
+      secretarios: { department: "Administracion", position: "Secretaria" },
+      administradores: { department: "Administracion", position: "Administrador" },
+      conductores: { department: "Administracion", position: "Chofer" },
     },
   };
   const cat = map[categorySlug];
@@ -71,9 +92,9 @@ export function getCategoryBySlug(slug: string): CategoryDef | undefined {
 /** Departamento en BD para filtrar "toda la categoría" (sin subcategoría) */
 export function getDepartmentForCategory(categorySlug: string): string | null {
   const map: Record<string, string> = {
-    enfermeria: "Enfermería",
-    medicina: "Medicina General",
-    administracion: "Administración",
+    enfermeria: "Enfermeria",
+    medicina: "Medicina",
+    administracion: "Administracion",
   };
   return map[categorySlug] ?? null;
 }
