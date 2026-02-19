@@ -104,12 +104,10 @@ export async function getExamStats() {
   }
 }
 
-// Función para calcular cotización
-export function calculateQuote(exams: LaboratoryExam[]): ExamQuote {
-  const RECARGO_TOTAL = 120; // Recargo fijo total
+// Función para calcular cotización. recargoTotal = procedimiento "Toma de muestra" (base_price_soles); si no se pasa, usa 120.
+export function calculateQuote(exams: LaboratoryExam[], recargoTotal: number = 120): ExamQuote {
   const COSTO_DOMICILIO = 0; // Costo de domicilio
   
-  // Función para parsear precio (igual que tu MVP)
   const parsePrice = (precio: string) =>
     parseFloat(precio.replace('S/', '').replace(',', '').trim()) || 0;
 
@@ -118,7 +116,7 @@ export function calculateQuote(exams: LaboratoryExam[]): ExamQuote {
     0
   );
 
-  const recargoUnitario = exams.length > 0 ? RECARGO_TOTAL / exams.length : 0;
+  const recargoUnitario = exams.length > 0 ? recargoTotal / exams.length : 0;
   
   const precioCliente = exams.reduce(
     (acc, exam) => acc + parsePrice(exam.precio) * 1.2 + recargoUnitario,
@@ -131,7 +129,7 @@ export function calculateQuote(exams: LaboratoryExam[]): ExamQuote {
     examenes: exams,
     precioOriginal,
     precioCliente,
-    recargoTotal: RECARGO_TOTAL,
+    recargoTotal,
     recargoUnitario,
     costoDomicilio: COSTO_DOMICILIO,
     totalFinal

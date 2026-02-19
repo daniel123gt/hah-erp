@@ -1,4 +1,8 @@
 import supabase from "~/utils/supabase";
+import { procedureService } from "~/services/procedureService";
+
+const TOMA_DE_MUESTRA_NAME = "toma de muestra";
+const RECARGO_FALLBACK = 120;
 
 export interface LabExamOrderItem {
   id: string; // ID del item de la orden
@@ -58,11 +62,12 @@ export const labOrderService = {
         throw new Error('No se encontraron los exámenes seleccionados');
       }
 
-      // Calcular el total (precio al cliente con recargo)
+      // Calcular el total (precio al cliente con recargo = procedimiento "Toma de muestra" del catálogo)
       const parsePrice = (precio: string) =>
         parseFloat(precio.replace('S/', '').replace(',', '').trim()) || 0;
 
-      const RECARGO_TOTAL = 120;
+      const tomaMuestra = await procedureService.getProcedureByName(TOMA_DE_MUESTRA_NAME);
+      const RECARGO_TOTAL = tomaMuestra?.base_price_soles ?? RECARGO_FALLBACK;
       const recargoUnitario = exams.length > 0 ? RECARGO_TOTAL / exams.length : 0;
       
       const totalAmount = exams.reduce((acc, exam) => {
@@ -393,7 +398,8 @@ export const labOrderService = {
       const parsePrice = (precio: string) =>
         parseFloat(precio.replace('S/', '').replace(',', '').trim()) || 0;
 
-      const RECARGO_TOTAL = 120;
+      const tomaMuestra = await procedureService.getProcedureByName(TOMA_DE_MUESTRA_NAME);
+      const RECARGO_TOTAL = tomaMuestra?.base_price_soles ?? RECARGO_FALLBACK;
       const totalItems = currentOrder.items.length + newExams.length;
       const recargoUnitario = totalItems > 0 ? RECARGO_TOTAL / totalItems : 0;
 
@@ -507,7 +513,8 @@ export const labOrderService = {
         if (orderUpdateError) throw orderUpdateError;
       } else {
         // Recalcular precios de items restantes con nuevo recargo unitario
-        const RECARGO_TOTAL = 120;
+        const tomaMuestra = await procedureService.getProcedureByName(TOMA_DE_MUESTRA_NAME);
+        const RECARGO_TOTAL = tomaMuestra?.base_price_soles ?? RECARGO_FALLBACK;
         const recargoUnitario = remainingItems.length > 0 ? RECARGO_TOTAL / remainingItems.length : 0;
 
         // Obtener los exámenes para recalcular precios
@@ -607,6 +614,52 @@ export const labOrderService = {
     } catch (error: any) {
       console.error('Error al obtener órdenes por fecha de toma:', error);
       return [];
+    }
+  },
+
+  /**
+   * Reporte de laboratorio por BD: órdenes pagadas en el rango con utilidad calculada
+   * (ingreso - costo exámenes - costo procedimiento Toma de muestra).
+   */
+  async getReportLaboratorio(fromDate: string, toDate: string): Promise<{
+    totals: { total_orders: number; total_revenue: number; total_exams: number; total_cost: number; total_utility: number };
+    rows: Array<{ id: string; order_date: string; physician_name: string | null; patient_name: string | null; status: string; n_items: number; total_amount: number; cost: number; utility: number }>;
+  }> {
+    try {
+      const { data, error } = await supabase.rpc('get_report_laboratorio', {
+        p_from: fromDate,
+        p_to: toDate,
+      });
+      if (error) throw error;
+      const raw = (data as { totals?: unknown; rows?: unknown }) ?? {};
+      const totals = (raw.totals as Record<string, number>) ?? {};
+      const rows = (raw.rows as Array<Record<string, unknown>>) ?? [];
+      return {
+        totals: {
+          total_orders: Number(totals.total_orders ?? 0),
+          total_revenue: Number(totals.total_revenue ?? 0),
+          total_exams: Number(totals.total_exams ?? 0),
+          total_cost: Number(totals.total_cost ?? 0),
+          total_utility: Number(totals.total_utility ?? 0),
+        },
+        rows: rows.map((r) => ({
+          id: String(r.id ?? ''),
+          order_date: String(r.order_date ?? ''),
+          physician_name: r.physician_name != null ? String(r.physician_name) : null,
+          patient_name: r.patient_name != null ? String(r.patient_name) : null,
+          status: String(r.status ?? ''),
+          n_items: Number(r.n_items ?? 0),
+          total_amount: Number(r.total_amount ?? 0),
+          cost: Number(r.cost ?? 0),
+          utility: Number(r.utility ?? 0),
+        })),
+      };
+    } catch (e) {
+      console.error('Error al obtener reporte de laboratorio por BD:', e);
+      return {
+        totals: { total_orders: 0, total_revenue: 0, total_exams: 0, total_cost: 0, total_utility: 0 },
+        rows: [],
+      };
     }
   },
 

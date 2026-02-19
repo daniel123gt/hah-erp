@@ -13,6 +13,7 @@ import {
   Building2,
   Clock,
   ChevronDown,
+  BarChart3,
 } from "lucide-react";
 
 import {
@@ -112,14 +113,30 @@ const items: NavItem[] = [
     ],
   },
   {
+    title: "Reportes",
+    url: "/reportes",
+    icon: BarChart3,
+    children: [
+      { title: "Laboratorio", url: "/laboratorio/reportes" },
+      { title: "Procedimientos", url: "/procedimientos/reportes" },
+      { title: "Cuidados por turnos", url: "/cuidados-por-turnos/reportes" },
+    ],
+  },
+  {
     title: "Cuidados en casa",
     url: "/cuidados-en-casa",
     icon: Building2,
+    children: [
+      { title: "Reportes", url: "/cuidados-en-casa/reportes" },
+    ],
   },
   {
     title: "Cuidados por turnos",
     url: "/cuidados-por-turnos",
     icon: Clock,
+    children: [
+      { title: "Reportes", url: "/cuidados-por-turnos/reportes" },
+    ],
   },
   {
     title: "Inventario",
@@ -133,7 +150,7 @@ const items: NavItem[] = [
   },
 ];
 
-/** Títulos de sección que el rol "gestor" puede ver. Admin ve todo. */
+/** Títulos de sección que el rol "gestor" puede ver. Admin ve todo. "Reportes" (reportes general) solo admin. */
 const GESTOR_ALLOWED_TITLES: string[] = [
   "Inicio",
   "Pacientes",

@@ -5,10 +5,10 @@ import { useAuthStore, getAppRole } from "~/store/authStore";
 import { Navigate, Outlet, useLocation } from "react-router";
 import Loading from "~/components/root/Loading/Loading";
 
-/** Rutas que el rol gestor puede acceder (prefijos o ruta exacta). */
+/** Rutas que el rol gestor puede acceder (prefijos o ruta exacta). /reportes (Reportes general) solo admin. */
 const GESTOR_ALLOWED_PATHS = ["/", "/pacientes", "/enfermeria", "/laboratorio", "/citas"];
 /** Prefijos prohibidos para gestor (aunque esté dentro de una ruta permitida). */
-const GESTOR_FORBIDDEN_PATHS = ["/laboratorio/reportes"];
+const GESTOR_FORBIDDEN_PATHS: string[] = [];
 
 function gestorCanAccessPath(pathname: string): boolean {
   if (GESTOR_FORBIDDEN_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/")))

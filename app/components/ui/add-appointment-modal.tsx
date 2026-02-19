@@ -173,6 +173,10 @@ export function AddAppointmentModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.patientId?.trim()) {
+      toast.error("Debe seleccionar un paciente de la lista.");
+      return;
+    }
     if (variant === "procedimientos" && !formData.doctorName?.trim()) {
       toast.error("Debe asignar un profesional (enfermera o médico).");
       return;
@@ -181,9 +185,9 @@ export function AddAppointmentModal({
     const newAppointment: Appointment = {
       id: `A${Date.now()}`,
       ...rest,
+      patient_id: patientId || undefined,
       type: variant === "procedimientos" ? "procedimiento" : formData.type,
       ...(variant === "procedimientos" && {
-        patient_id: patientId || undefined,
         procedure_catalog_id: procedureCatalogId || undefined,
         procedure_name: procedureName || undefined,
       }),

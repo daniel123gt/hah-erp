@@ -340,6 +340,90 @@ export const homeCareService = {
     }
     return (data ?? []).reduce((sum, row) => sum + Number(row.monto_total ?? 0), 0);
   },
+
+  /** Periodos con fecha_pago en [fromDate, toDate] para reportes (con contrato y paciente). */
+  async getPeriodsInRange(
+    fromDate: string,
+    toDate: string
+  ): Promise<
+    (HomeCarePeriod & {
+      contract?: { patient_id: string; patient?: { name: string } | null } | null;
+    })[]
+  > {
+    const { data, error } = await supabase
+      .from("home_care_periods")
+      .select(
+        `
+        *,
+        contract:home_care_contracts(patient_id, patient:patients(name))
+      `
+      )
+      .gte("fecha_pago", fromDate)
+      .lte("fecha_pago", toDate)
+      .not("fecha_pago", "is", null)
+      .order("fecha_pago", { ascending: false });
+    if (error) {
+      console.error("Error al obtener periodos para reporte:", error);
+      return [];
+    }
+    return (data ?? []) as (HomeCarePeriod & {
+      contract?: { patient_id: string; patient?: { name: string } | null } | null;
+    })[];
+  },
+
+  /**
+   * Reporte de cuidados en casa por BD (RPC): totals y rows con pagos en el rango.
+   */
+  async getReportCuidadosEnCasa(
+    fromDate: string,
+    toDate: string
+  ): Promise<{
+    totals: { total_revenue: number; total_periods: number; promedio: number };
+    rows: Array<{
+      id: string;
+      fecha_pago: string | null;
+      patient_name: string;
+      turno: string | null;
+      f_desde: string;
+      f_hasta: string;
+      monto_total: number;
+      metodo_pago: string | null;
+    }>;
+  }> {
+    try {
+      const { data, error } = await supabase.rpc("get_report_cuidados_en_casa", {
+        p_from: fromDate,
+        p_to: toDate,
+      });
+      if (error) throw error;
+      const raw = (data as { totals?: unknown; rows?: unknown }) ?? {};
+      const totals = (raw.totals as Record<string, number>) ?? {};
+      const rows = (raw.rows as Array<Record<string, unknown>>) ?? [];
+      return {
+        totals: {
+          total_revenue: Number(totals.total_revenue ?? 0),
+          total_periods: Number(totals.total_periods ?? 0),
+          promedio: Number(totals.promedio ?? 0),
+        },
+        rows: rows.map((r) => ({
+          id: String(r.id ?? ""),
+          fecha_pago: r.fecha_pago != null ? String(r.fecha_pago) : null,
+          patient_name: String(r.patient_name ?? "—"),
+          turno: r.turno != null ? String(r.turno) : null,
+          f_desde: String(r.f_desde ?? ""),
+          f_hasta: String(r.f_hasta ?? ""),
+          monto_total: Number(r.monto_total ?? 0),
+          metodo_pago: r.metodo_pago != null ? String(r.metodo_pago) : null,
+        })),
+      };
+    } catch (e) {
+      console.error("Error al obtener reporte de cuidados en casa por BD:", e);
+      return {
+        totals: { total_revenue: 0, total_periods: 0, promedio: 0 },
+        rows: [],
+      };
+    }
+  },
 };
 
 export default homeCareService;

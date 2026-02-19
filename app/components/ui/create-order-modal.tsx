@@ -25,6 +25,7 @@ import patientsService, { type Patient } from "~/services/patientsService";
 import { staffService, type Staff } from "~/services/staffService";
 import { useAuthStore, getAppRole } from "~/store/authStore";
 import labOrderService from "~/services/labOrderService";
+import { procedureService } from "~/services/procedureService";
 import { getTodayLocal } from "~/lib/dateUtils";
 import {
   ensurePatientPortalUser,
@@ -90,10 +91,14 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
   const [districtParaOrden, setDistrictParaOrden] = useState("");
   // Credenciales de portal creadas (mostrar en diálogo para copiar y navegar)
   const [portalCredentials, setPortalCredentials] = useState<{ dni: string; password: string; orderId?: string } | null>(null);
+  const [recargoTomaMuestra, setRecargoTomaMuestra] = useState(120);
   const navigate = useNavigate();
 
   useEffect(() => {
     if (open) {
+      procedureService.getProcedureByName("toma de muestra").then((p) => {
+        if (p) setRecargoTomaMuestra(p.base_price_soles);
+      }).catch(() => {});
       patientsService.getDistricts().then(setDistricts).catch(() => setDistricts([]));
       staffService
         .getStaff({ department: "Medicina General", limit: 200 })
@@ -324,8 +329,7 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
       0
     );
 
-    const RECARGO_TOTAL = 120;
-    const recargoUnitario = selectedExams.length > 0 ? RECARGO_TOTAL / selectedExams.length : 0;
+    const recargoUnitario = selectedExams.length > 0 ? recargoTomaMuestra / selectedExams.length : 0;
     
     const totalCliente = selectedExams.reduce(
       (acc, exam) => acc + parsePrice(exam.precio) * 1.2 + recargoUnitario,
