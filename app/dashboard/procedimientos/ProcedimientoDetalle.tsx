@@ -59,17 +59,15 @@ export default function ProcedimientoDetalle() {
 
   const displayName =
     (record.patient as { name?: string } | null)?.name ?? record.patient_name ?? "-";
-  const procName =
-    (record.procedure_catalog as ProcedureCatalogItem | null)?.name ?? record.procedure_name ?? "-";
+  const proc = record.procedure_catalog as ProcedureCatalogItem | null;
+  const procName = proc?.name ?? record.procedure_name ?? "-";
   const ing = totalIngreso(record);
+  const costo = proc ? Number(proc.total_cost_soles ?? 0) : 0;
+  const materialExtra = Number(record.gastos_material ?? 0);
+  const combustible = Number(record.combustible ?? 0);
+  const util = ing - costo - materialExtra - combustible - Number(record.costo_adicional_servicio ?? 0);
   const payment = getPaymentFromRecord(record);
   const paymentLabel = PAYMENT_METHOD_OPTIONS.find((o) => o.value === payment.method)?.label ?? payment.method;
-  const util =
-    record.utilidad ??
-    ing -
-      Number(record.gastos_material || 0) -
-      Number(record.combustible || 0) -
-      Number(record.costo_adicional_servicio || 0);
 
   return (
     <div className="space-y-6">
@@ -162,12 +160,16 @@ export default function ProcedimientoDetalle() {
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
-            <p className="text-sm text-gray-500">Gastos de material</p>
-            <p className="font-medium">{Number(record.gastos_material || 0).toFixed(2)}</p>
+            <p className="text-sm text-gray-500">Costo (catálogo)</p>
+            <p className="font-medium">{costo.toFixed(2)}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500">Material extra</p>
+            <p className="font-medium">{materialExtra.toFixed(2)}</p>
           </div>
           <div>
             <p className="text-sm text-gray-500">Combustible</p>
-            <p className="font-medium">{Number(record.combustible || 0).toFixed(2)}</p>
+            <p className="font-medium">{combustible.toFixed(2)}</p>
           </div>
           <div>
             <p className="text-sm text-gray-500">Costo adicional / servicio</p>

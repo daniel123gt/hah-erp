@@ -155,7 +155,7 @@ export default function ListadoProcedimientos() {
         </div>
       </Card>
 
-      <Card>
+      <Card className="px-4 sm:px-6">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-primary-blue" />
@@ -176,7 +176,8 @@ export default function ListadoProcedimientos() {
                   <TableHead>Distrito</TableHead>
                   <TableHead>Estado Pago</TableHead>
                   <TableHead className="text-right">Ingreso (S/.)</TableHead>
-                  <TableHead className="text-right">Material</TableHead>
+                  <TableHead className="text-right">Costo (S/.)</TableHead>
+                  <TableHead className="text-right">Material extra</TableHead>
                   <TableHead className="text-right">Combustible</TableHead>
                   <TableHead className="text-right">Utilidad</TableHead>
                   <TableHead className="text-right whitespace-nowrap sticky right-0 bg-muted shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10 min-w-[100px]">Acciones</TableHead>
@@ -185,9 +186,13 @@ export default function ListadoProcedimientos() {
               <TableBody>
                 {records.map((r) => {
                   const ing = totalIngreso(r);
-                  const util = r.utilidad ?? ing - Number(r.gastos_material || 0) - Number(r.combustible || 0);
+                  const proc = r.procedure_catalog as ProcedureCatalogItem | null;
+                  const costo = proc ? Number(proc.total_cost_soles ?? 0) : 0;
+                  const materialExtra = Number(r.gastos_material ?? 0);
+                  const combustible = Number(r.combustible ?? 0);
+                  const util = ing - costo - materialExtra - combustible;
                   const displayName = (r.patient as { name?: string } | null)?.name ?? r.patient_name ?? "-";
-                  const procName = (r.procedure_catalog as ProcedureCatalogItem | null)?.name ?? r.procedure_name ?? "-";
+                  const procName = proc?.name ?? r.procedure_name ?? "-";
                   const estadoPago = ing === 0 ? "Pendiente" : "Cancelado";
                   return (
                     <TableRow key={r.id}>
@@ -206,6 +211,7 @@ export default function ListadoProcedimientos() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">{ing.toFixed(2)}</TableCell>
+                      <TableCell className="text-right tabular-nums">{costo.toFixed(2)}</TableCell>
                       <TableCell className="text-right">{Number(r.gastos_material || 0).toFixed(2)}</TableCell>
                       <TableCell className="text-right">{Number(r.combustible || 0).toFixed(2)}</TableCell>
                       <TableCell className="text-right text-green-600">{util.toFixed(2)}</TableCell>

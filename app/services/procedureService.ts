@@ -336,6 +336,22 @@ export const procedureService = {
     if (error) throw error;
   },
 
+  /** Obtiene un procedimiento del catálogo por nombre (p. ej. "Toma de muestra" para recargo en lab). */
+  async getProcedureByName(namePattern: string): Promise<{ base_price_soles: number; total_cost_soles: number } | null> {
+    const { data, error } = await supabase
+      .from("procedure_catalog")
+      .select("base_price_soles, total_cost_soles")
+      .ilike("name", `%${namePattern}%`)
+      .eq("is_active", true)
+      .limit(1)
+      .maybeSingle();
+    if (error || !data) return null;
+    return {
+      base_price_soles: Number(data.base_price_soles ?? 0),
+      total_cost_soles: Number(data.total_cost_soles ?? 0),
+    };
+  },
+
   async getRecords(options: {
     page?: number;
     limit?: number;
@@ -382,7 +398,9 @@ export const procedureService = {
     rows.forEach((r) => {
       if (r.utilidad == null && (r.yape || r.plin || r.transfer_deposito || r.tarjeta_link_pos || r.efectivo || r.gastos_material || r.combustible)) {
         const ing = totalIngreso(r);
-        (r as ProcedureRecord).utilidad = ing - Number(r.gastos_material || 0) - Number(r.combustible || 0) - Number(r.costo_adicional_servicio || 0);
+        const catalog = r.procedure_catalog as ProcedureCatalogItem | null;
+        const totalCostSoles = catalog ? Number(catalog.total_cost_soles ?? 0) : 0;
+        (r as ProcedureRecord).utilidad = ing - totalCostSoles - Number(r.gastos_material || 0) - Number(r.combustible || 0) - Number(r.costo_adicional_servicio || 0);
       }
     });
 
@@ -404,7 +422,9 @@ export const procedureService = {
     const row = data as ProcedureRecordWithDetails;
     if (row.utilidad == null) {
       const ing = totalIngreso(row);
-      (row as ProcedureRecord).utilidad = ing - Number(row.gastos_material || 0) - Number(row.combustible || 0) - Number(row.costo_adicional_servicio || 0);
+      const catalog = row.procedure_catalog as ProcedureCatalogItem | null;
+      const totalCostSoles = catalog ? Number(catalog.total_cost_soles ?? 0) : 0;
+      (row as ProcedureRecord).utilidad = ing - totalCostSoles - Number(row.gastos_material || 0) - Number(row.combustible || 0) - Number(row.costo_adicional_servicio || 0);
     }
     return row;
   },
@@ -416,11 +436,19 @@ export const procedureService = {
       Number(data.transfer_deposito || 0) +
       Number(data.tarjeta_link_pos || 0) +
       Number(data.efectivo || 0);
+    let totalCostSoles = 0;
+    if (data.procedure_catalog_id) {
+      const { data: plan } = await supabase
+        .from("procedure_catalog")
+        .select("total_cost_soles")
+        .eq("id", data.procedure_catalog_id)
+        .single();
+      totalCostSoles = Number(plan?.total_cost_soles ?? 0);
+    }
+    const gastosMaterial = Number(data.gastos_material || 0);
+    const combustible = Number(data.combustible || 0);
     const utilidad =
-      ing -
-      Number(data.gastos_material || 0) -
-      Number(data.combustible || 0) -
-      Number(data.costo_adicional_servicio || 0);
+      ing - totalCostSoles - gastosMaterial - combustible - Number(data.costo_adicional_servicio || 0);
 
     const { data: row, error } = await supabase
       .from("procedure_records")
@@ -459,11 +487,19 @@ export const procedureService = {
       Number(data.transfer_deposito || 0) +
       Number(data.tarjeta_link_pos || 0) +
       Number(data.efectivo || 0);
+    let totalCostSoles = 0;
+    if (data.procedure_catalog_id) {
+      const { data: plan } = await supabase
+        .from("procedure_catalog")
+        .select("total_cost_soles")
+        .eq("id", data.procedure_catalog_id)
+        .single();
+      totalCostSoles = Number(plan?.total_cost_soles ?? 0);
+    }
+    const gastosMaterial = Number(data.gastos_material || 0);
+    const combustible = Number(data.combustible || 0);
     const utilidad =
-      ing -
-      Number(data.gastos_material || 0) -
-      Number(data.combustible || 0) -
-      Number(data.costo_adicional_servicio || 0);
+      ing - totalCostSoles - gastosMaterial - combustible - Number(data.costo_adicional_servicio || 0);
 
     const { id, ...rest } = data;
     const { data: row, error } = await supabase
@@ -519,5 +555,76 @@ export const procedureService = {
       movilidad += Number(r.combustible ?? 0);
     }
     return { ingresoTotal, materiales, movilidad };
+  },
+
+  /**
+   * Reporte de procedimientos por BD (RPC): totals y rows con ingreso, costo y utilidad por registro.
+   */
+  async getReportProcedimientos(
+    fromDate: string,
+    toDate: string
+  ): Promise<{
+    totals: {
+      total_records: number;
+      total_ingreso: number;
+      total_materiales: number;
+      total_movilidad: number;
+      total_costo: number;
+      total_utilidad: number;
+    };
+    rows: Array<{
+      id: string;
+      fecha: string;
+      patient_name: string;
+      procedure_name: string;
+      district: string | null;
+      ingreso: number;
+      costo: number;
+      utility: number;
+    }>;
+  }> {
+    try {
+      const { data, error } = await supabase.rpc("get_report_procedimientos", {
+        p_from: fromDate,
+        p_to: toDate,
+      });
+      if (error) throw error;
+      const raw = (data as { totals?: unknown; rows?: unknown }) ?? {};
+      const totals = (raw.totals as Record<string, number>) ?? {};
+      const rows = (raw.rows as Array<Record<string, unknown>>) ?? [];
+      return {
+        totals: {
+          total_records: Number(totals.total_records ?? 0),
+          total_ingreso: Number(totals.total_ingreso ?? 0),
+          total_materiales: Number(totals.total_materiales ?? 0),
+          total_movilidad: Number(totals.total_movilidad ?? 0),
+          total_costo: Number(totals.total_costo ?? 0),
+          total_utilidad: Number(totals.total_utilidad ?? 0),
+        },
+        rows: rows.map((r) => ({
+          id: String(r.id ?? ""),
+          fecha: String(r.fecha ?? ""),
+          patient_name: String(r.patient_name ?? ""),
+          procedure_name: String(r.procedure_name ?? ""),
+          district: r.district != null ? String(r.district) : null,
+          ingreso: Number(r.ingreso ?? 0),
+          costo: Number(r.costo ?? 0),
+          utility: Number(r.utility ?? 0),
+        })),
+      };
+    } catch (e) {
+      console.error("Error al obtener reporte de procedimientos por BD:", e);
+      return {
+        totals: {
+          total_records: 0,
+          total_ingreso: 0,
+          total_materiales: 0,
+          total_movilidad: 0,
+          total_costo: 0,
+          total_utilidad: 0,
+        },
+        rows: [],
+      };
+    }
   },
 };

@@ -13,8 +13,10 @@ export default [
   route('/', 'routes/dashboard.tsx', [
     index('routes/home.tsx'),
     route('cuidados-en-casa', 'routes/cuidados-en-casa.tsx'),
+    route('cuidados-en-casa/reportes', 'routes/cuidados-en-casa-reportes.tsx'),
     route('cuidados-en-casa/:patientId', 'routes/cuidados-en-casa-detalle.tsx'),
     route('cuidados-por-turnos', 'routes/cuidados-por-turnos.tsx'),
+    route('cuidados-por-turnos/reportes', 'routes/cuidados-por-turnos-reportes.tsx'),
     route('pacientes', 'routes/pacientes.tsx'),
     route('pacientes/:id', 'routes/paciente-detalle.tsx'),
     route('personal', 'routes/personal.tsx'),

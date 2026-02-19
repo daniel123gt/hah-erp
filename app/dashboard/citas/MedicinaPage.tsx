@@ -91,6 +91,7 @@ export default function CitasMedicinaPage() {
     appointmentsService
       .create({
         variant: "medicina",
+        patient_id: newAppointment.patient_id ?? null,
         patientName: newAppointment.patientName,
         patientEmail: newAppointment.patientEmail,
         patientPhone: newAppointment.patientPhone,

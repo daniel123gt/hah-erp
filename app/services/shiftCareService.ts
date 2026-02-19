@@ -143,6 +143,62 @@ export const shiftCareService = {
     const { error } = await supabase.from("care_shifts").delete().eq("id", id);
     if (error) throw error;
   },
+
+  /**
+   * Reporte de cuidados por turnos por BD (RPC): totals y rows con turnos en el rango.
+   */
+  async getReportCuidadosPorTurnos(
+    fromDate: string,
+    toDate: string
+  ): Promise<{
+    totals: { total_revenue: number; total_shifts: number; promedio: number };
+    rows: Array<{
+      id: string;
+      fecha: string;
+      hora_inicio: string | null;
+      patient_name: string;
+      distrito: string | null;
+      turno: string | null;
+      monto_a_pagar: number;
+      enfermera: string | null;
+      forma_de_pago: string | null;
+    }>;
+  }> {
+    try {
+      const { data, error } = await supabase.rpc("get_report_cuidados_por_turnos", {
+        p_from: fromDate,
+        p_to: toDate,
+      });
+      if (error) throw error;
+      const raw = (data as { totals?: unknown; rows?: unknown }) ?? {};
+      const totals = (raw.totals as Record<string, number>) ?? {};
+      const rows = (raw.rows as Array<Record<string, unknown>>) ?? [];
+      return {
+        totals: {
+          total_revenue: Number(totals.total_revenue ?? 0),
+          total_shifts: Number(totals.total_shifts ?? 0),
+          promedio: Number(totals.promedio ?? 0),
+        },
+        rows: rows.map((r) => ({
+          id: String(r.id ?? ""),
+          fecha: String(r.fecha ?? ""),
+          hora_inicio: r.hora_inicio != null ? String(r.hora_inicio) : null,
+          patient_name: String(r.patient_name ?? "—"),
+          distrito: r.distrito != null ? String(r.distrito) : null,
+          turno: r.turno != null ? String(r.turno) : null,
+          monto_a_pagar: Number(r.monto_a_pagar ?? 0),
+          enfermera: r.enfermera != null ? String(r.enfermera) : null,
+          forma_de_pago: r.forma_de_pago != null ? String(r.forma_de_pago) : null,
+        })),
+      };
+    } catch (e) {
+      console.error("Error al obtener reporte de cuidados por turnos por BD:", e);
+      return {
+        totals: { total_revenue: 0, total_shifts: 0, promedio: 0 },
+        rows: [],
+      };
+    }
+  },
 };
 
 export default shiftCareService;

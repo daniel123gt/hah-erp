@@ -165,6 +165,10 @@ export function EditAppointmentModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.patient_id?.trim()) {
+      toast.error("Debe seleccionar un paciente de la lista.");
+      return;
+    }
     if (variant === "procedimientos" && !formData.doctorName?.trim()) {
       toast.error("Debe asignar un profesional (enfermera o médico).");
       return;
