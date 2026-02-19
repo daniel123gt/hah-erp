@@ -1,4 +1,12 @@
 import supabase from "~/utils/supabase";
+import {
+  toNoonUtc,
+  toLocalDateString,
+  formatDateOnlyDdMmYyyy,
+} from "~/lib/dateUtils";
+
+/** Re-export para listados de citas (formato dd/mm/yyyy) */
+export const formatDateOnly = formatDateOnlyDdMmYyyy;
 
 export type AppointmentVariant = "medicina" | "procedimientos";
 
@@ -49,7 +57,7 @@ function rowToAppointment(row: AppointmentRow): Appointment {
     patientPhone: row.patient_phone ?? "",
     doctorName: row.doctor_name,
     doctorSpecialty: row.doctor_specialty ?? "",
-    date: row.date,
+    date: toLocalDateString(row.date),
     time: row.time,
     duration: row.duration,
     type: row.type as Appointment["type"],
@@ -108,7 +116,7 @@ export const appointmentsService = {
         patient_phone: payload.patientPhone ?? null,
         doctor_name: payload.doctorName,
         doctor_specialty: payload.doctorSpecialty ?? null,
-        date: payload.date,
+        date: toNoonUtc(payload.date),
         time: payload.time,
         duration: payload.duration,
         type: payload.type,
@@ -133,7 +141,7 @@ export const appointmentsService = {
     if (rest.patientPhone !== undefined) updatePayload.patient_phone = rest.patientPhone;
     if (rest.doctorName !== undefined) updatePayload.doctor_name = rest.doctorName;
     if (rest.doctorSpecialty !== undefined) updatePayload.doctor_specialty = rest.doctorSpecialty;
-    if (rest.date !== undefined) updatePayload.date = rest.date;
+    if (rest.date !== undefined) updatePayload.date = toNoonUtc(rest.date);
     if (rest.time !== undefined) updatePayload.time = rest.time;
     if (rest.duration !== undefined) updatePayload.duration = rest.duration;
     if (rest.type !== undefined) updatePayload.type = rest.type;

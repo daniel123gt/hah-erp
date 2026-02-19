@@ -1,5 +1,22 @@
 import supabase from "~/utils/supabase";
 
+/** Valores equivalentes en BD: oficial + legacy (para que sigan apareciendo empleados ya guardados) */
+const DEPARTMENT_EQUIVALENTS: Record<string, string[]> = {
+  Medicina: ["Medicina", "Medicina General"],
+  Enfermeria: ["Enfermeria", "Enfermería"],
+  Administracion: ["Administracion", "Administración"],
+};
+const POSITION_EQUIVALENTS: Record<string, string[]> = {
+  "Enfermera Tecnica": ["Enfermera Tecnica", "Enfermera Técnica"],
+  "Enfermera Licenciada": ["Enfermera Licenciada"],
+  "Enfermera Jefe": ["Enfermera Jefe"],
+  Supervisor: ["Supervisor"],
+  Secretaria: ["Secretaria"],
+  "Medico General": ["Medico General", "Médico General"],
+  Administrador: ["Administrador"],
+  Chofer: ["Chofer"],
+};
+
 // Tipos para los datos de personal
 export interface Staff {
   id: string;
@@ -98,16 +115,26 @@ export const staffService = {
         query = query.eq('gender', gender);
       }
 
-      // Aplicar filtro de departamento
+      // Aplicar filtro de departamento (acepta valores oficiales y legacy en BD)
       if (department && department !== 'all') {
-        query = query.eq('department', department);
+        const deptValues = DEPARTMENT_EQUIVALENTS[department] ?? [department];
+        if (deptValues.length === 1) {
+          query = query.eq('department', deptValues[0]);
+        } else {
+          query = query.in('department', deptValues);
+        }
       }
 
-      // Aplicar filtro de posición (exacto o por patrón)
+      // Aplicar filtro de posición (exacto, por patrón, o equivalentes oficial/legacy)
       if (positionPattern) {
         query = query.ilike('position', positionPattern);
       } else if (position && position !== 'all') {
-        query = query.eq('position', position);
+        const posValues = POSITION_EQUIVALENTS[position] ?? [position];
+        if (posValues.length === 1) {
+          query = query.eq('position', posValues[0]);
+        } else {
+          query = query.in('position', posValues);
+        }
       }
 
       const { data, error, count } = await query;
@@ -205,20 +232,24 @@ export const staffService = {
   // Obtener estadísticas de personal
   async getStaffStats() {
     try {
+      const now = new Date();
+      const yearStart = `${now.getFullYear()}-01-01`;
       const [
         { count: totalStaff },
         { count: maleStaff },
         { count: femaleStaff },
         { count: activeStaff },
-        { count: staffThisMonth }
+        { count: staffThisMonth },
+        { count: staffThisYear }
       ] = await Promise.all([
         supabase.from('staff').select('*', { count: 'exact', head: true }),
         supabase.from('staff').select('*', { count: 'exact', head: true }).eq('gender', 'M'),
         supabase.from('staff').select('*', { count: 'exact', head: true }).eq('gender', 'F'),
         supabase.from('staff').select('*', { count: 'exact', head: true }).eq('status', 'Activo'),
-        // Contar personal contratado este mes
         supabase.from('staff').select('*', { count: 'exact', head: true })
-          .gte('hire_date', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0])
+          .gte('hire_date', new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]),
+        supabase.from('staff').select('*', { count: 'exact', head: true })
+          .gte('hire_date', yearStart)
       ]);
 
       return {
@@ -226,11 +257,55 @@ export const staffService = {
         male: maleStaff || 0,
         female: femaleStaff || 0,
         active: activeStaff || 0,
-        thisMonth: staffThisMonth || 0
+        thisMonth: staffThisMonth || 0,
+        thisYear: staffThisYear || 0
       };
     } catch (error) {
       console.error('Error al obtener estadísticas de personal:', error);
       throw new Error('Error al obtener estadísticas');
+    }
+  },
+
+  /** Empleados contratados en el mes actual (para tabla resumen en home de personal). */
+  async getStaffHiredThisMonth(): Promise<Staff[]> {
+    try {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = now.getMonth();
+      const start = `${y}-${String(m + 1).padStart(2, '0')}-01`;
+      const lastDay = new Date(y, m + 1, 0).getDate();
+      const end = `${y}-${String(m + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+      const { data, error } = await supabase
+        .from('staff')
+        .select('*')
+        .gte('hire_date', start)
+        .lte('hire_date', end)
+        .order('hire_date', { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as Staff[];
+    } catch (error) {
+      console.error('Error al obtener personal contratado este mes:', error);
+      return [];
+    }
+  },
+
+  /** Empleados contratados en el año actual (para tabla resumen en home de personal). */
+  async getStaffHiredThisYear(): Promise<Staff[]> {
+    try {
+      const y = new Date().getFullYear();
+      const start = `${y}-01-01`;
+      const end = `${y}-12-31`;
+      const { data, error } = await supabase
+        .from('staff')
+        .select('*')
+        .gte('hire_date', start)
+        .lte('hire_date', end)
+        .order('hire_date', { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as Staff[];
+    } catch (error) {
+      console.error('Error al obtener personal contratado este año:', error);
+      return [];
     }
   },
 

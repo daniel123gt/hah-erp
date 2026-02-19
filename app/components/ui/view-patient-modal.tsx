@@ -8,6 +8,7 @@ import {
   DialogTrigger,
 } from "./dialog";
 import { Button } from "./button";
+import { formatDateOnly, parseDateOnlyAsLocal } from "~/lib/dateUtils";
 import { 
   User, 
   Mail, 
@@ -104,10 +105,10 @@ export function ViewPatientModal({ patient }: ViewPatientModalProps) {
               <div className="text-right">
                 <p className="text-sm text-gray-500">Última visita</p>
                 <p className="font-semibold text-gray-900">
-                  {new Date(patient.lastVisit).toLocaleDateString('es-ES', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
+                  {parseDateOnlyAsLocal(patient.lastVisit).toLocaleDateString("es-PE", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
                   })}
                 </p>
               </div>
@@ -218,7 +219,7 @@ export function ViewPatientModal({ patient }: ViewPatientModalProps) {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-medium">{new Date(patient.lastVisit).toLocaleDateString('es-ES')}</p>
+                  <p className="text-sm font-medium">{formatDateOnly(patient.lastVisit)}</p>
                   <p className="text-xs text-gray-500">10:30 AM</p>
                 </div>
               </div>
@@ -233,7 +234,11 @@ export function ViewPatientModal({ patient }: ViewPatientModalProps) {
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-medium">
-                    {new Date(new Date(patient.lastVisit).getTime() - 7 * 24 * 60 * 60 * 1000).toLocaleDateString('es-ES')}
+                    {(() => {
+                      const d = parseDateOnlyAsLocal(patient.lastVisit);
+                      d.setDate(d.getDate() - 7);
+                      return formatDateOnly(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+                    })()}
                   </p>
                   <p className="text-xs text-gray-500">09:15 AM</p>
                 </div>

@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Badge } from "./badge";
 import { Avatar, AvatarFallback, AvatarImage } from "./avatar";
 import {
@@ -9,6 +10,8 @@ import {
   DialogTrigger,
 } from "./dialog";
 import { Button } from "./button";
+import { formatDateOnly, parseDateOnlyAsLocal } from "~/lib/dateUtils";
+import { getStaffActivity, type StaffActivityItem } from "~/services/staffActivityService";
 import { 
   UserCheck, 
   Mail, 
@@ -20,7 +23,8 @@ import {
   Eye,
   Clock,
   GraduationCap,
-  Building
+  Building,
+  Loader2,
 } from "lucide-react";
 
 interface Staff {
@@ -42,7 +46,29 @@ interface ViewStaffModalProps {
   staff: Staff;
 }
 
+const ACTIVITY_TYPE_COLOR: Record<string, string> = {
+  cita_medicina: "bg-blue-500",
+  cita_procedimiento: "bg-green-500",
+  turno_cuidado: "bg-amber-500",
+  eliminacion: "bg-purple-500",
+  valoracion: "bg-cyan-500",
+  evolucion: "bg-indigo-500",
+  signos_vitales: "bg-teal-500",
+};
+
 export function ViewStaffModal({ staff }: ViewStaffModalProps) {
+  const [activities, setActivities] = useState<StaffActivityItem[]>([]);
+  const [loadingActivities, setLoadingActivities] = useState(false);
+
+  useEffect(() => {
+    if (!staff?.name) return;
+    setLoadingActivities(true);
+    getStaffActivity(staff.name)
+      .then(setActivities)
+      .catch(() => setActivities([]))
+      .finally(() => setLoadingActivities(false));
+  }, [staff?.name]);
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "active":
@@ -58,23 +84,19 @@ export function ViewStaffModal({ staff }: ViewStaffModalProps) {
 
   const getDepartmentColor = (department: string) => {
     switch (department) {
-      case "Medicina General":
+      case "Medicina":
         return "bg-blue-100 text-blue-800";
-      case "Enfermería":
+      case "Enfermeria":
         return "bg-green-100 text-green-800";
-      case "Laboratorio":
-        return "bg-purple-100 text-purple-800";
-      case "Administración":
+      case "Administracion":
         return "bg-orange-100 text-orange-800";
-      case "Cardiología":
-        return "bg-red-100 text-red-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
   };
 
   const calculateYearsOfService = (hireDate: string) => {
-    const years = (new Date().getTime() - new Date(hireDate).getTime()) / (1000 * 60 * 60 * 24 * 365);
+    const years = (new Date().getTime() - parseDateOnlyAsLocal(hireDate).getTime()) / (1000 * 60 * 60 * 24 * 365);
     return Math.floor(years);
   };
 
@@ -123,9 +145,9 @@ export function ViewStaffModal({ staff }: ViewStaffModalProps) {
                   {calculateYearsOfService(staff.hireDate)}
                 </p>
                 <p className="text-sm text-gray-500">
-                  Desde {new Date(staff.hireDate).toLocaleDateString('es-ES', {
-                    year: 'numeric',
-                    month: 'long'
+                  Desde {parseDateOnlyAsLocal(staff.hireDate).toLocaleDateString("es-PE", {
+                    year: "numeric",
+                    month: "long",
                   })}
                 </p>
               </div>
@@ -172,7 +194,7 @@ export function ViewStaffModal({ staff }: ViewStaffModalProps) {
                 <div>
                   <span className="text-sm text-gray-500">Fecha de Contratación:</span>
                   <p className="font-medium">
-                    {new Date(staff.hireDate).toLocaleDateString('es-ES')}
+                    {formatDateOnly(staff.hireDate)}
                   </p>
                 </div>
               </div>
@@ -221,55 +243,43 @@ export function ViewStaffModal({ staff }: ViewStaffModalProps) {
             </div>
           )}
 
-          {/* Historial de Actividad (simulado) */}
+          {/* Actividad reciente (citas, turnos, registros de enfermería) */}
           <div className="bg-white p-6 rounded-lg border">
             <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
               <Calendar className="w-5 h-5 mr-2 text-primary-blue" />
               Actividad Reciente
             </h3>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <div>
-                    <p className="font-medium">Consulta médica completada</p>
-                    <p className="text-sm text-gray-500">Paciente: María González</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium">Hoy</p>
-                  <p className="text-xs text-gray-500">10:30 AM</p>
-                </div>
+            {loadingActivities ? (
+              <div className="flex items-center justify-center py-8 text-gray-500">
+                <Loader2 className="w-6 h-6 animate-spin mr-2" />
+                Cargando actividad...
               </div>
-              
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <div>
-                    <p className="font-medium">Reunión de departamento</p>
-                    <p className="text-sm text-gray-500">Medicina General</p>
+            ) : activities.length === 0 ? (
+              <p className="text-gray-500 text-center py-6">No hay actividad registrada para este empleado.</p>
+            ) : (
+              <div className="space-y-3">
+                {activities.map((act) => (
+                  <div key={act.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div
+                        className={`w-2 h-2 rounded-full flex-shrink-0 ${ACTIVITY_TYPE_COLOR[act.type] ?? "bg-gray-500"}`}
+                      />
+                      <div>
+                        <p className="font-medium">{act.description}</p>
+                        <p className="text-sm text-gray-500">
+                          {act.typeLabel}
+                          {act.extra ? ` · ${act.extra}` : ""}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0 ml-2">
+                      <p className="text-sm font-medium">{formatDateOnly(act.date)}</p>
+                      {act.time && <p className="text-xs text-gray-500">{act.time}</p>}
+                    </div>
                   </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium">Ayer</p>
-                  <p className="text-xs text-gray-500">2:00 PM</p>
-                </div>
+                ))}
               </div>
-
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                  <div>
-                    <p className="font-medium">Capacitación completada</p>
-                    <p className="text-sm text-gray-500">Nuevos protocolos médicos</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium">Hace 3 días</p>
-                  <p className="text-xs text-gray-500">9:00 AM</p>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Botones de Acción */}

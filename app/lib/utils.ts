@@ -7,7 +7,7 @@ export function cn(...inputs: ClassValue[]) {
 
 /**
  * Formatea una fecha ISO o YYYY-MM-DD como fecha local (evita desfase de un día por UTC).
- * Útil para order_date y campos que se guardan solo como fecha.
+ * Para más helpers (toNoonUtc, getTodayLocal, etc.) usar ~/lib/dateUtils.
  */
 export function formatDateOnly(isoOrDateStr: string | null | undefined, locale = "es-ES"): string {
   if (isoOrDateStr == null) return "";

@@ -102,11 +102,12 @@ export function ViewAppointmentModal({ appointment, professionalLabel = "Médico
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-ES', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+    const d = dateString.includes("T") ? new Date(dateString) : new Date(dateString + "T12:00:00");
+    return d.toLocaleDateString("es-ES", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   };
 
@@ -316,7 +317,7 @@ export function ViewAppointmentModal({ appointment, professionalLabel = "Médico
                   <div>
                     <p className="text-sm font-medium">Cita programada</p>
                     <p className="text-xs text-gray-500">
-                      {new Date(appointment.date).toLocaleDateString('es-ES')} - Sistema
+                      {new Date(appointment.date.includes("T") ? appointment.date : appointment.date + "T12:00:00").toLocaleDateString("es-ES")} - Sistema
                     </p>
                   </div>
                 </div>

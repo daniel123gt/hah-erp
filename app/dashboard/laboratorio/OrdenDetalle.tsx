@@ -304,6 +304,10 @@ export default function OrdenDetalle() {
                 <span className="text-sm text-gray-500">Fecha de Orden:</span>
                 <p className="font-medium">{formatDateOnly(order.order_date)}</p>
               </div>
+              <div>
+                <span className="text-sm text-gray-500">Fecha de toma de muestra (programación):</span>
+                <p className="font-medium">{formatDateOnly(order.sample_date ?? order.order_date)}</p>
+              </div>
               {order.physician_name && (
                 <div>
                   <span className="text-sm text-gray-500">Médico Solicitante:</span>

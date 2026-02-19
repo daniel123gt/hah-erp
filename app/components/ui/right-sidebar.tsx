@@ -3,19 +3,22 @@ import { Button } from "./button";
 import { Card, CardContent, CardHeader, CardTitle } from "./card";
 import { Avatar, AvatarFallback, AvatarImage } from "./avatar";
 import { Badge } from "./badge";
-import { Settings, Calendar, Hash, HeartPulse } from "lucide-react";
+import { Settings, Calendar, Hash, HeartPulse, FlaskConical } from "lucide-react";
 import { useAuthStore, getAppRole } from "~/store/authStore";
 import { useNavigate } from "react-router";
 import { appointmentsService } from "~/services/appointmentsService";
+import labOrderService from "~/services/labOrderService";
+import { getTodayLocal } from "~/lib/dateUtils";
 
 export function RightSidebar() {
   const { user } = useAuthStore();
   const role = getAppRole(user);
   const navigate = useNavigate();
   const [todayProcedimientos, setTodayProcedimientos] = useState<{ id: string; time: string; patientName: string; procedure_name?: string }[]>([]);
+  const [todayLabOrders, setTodayLabOrders] = useState<{ id: string; itemsCount: number; total_amount: number }[]>([]);
 
   useEffect(() => {
-    const today = new Date().toISOString().split("T")[0];
+    const today = getTodayLocal();
     appointmentsService
       .list("procedimientos")
       .then((list) => list.filter((c) => c.date === today).sort((a, b) => a.time.localeCompare(b.time)))
@@ -30,6 +33,22 @@ export function RightSidebar() {
         )
       )
       .catch(() => setTodayProcedimientos([]));
+  }, []);
+
+  useEffect(() => {
+    const today = getTodayLocal();
+    labOrderService
+      .getOrdersForSampleDate(today)
+      .then((orders) =>
+        setTodayLabOrders(
+          orders.slice(0, 5).map((o) => ({
+            id: o.id,
+            itemsCount: o.items.length,
+            total_amount: o.total_amount,
+          }))
+        )
+      )
+      .catch(() => setTodayLabOrders([]));
   }, []);
 
   return (
@@ -107,6 +126,43 @@ export function RightSidebar() {
             onClick={() => navigate("/citas/procedimientos")}
           >
             Ver todas las citas
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Laboratorios de hoy */}
+      <Card>
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg font-semibold text-primary-blue flex items-center gap-2">
+            <FlaskConical className="w-5 h-5" />
+            Laboratorios de hoy
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {todayLabOrders.length === 0 ? (
+            <p className="text-sm text-gray-500 py-2">No hay tomas de muestra programadas hoy.</p>
+          ) : (
+            todayLabOrders.map((order) => (
+              <div
+                key={order.id}
+                className="flex justify-between items-center p-3 bg-gray-50 rounded-lg gap-2 cursor-pointer hover:bg-gray-100"
+                onClick={() => navigate(`/laboratorio/ordenes/${order.id}`)}
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-gray-900 truncate">Orden {order.id.slice(0, 8)}...</p>
+                  <p className="text-xs text-gray-500">
+                    {order.itemsCount} exámenes · S/ {order.total_amount.toFixed(2)}
+                  </p>
+                </div>
+              </div>
+            ))
+          )}
+          <Button
+            variant="outline"
+            className="w-full mt-2 border-primary-blue text-primary-blue hover:bg-primary-blue hover:text-white"
+            onClick={() => navigate("/laboratorio/ordenes")}
+          >
+            Ver todas las órdenes
           </Button>
         </CardContent>
       </Card>

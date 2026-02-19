@@ -3,6 +3,7 @@
  * Usa pacientes, citas y procedimientos para métricas reales.
  */
 
+import { getTodayLocal } from "~/lib/dateUtils";
 import patientsService from "~/services/patientsService";
 import { appointmentsService } from "~/services/appointmentsService";
 import { procedureService, type ProcedureRecord } from "~/services/procedureService";
@@ -23,8 +24,9 @@ function getMonthRange(): { from: string; to: string } {
   const now = new Date();
   const y = now.getFullYear();
   const m = now.getMonth();
-  const from = new Date(y, m, 1).toISOString().split("T")[0];
-  const to = new Date(y, m + 1, 0).toISOString().split("T")[0];
+  const from = `${y}-${String(m + 1).padStart(2, "0")}-01`;
+  const lastDay = new Date(y, m + 1, 0).getDate();
+  const to = `${y}-${String(m + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
   return { from, to };
 }
 
@@ -33,10 +35,20 @@ export interface DashboardStats {
   patientGrowth: number; // 0 si no hay dato anterior
   citasHoy: number;
   appointmentGrowth: number;
+  labOrdersHoy: number;
   monthlyRevenue: number;
   revenueGrowth: number;
   activeServices: number;
   serviceGrowth: number;
+}
+
+export interface TodayLabOrderItem {
+  id: string;
+  patient_id: string;
+  patientName: string;
+  itemsCount: number;
+  total_amount: number;
+  status: string;
 }
 
 export interface TodayAppointmentItem {
@@ -68,18 +80,20 @@ export interface RecentActivityItem {
 export interface DashboardData {
   stats: DashboardStats;
   todayAppointments: TodayAppointmentItem[];
+  todayLabOrders: TodayLabOrderItem[];
   topServices: TopServiceItem[];
   recentActivity: RecentActivityItem[];
 }
 
 export async function getDashboardData(): Promise<DashboardData> {
-  const today = new Date().toISOString().split("T")[0];
+  const today = getTodayLocal();
   const { from: monthFrom, to: monthTo } = getMonthRange();
 
   const [
     patientStats,
     medicinaCitas,
     procedimientosCitas,
+    todayLabOrdersRaw,
     procedureCatalog,
     procedureRecords,
     labRevenue,
@@ -88,6 +102,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     patientsService.getPatientStats().catch(() => ({ total: 0, thisMonth: 0 })),
     appointmentsService.list("medicina"),
     appointmentsService.list("procedimientos"),
+    labOrderService.getOrdersForSampleDate(today),
     procedureService.getCatalog(true),
     procedureService.getRecords({
       fromDate: monthFrom,
@@ -97,6 +112,23 @@ export async function getDashboardData(): Promise<DashboardData> {
     labOrderService.getMonthlyRevenue(monthFrom, monthTo),
     homeCareService.getMonthlyRevenue(monthFrom, monthTo),
   ]);
+
+  const labPatientIds = [...new Set(todayLabOrdersRaw.map((o) => o.patient_id))];
+  const labPatients = await Promise.all(
+    labPatientIds.map((id) => patientsService.getPatientById(id).catch(() => null))
+  );
+  const labPatientMap: Record<string, string> = {};
+  labPatients.forEach((p, i) => {
+    if (p) labPatientMap[labPatientIds[i]] = p.name;
+  });
+  const todayLabOrders: TodayLabOrderItem[] = todayLabOrdersRaw.map((o) => ({
+    id: o.id,
+    patient_id: o.patient_id,
+    patientName: labPatientMap[o.patient_id] ?? "Paciente",
+    itemsCount: o.items.length,
+    total_amount: o.total_amount,
+    status: o.status,
+  }));
 
   const todayMedicina = medicinaCitas.filter((c) => c.date === today);
   const todayProcedimientos = procedimientosCitas.filter((c) => c.date === today);
@@ -173,6 +205,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     patientGrowth: 0,
     citasHoy: todayAppointments.length,
     appointmentGrowth: 0,
+    labOrdersHoy: todayLabOrders.length,
     monthlyRevenue,
     revenueGrowth: 0,
     activeServices: procedureCatalog.length,
@@ -182,6 +215,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   return {
     stats,
     todayAppointments,
+    todayLabOrders,
     topServices,
     recentActivity,
   };

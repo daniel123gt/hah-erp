@@ -23,10 +23,12 @@ import {
   Edit,
   Plus,
   Loader2,
+  FlaskConical,
 } from "lucide-react";
 import {
   getDashboardData,
   type TodayAppointmentItem,
+  type TodayLabOrderItem,
   type TopServiceItem,
   type RecentActivityItem,
 } from "~/services/dashboardService";
@@ -52,12 +54,14 @@ export default function HomeDashboard() {
     patientGrowth: 0,
     citasHoy: 0,
     appointmentGrowth: 0,
+    labOrdersHoy: 0,
     monthlyRevenue: 0,
     revenueGrowth: 0,
     activeServices: 0,
     serviceGrowth: 0,
   });
   const [todayAppointments, setTodayAppointments] = useState<TodayAppointmentItem[]>([]);
+  const [todayLabOrders, setTodayLabOrders] = useState<TodayLabOrderItem[]>([]);
   const [topServices, setTopServices] = useState<TopServiceItem[]>([]);
   const [recentActivity, setRecentActivity] = useState<RecentActivityItem[]>([]);
   const alerts: { id: number; type: string; title: string; message: string; action: string; icon: typeof AlertCircle; color: string; bgColor: string; borderColor: string }[] = [];
@@ -68,6 +72,7 @@ export default function HomeDashboard() {
       .then((data) => {
         setStats(data.stats);
         setTodayAppointments(data.todayAppointments);
+        setTodayLabOrders(data.todayLabOrders);
         setTopServices(data.topServices);
         setRecentActivity(data.recentActivity);
       })
@@ -428,6 +433,20 @@ ${data.citasDelDia.map((cita: any) =>
           </CardContent>
         </Card>
 
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Laboratorios Hoy</p>
+                <p className="text-3xl font-bold text-gray-900">{stats.labOrdersHoy}</p>
+              </div>
+              <div className="p-3 bg-cyan-100 rounded-full">
+                <FlaskConical className="w-6 h-6 text-cyan-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {!isGestor && (
           <Card>
             <CardContent className="p-6">
@@ -451,28 +470,6 @@ ${data.citasDelDia.map((cita: any) =>
             </CardContent>
           </Card>
         )}
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Servicios Activos</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.activeServices}</p>
-                {stats.serviceGrowth !== 0 && (
-                  <div className="flex items-center mt-2">
-                    {getGrowthIcon(stats.serviceGrowth)}
-                    <span className={`text-sm font-medium ml-1 ${getGrowthColor(stats.serviceGrowth)}`}>
-                      +{stats.serviceGrowth}%
-                    </span>
-                  </div>
-                )}
-              </div>
-              <div className="p-3 bg-orange-100 rounded-full">
-                <Activity className="w-6 h-6 text-orange-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
       )}
 
@@ -480,7 +477,7 @@ ${data.citasDelDia.map((cita: any) =>
       {!loading && (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Citas del Día */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -533,6 +530,56 @@ ${data.citasDelDia.map((cita: any) =>
                 ))
                 )}
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Laboratorios de Hoy */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FlaskConical className="w-5 h-5 text-primary-blue" />
+                Laboratorios de Hoy
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {todayLabOrders.length === 0 ? (
+                  <p className="text-gray-500 text-center py-6">No hay tomas de muestra programadas para hoy.</p>
+                ) : (
+                  todayLabOrders.map((order) => (
+                    <div
+                      key={order.id}
+                      className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      <div>
+                        <p className="font-medium text-gray-900">{order.patientName}</p>
+                        <p className="text-sm text-gray-600">
+                          {order.itemsCount} exámenes · S/ {order.total_amount.toFixed(2)}
+                        </p>
+                      </div>
+                      <Badge variant="secondary">{order.status}</Badge>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/laboratorio/ordenes/${order.id}`)}
+                        title="Ver orden"
+                      >
+                        <Eye className="w-4 h-4 mr-2" />
+                        Ver
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </div>
+              {todayLabOrders.length > 0 && (
+                <Button
+                  variant="outline"
+                  className="w-full mt-3 border-primary-blue text-primary-blue hover:bg-primary-blue hover:text-white"
+                  onClick={() => navigate("/laboratorio/ordenes")}
+                >
+                  Ver todas las órdenes
+                </Button>
+              )}
             </CardContent>
           </Card>
         </div>

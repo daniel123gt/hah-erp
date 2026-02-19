@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
-import { appointmentsService } from "~/services/appointmentsService";
+import { appointmentsService, formatDateOnly } from "~/services/appointmentsService";
+import { getTodayLocal } from "~/lib/dateUtils";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -189,9 +190,7 @@ export default function CitasMedicinaPage() {
     }
   };
 
-  const todayAppointments = appointments.filter(
-    (a) => a.date === new Date().toISOString().split("T")[0]
-  );
+  const todayAppointments = appointments.filter((a) => a.date === getTodayLocal());
 
   return (
     <div className="space-y-6">
@@ -385,7 +384,7 @@ export default function CitasMedicinaPage() {
                     <TableCell>
                       <div className="text-center">
                         <p className="font-medium">
-                          {new Date(appointment.date).toLocaleDateString("es-ES")}
+                          {formatDateOnly(appointment.date)}
                         </p>
                         <p className="text-sm text-gray-500">
                           {appointment.time} ({appointment.duration} min)

@@ -16,6 +16,8 @@ export interface LabExamOrder {
   id: string;
   patient_id: string;
   order_date: string;
+  /** Fecha programada para la toma de muestra (laboratorios de hoy, próximas citas) */
+  sample_date?: string | null;
   physician_name?: string;
   priority: 'urgente' | 'normal' | 'programada';
   observations?: string;
@@ -34,6 +36,8 @@ export interface LabExamOrder {
 export interface CreateLabOrderData {
   patient_id: string;
   order_date: string;
+  /** Fecha programada para la toma de muestra */
+  sample_date?: string | null;
   physician_name?: string;
   priority?: 'urgente' | 'normal' | 'programada';
   observations?: string;
@@ -73,6 +77,7 @@ export const labOrderService = {
           {
             patient_id: data.patient_id,
             order_date: data.order_date,
+            sample_date: data.sample_date || null,
             physician_name: data.physician_name || null,
             priority: data.priority || 'normal',
             observations: data.observations || null,
@@ -558,6 +563,50 @@ export const labOrderService = {
     } catch (error: any) {
       console.error('Error al eliminar examen:', error);
       throw new Error(error?.message || 'Error al eliminar examen de la orden');
+    }
+  },
+
+  /** Órdenes con fecha de toma de muestra = date (o order_date si sample_date es null, para compatibilidad). */
+  async getOrdersForSampleDate(sampleDate: string): Promise<LabExamOrder[]> {
+    try {
+      const { data: bySample, error: e1 } = await supabase
+        .from('lab_exam_orders')
+        .select('*')
+        .eq('sample_date', sampleDate)
+        .order('created_at', { ascending: false });
+      if (e1) throw e1;
+      const { data: byOrderDate, error: e2 } = await supabase
+        .from('lab_exam_orders')
+        .select('*')
+        .is('sample_date', null)
+        .eq('order_date', sampleDate)
+        .order('created_at', { ascending: false });
+      if (e2) throw e2;
+      const idsBySample = new Set((bySample ?? []).map((r) => r.id));
+      const merged = [...(bySample ?? []), ...(byOrderDate ?? []).filter((r) => !idsBySample.has(r.id))];
+      const ordersWithItems = await Promise.all(
+        merged.map(async (order) => {
+          const { data: items } = await supabase
+            .from('lab_exam_order_items')
+            .select('*')
+            .eq('order_id', order.id);
+          return {
+            ...order,
+            items: (items ?? []).map((item) => ({
+              id: item.id,
+              exam_id: item.exam_id,
+              exam_code: item.exam_code,
+              exam_name: item.exam_name,
+              price: item.price,
+              status: item.status,
+            })),
+          };
+        })
+      );
+      return ordersWithItems as LabExamOrder[];
+    } catch (error: any) {
+      console.error('Error al obtener órdenes por fecha de toma:', error);
+      return [];
     }
   },
 

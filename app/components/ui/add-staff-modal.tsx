@@ -26,6 +26,7 @@ import {
   GraduationCap
 } from "lucide-react";
 import { staffService } from "~/services/staffService";
+import { OFFICIAL_DEPARTMENTS, OFFICIAL_POSITIONS } from "~/dashboard/personal/categories";
 import { toast } from "sonner";
 
 interface Staff {
@@ -64,33 +65,8 @@ export function AddStaffModal({ onStaffAdded }: AddStaffModalProps) {
   });
   const [newSpecialty, setNewSpecialty] = useState("");
 
-  const departments = [
-    "Medicina General",
-    "Enfermería", 
-    "Laboratorio",
-    "Administración",
-    "Cardiología",
-    "Pediatría",
-    "Ginecología",
-    "Cirugía",
-    "Radiología",
-    "Farmacia"
-  ];
-
-  const positions = [
-    "Médico General",
-    "Médico Especialista",
-    "Enfermera",
-    "Enfermera Jefe",
-    "Técnico de Laboratorio",
-    "Técnico de Radiología",
-    "Recepcionista",
-    "Administrador",
-    "Contador",
-    "Secretaria",
-    "Auxiliar de Enfermería",
-    "Farmacéutico"
-  ];
+  const departments = [...OFFICIAL_DEPARTMENTS];
+  const positions = [...OFFICIAL_POSITIONS];
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({

@@ -16,6 +16,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { AddAppointmentModal } from "~/components/ui/add-appointment-modal";
 import { ViewAppointmentModal } from "~/components/ui/view-appointment-modal";
 import { EditAppointmentModal } from "~/components/ui/edit-appointment-modal";
+import { formatDateOnly } from "~/services/appointmentsService";
+import { parseDateOnlyAsLocal, getTodayLocal } from "~/lib/dateUtils";
 import { 
   Search, 
   Plus, 
@@ -201,8 +203,11 @@ export default function CitasPage() {
     }
   };
 
-  const todayAppointments = appointments.filter(a => a.date === new Date().toISOString().split('T')[0]);
-  const upcomingAppointments = appointments.filter(a => new Date(a.date) > new Date()).slice(0, 5);
+  const todayLocal = getTodayLocal();
+  const todayAppointments = appointments.filter((a) => a.date === todayLocal);
+  const upcomingAppointments = appointments.filter(
+    (a) => parseDateOnlyAsLocal(a.date) > new Date()
+  ).slice(0, 5);
 
   return (
     <div className="space-y-6">
@@ -388,7 +393,7 @@ export default function CitasPage() {
                 <TableRow key={appointment.id}>
                   <TableCell>
                     <div className="text-center">
-                      <p className="font-medium">{new Date(appointment.date).toLocaleDateString('es-ES')}</p>
+                      <p className="font-medium">{formatDateOnly(appointment.date)}</p>
                       <p className="text-sm text-gray-500">{appointment.time} ({appointment.duration} min)</p>
                     </div>
                   </TableCell>
