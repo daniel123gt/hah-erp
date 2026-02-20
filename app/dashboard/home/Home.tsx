@@ -561,14 +561,50 @@ ${data.citasDelDia.map((cita: any) =>
 
       {/* Contenido Principal */}
       {!loading && (
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Calendario (citas medicina, procedimientos y laboratorio) */}
-        <div className="lg:col-span-2">
-          <HomeCalendar />
-        </div>
+      <div className="space-y-6">
+        {/* Calendario a ancho completo */}
+        <HomeCalendar />
 
-        {/* Panel Lateral */}
-        <div className="space-y-6">
+        {/* Tres columnas: Actividad Reciente, Alertas, Servicios Populares */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Actividad Reciente - solo admin */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="w-5 h-5 text-primary-blue" />
+                Actividad Reciente
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!isGestor ? (
+                recentActivity.length === 0 ? (
+                  <p className="text-gray-500 text-sm py-2">No hay actividad reciente.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {recentActivity.map((activity) => {
+                      const IconComponent = (ACTIVITY_ICON as Record<string, typeof Stethoscope>)[activity.type] || Stethoscope;
+                      const color = (ACTIVITY_COLOR as Record<string, string>)[activity.type] || "text-gray-600";
+                      const bgColor = (ACTIVITY_BG as Record<string, string>)[activity.type] || "bg-gray-50";
+                      return (
+                        <div key={activity.id} className="flex items-center space-x-4 p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                          <div className={`p-2 rounded-full ${bgColor}`}>
+                            <IconComponent className={`w-4 h-4 ${color}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-gray-900 truncate" title={activity.description}>{activity.description}</p>
+                            <p className="text-xs text-gray-500">{activity.time}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )
+              ) : (
+                <p className="text-gray-500 text-sm py-2">No disponible.</p>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Alertas */}
           <Card>
             <CardHeader>
@@ -587,13 +623,13 @@ ${data.citasDelDia.map((cita: any) =>
                     return (
                       <div key={alert.id} className={`p-3 rounded-lg border ${alert.bgColor} ${alert.borderColor}`}>
                         <div className="flex items-start space-x-3">
-                          <IconComponent className={`w-5 h-5 mt-0.5 ${alert.color}`} />
-                          <div className="flex-1">
-                            <h4 className="font-medium text-gray-900">{alert.title}</h4>
+                          <IconComponent className={`w-5 h-5 mt-0.5 shrink-0 ${alert.color}`} />
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium text-gray-900 text-sm">{alert.title}</h4>
                             <p className="text-sm text-gray-600 mt-1">{alert.message}</p>
-                            <Button 
-                              variant="link" 
-                              size="sm" 
+                            <Button
+                              variant="link"
+                              size="sm"
                               className="p-0 h-auto text-xs mt-2"
                               onClick={() => handleAlertAction(alert.type)}
                             >
@@ -610,29 +646,29 @@ ${data.citasDelDia.map((cita: any) =>
           </Card>
 
           {/* Servicios Populares - solo admin */}
-          {!isGestor && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-primary-blue" />
-                  Servicios Populares (este mes)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {topServices.length === 0 ? (
-                    <p className="text-gray-500 text-sm">No hay datos del mes.</p>
-                  ) : (
-                    topServices.map((service, index) => (
-                      <div key={service.name} className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <Badge className="bg-primary-blue text-white">{index + 1}</Badge>
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{service.name}</p>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-primary-blue" />
+                Servicios Populares (este mes)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!isGestor ? (
+                topServices.length === 0 ? (
+                  <p className="text-gray-500 text-sm">No hay datos del mes.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {topServices.map((service, index) => (
+                      <div key={service.name} className="flex items-center justify-between gap-2">
+                        <div className="flex items-center space-x-3 min-w-0">
+                          <Badge className="bg-primary-blue text-white shrink-0">{index + 1}</Badge>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate" title={service.name}>{service.name}</p>
                             <p className="text-xs text-gray-500">{service.count} realizados</p>
                           </div>
                         </div>
-                        <div className="text-right">
+                        <div className="text-right shrink-0">
                           <p className="text-sm font-semibold text-green-600">S/ {service.revenue.toFixed(0)}</p>
                           {service.growth !== 0 && (
                             <div className="flex items-center">
@@ -644,50 +680,16 @@ ${data.citasDelDia.map((cita: any) =>
                           )}
                         </div>
                       </div>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                    ))}
+                  </div>
+                )
+              ) : (
+                <p className="text-gray-500 text-sm">No disponible.</p>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
-      )}
-
-      {/* Actividad Reciente - solo admin */}
-      {!loading && !isGestor && (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Activity className="w-5 h-5 text-primary-blue" />
-            Actividad Reciente
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {recentActivity.length === 0 ? (
-              <p className="text-gray-500 text-sm py-2">No hay actividad reciente.</p>
-            ) : (
-              recentActivity.map((activity) => {
-                const IconComponent = (ACTIVITY_ICON as Record<string, typeof Stethoscope>)[activity.type] || Stethoscope;
-                const color = (ACTIVITY_COLOR as Record<string, string>)[activity.type] || "text-gray-600";
-                const bgColor = (ACTIVITY_BG as Record<string, string>)[activity.type] || "bg-gray-50";
-                return (
-                  <div key={activity.id} className="flex items-center space-x-4 p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                    <div className={`p-2 rounded-full ${bgColor}`}>
-                      <IconComponent className={`w-4 h-4 ${color}`} />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm text-gray-900">{activity.description}</p>
-                      <p className="text-xs text-gray-500">{activity.time}</p>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </CardContent>
-      </Card>
       )}
 
       {/* Modal para Ver Cita */}
