@@ -617,6 +617,54 @@ export const labOrderService = {
     }
   },
 
+  /** Órdenes con fecha de toma de muestra (o order_date si sample_date es null) en el rango [fromDate, toDate]. */
+  async getOrdersForSampleDateRange(fromDate: string, toDate: string): Promise<LabExamOrder[]> {
+    try {
+      const { data: bySample, error: e1 } = await supabase
+        .from('lab_exam_orders')
+        .select('*')
+        .gte('sample_date', fromDate)
+        .lte('sample_date', toDate)
+        .order('sample_date', { ascending: true })
+        .order('created_at', { ascending: false });
+      if (e1) throw e1;
+      const { data: byOrderDate, error: e2 } = await supabase
+        .from('lab_exam_orders')
+        .select('*')
+        .is('sample_date', null)
+        .gte('order_date', fromDate)
+        .lte('order_date', toDate)
+        .order('order_date', { ascending: true })
+        .order('created_at', { ascending: false });
+      if (e2) throw e2;
+      const idsBySample = new Set((bySample ?? []).map((r) => r.id));
+      const merged = [...(bySample ?? []), ...(byOrderDate ?? []).filter((r) => !idsBySample.has(r.id))];
+      const ordersWithItems = await Promise.all(
+        merged.map(async (order) => {
+          const { data: items } = await supabase
+            .from('lab_exam_order_items')
+            .select('*')
+            .eq('order_id', order.id);
+          return {
+            ...order,
+            items: (items ?? []).map((item) => ({
+              id: item.id,
+              exam_id: item.exam_id,
+              exam_code: item.exam_code,
+              exam_name: item.exam_name,
+              price: item.price,
+              status: item.status,
+            })),
+          };
+        })
+      );
+      return ordersWithItems as LabExamOrder[];
+    } catch (error: any) {
+      console.error('Error al obtener órdenes por rango de fecha de toma:', error);
+      return [];
+    }
+  },
+
   /**
    * Reporte de laboratorio por BD: órdenes pagadas en el rango con utilidad calculada
    * (ingreso - costo exámenes - costo procedimiento Toma de muestra).
