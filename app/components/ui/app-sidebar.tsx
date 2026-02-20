@@ -113,13 +113,12 @@ const items: NavItem[] = [
     ],
   },
   {
-    title: "Reportes",
-    url: "/reportes",
-    icon: BarChart3,
+    title: "Registro Citas Médicas",
+    url: "/registro-citas-medicas",
+    icon: Calendar,
     children: [
-      { title: "Laboratorio", url: "/laboratorio/reportes" },
-      { title: "Procedimientos", url: "/procedimientos/reportes" },
-      { title: "Cuidados por turnos", url: "/cuidados-por-turnos/reportes" },
+      { title: "Listado", url: "/registro-citas-medicas/listado" },
+      { title: "Reportes", url: "/registro-citas-medicas/reportes" },
     ],
   },
   {
@@ -136,6 +135,16 @@ const items: NavItem[] = [
     icon: Clock,
     children: [
       { title: "Reportes", url: "/cuidados-por-turnos/reportes" },
+    ],
+  },
+  {
+    title: "Reportes",
+    url: "/reportes",
+    icon: BarChart3,
+    children: [
+      { title: "Laboratorio", url: "/laboratorio/reportes" },
+      { title: "Procedimientos", url: "/procedimientos/reportes" },
+      { title: "Cuidados por turnos", url: "/cuidados-por-turnos/reportes" },
     ],
   },
   {

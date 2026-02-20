@@ -11,32 +11,17 @@ import {
   DialogTrigger,
 } from "~/components/ui/dialog";
 import { Badge } from "~/components/ui/badge";
-import { 
-  Edit, 
-  Package, 
-  DollarSign, 
-  Calendar, 
-  AlertTriangle, 
+import {
+  Edit,
+  Package,
+  DollarSign,
+  Calendar,
+  AlertTriangle,
   TrendingUp,
   AlertCircle,
-  Building2
+  Building2,
 } from "lucide-react";
-
-interface InventoryItem {
-  id: string;
-  name: string;
-  category: string;
-  description: string;
-  currentStock: number;
-  minStock: number;
-  maxStock: number;
-  unit: string;
-  price: number;
-  supplier: string;
-  lastRestocked: string;
-  expiryDate?: string;
-  status: "in_stock" | "low_stock" | "out_of_stock" | "expired";
-}
+import type { InventoryItem } from "~/services/inventoryService";
 
 interface EditInventoryModalProps {
   item: InventoryItem;

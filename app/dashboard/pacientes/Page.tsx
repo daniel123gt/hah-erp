@@ -20,19 +20,18 @@ import { Combobox } from "~/components/ui/combobox";
 import { patientsService, type Patient } from "~/services/patientsService";
 import { formatDateOnly, parseDateOnlyAsLocal } from "~/lib/dateUtils";
 import { toast } from "sonner";
-import { 
-  Search, 
-  Plus, 
-  Filter, 
-  User, 
-  Phone, 
+import { TablePagination } from "~/components/ui/table-pagination";
+import {
+  Search,
+  Plus,
+  Filter,
+  User,
+  Phone,
   Mail,
   Calendar,
   MapPin,
   FileText,
   Loader2,
-  ChevronLeft,
-  ChevronRight,
   X
 } from "lucide-react";
 
@@ -553,65 +552,18 @@ export default function PacientesPage() {
           )}
         </CardContent>
 
-        {/* Paginación */}
-        {!loading && pagination.totalPages > 1 && (
-          <div className="px-6 py-4 border-t border-gray-200">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-700">
-                Página {pagination.page} de {pagination.totalPages}
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(pagination.page - 1)}
-                  disabled={!pagination.hasPrevPage}
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  Anterior
-                </Button>
-                
-                {/* Números de página */}
-                <div className="flex items-center space-x-1">
-                  {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                    let pageNum;
-                    if (pagination.totalPages <= 5) {
-                      pageNum = i + 1;
-                    } else if (pagination.page <= 3) {
-                      pageNum = i + 1;
-                    } else if (pagination.page >= pagination.totalPages - 2) {
-                      pageNum = pagination.totalPages - 4 + i;
-                    } else {
-                      pageNum = pagination.page - 2 + i;
-                    }
-                    
-                    return (
-                      <Button
-                        key={pageNum}
-                        variant={pagination.page === pageNum ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => handlePageChange(pageNum)}
-                        className={pagination.page === pageNum ? "bg-primary-blue text-white" : ""}
-                      >
-                        {pageNum}
-                      </Button>
-                    );
-                  })}
-                </div>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(pagination.page + 1)}
-                  disabled={!pagination.hasNextPage}
-                >
-                  Siguiente
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
+        {/* Paginación estándar */}
+        {!loading && (
+          <TablePagination
+            page={pagination.page}
+            limit={pagination.limit}
+            total={pagination.total}
+            onPageChange={handlePageChange}
+            onLimitChange={handleLimitChange}
+            itemLabel="pacientes"
+            showSummary={false}
+            showLimitSelect={false}
+          />
         )}
       </Card>
     </div>

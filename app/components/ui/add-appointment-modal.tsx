@@ -18,23 +18,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
+import { Label } from "~/components/ui/label";
 import { Combobox } from "~/components/ui/combobox";
 import { patientsService, type Patient } from "~/services/patientsService";
 import { procedureService } from "~/services/procedureService";
 import { staffService } from "~/services/staffService";
 import { getDepartmentForCategory } from "~/dashboard/personal/categories";
 import { toast } from "sonner";
-import { 
-  Plus, 
-  Calendar, 
-  Clock, 
-  User, 
-  Stethoscope, 
-  Phone, 
-  Mail, 
-  MapPin, 
+import {
+  Plus,
+  Calendar,
+  Clock,
+  User,
+  UserPlus,
+  Stethoscope,
+  Phone,
+  Mail,
+  MapPin,
   FileText,
-  AlertCircle
+  AlertCircle,
+  Loader2,
+  X,
 } from "lucide-react";
 
 interface Appointment {
@@ -79,6 +83,18 @@ export function AddAppointmentModal({
   const [loadingProfessionals, setLoadingProfessionals] = useState(false);
   const [procedureCatalog, setProcedureCatalog] = useState<{ id: string; name: string; base_price_soles: number }[]>([]);
   const [loadingCatalog, setLoadingCatalog] = useState(false);
+  const [addPatientModalOpen, setAddPatientModalOpen] = useState(false);
+  const [creatingPatient, setCreatingPatient] = useState(false);
+  const [districts, setDistricts] = useState<Array<{ name: string; zone: string }>>([]);
+  const [newPatientData, setNewPatientData] = useState({
+    name: "",
+    dni: "",
+    email: "",
+    phone: "",
+    gender: "",
+    address: "",
+    district: "",
+  });
   const [formData, setFormData] = useState({
     patientId: "",
     patientName: "",
@@ -105,6 +121,7 @@ export function AddAppointmentModal({
       .then((res) => setPatients(res.data))
       .catch(() => setPatients([]))
       .finally(() => setLoadingPatients(false));
+    patientsService.getDistricts().then(setDistricts).catch(() => setDistricts([]));
   }, [isOpen]);
 
   useEffect(() => {
@@ -171,6 +188,35 @@ export function AddAppointmentModal({
     }));
   };
 
+  const handleCreateNewPatient = async () => {
+    if (!newPatientData.name.trim()) {
+      toast.error("El nombre es requerido");
+      return;
+    }
+    try {
+      setCreatingPatient(true);
+      const newPatient = await patientsService.createPatient({
+        name: newPatientData.name.trim(),
+        dni: newPatientData.dni.trim() || undefined,
+        email: newPatientData.email?.trim() || undefined,
+        phone: newPatientData.phone?.trim() || undefined,
+        gender: (newPatientData.gender as "M" | "F") || undefined,
+        address: newPatientData.address?.trim() || undefined,
+        district: newPatientData.district?.trim() || undefined,
+      });
+      setPatients((prev) => [newPatient, ...prev]);
+      handlePatientChange(newPatient.id);
+      setAddPatientModalOpen(false);
+      setNewPatientData({ name: "", dni: "", email: "", phone: "", gender: "", address: "", district: "" });
+      toast.success("Paciente creado. Ya está seleccionado para la cita.");
+    } catch (err) {
+      console.error(err);
+      toast.error("Error al crear el paciente");
+    } finally {
+      setCreatingPatient(false);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.patientId?.trim()) {
@@ -234,6 +280,7 @@ export function AddAppointmentModal({
   };
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button className="bg-primary-blue hover:bg-primary-blue/90">
@@ -261,7 +308,7 @@ export function AddAppointmentModal({
               </CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="md:col-span-1">
+              <div className="md:col-span-1 space-y-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Paciente *
                 </label>
@@ -272,6 +319,16 @@ export function AddAppointmentModal({
                   placeholder={loadingPatients ? "Cargando pacientes..." : "Seleccionar paciente"}
                   disabled={loadingPatients}
                 />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => setAddPatientModalOpen(true)}
+                >
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Agregar paciente
+                </Button>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -574,5 +631,110 @@ export function AddAppointmentModal({
         </form>
       </DialogContent>
     </Dialog>
+
+    {/* Modal Agregar paciente (segundo modal por encima) */}
+    <Dialog open={addPatientModalOpen} onOpenChange={setAddPatientModalOpen}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <UserPlus className="w-5 h-5 text-primary-blue" />
+            Crear nuevo paciente
+          </DialogTitle>
+          <DialogDescription>
+            Si no encuentra al paciente en la lista, créelo aquí. Se seleccionará automáticamente para la cita.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>Nombre *</Label>
+              <Input
+                value={newPatientData.name}
+                onChange={(e) => setNewPatientData({ ...newPatientData, name: e.target.value })}
+                placeholder="Nombre completo"
+              />
+            </div>
+            <div>
+              <Label>Nro. documento</Label>
+              <Input
+                value={newPatientData.dni}
+                onChange={(e) => setNewPatientData({ ...newPatientData, dni: e.target.value })}
+                placeholder="Ej. 12345678"
+                maxLength={20}
+              />
+            </div>
+            <div>
+              <Label>Teléfono</Label>
+              <Input
+                value={newPatientData.phone}
+                onChange={(e) => setNewPatientData({ ...newPatientData, phone: e.target.value })}
+                placeholder="Teléfono"
+              />
+            </div>
+            <div>
+              <Label>Email</Label>
+              <Input
+                type="email"
+                value={newPatientData.email}
+                onChange={(e) => setNewPatientData({ ...newPatientData, email: e.target.value })}
+                placeholder="email@ejemplo.com"
+              />
+            </div>
+            <div>
+              <Label>Género</Label>
+              <Select
+                value={newPatientData.gender}
+                onValueChange={(value) => setNewPatientData({ ...newPatientData, gender: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="M">Masculino</SelectItem>
+                  <SelectItem value="F">Femenino</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Distrito</Label>
+              <Combobox
+                options={districts.map((d) => ({ value: d.name, label: d.zone ? `${d.name} (${d.zone})` : d.name }))}
+                value={newPatientData.district || "__none__"}
+                onValueChange={(value) => setNewPatientData({ ...newPatientData, district: value === "__none__" ? "" : value })}
+                placeholder="Seleccionar distrito"
+                emptyOption={{ value: "__none__", label: "Sin especificar" }}
+              />
+            </div>
+            <div className="md:col-span-2">
+              <Label>Dirección</Label>
+              <Input
+                value={newPatientData.address}
+                onChange={(e) => setNewPatientData({ ...newPatientData, address: e.target.value })}
+                placeholder="Dirección"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end pt-2">
+            <Button type="button" variant="outline" onClick={() => setAddPatientModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={handleCreateNewPatient}
+              disabled={creatingPatient || !newPatientData.name.trim()}
+              className="bg-primary-blue hover:bg-primary-blue/90"
+            >
+              {creatingPatient ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <UserPlus className="w-4 h-4 mr-2" />
+              )}
+              Crear Paciente
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

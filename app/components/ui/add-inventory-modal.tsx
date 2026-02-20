@@ -11,32 +11,17 @@ import {
   DialogTrigger,
 } from "~/components/ui/dialog";
 import { Badge } from "~/components/ui/badge";
-import { 
-  Plus, 
-  Package, 
-  DollarSign, 
-  Calendar, 
-  AlertTriangle, 
+import {
+  Plus,
+  Package,
+  DollarSign,
+  Calendar,
+  AlertTriangle,
   TrendingUp,
   AlertCircle,
-  Building2
+  Building2,
 } from "lucide-react";
-
-interface InventoryItem {
-  id: string;
-  name: string;
-  category: string;
-  description: string;
-  currentStock: number;
-  minStock: number;
-  maxStock: number;
-  unit: string;
-  price: number;
-  supplier: string;
-  lastRestocked: string;
-  expiryDate?: string;
-  status: "in_stock" | "low_stock" | "out_of_stock" | "expired";
-}
+import type { InventoryItem } from "~/services/inventoryService";
 
 interface AddInventoryModalProps {
   onInventoryAdded: (item: InventoryItem) => void;
@@ -344,7 +329,7 @@ export function AddInventoryModal({ onInventoryAdded }: AddInventoryModalProps) 
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Proveedor *
+                  Proveedor
                 </label>
                 <div className="relative">
                   <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
