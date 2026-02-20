@@ -27,11 +27,24 @@ import {
 } from "lucide-react";
 import {
   getDashboardData,
+  getDashboardChartData,
   type TodayAppointmentItem,
   type TodayLabOrderItem,
   type TopServiceItem,
   type RecentActivityItem,
+  type DashboardChartPoint,
 } from "~/services/dashboardService";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
+import HomeCalendar from "~/dashboard/home/HomeCalendar";
 
 const ACTIVITY_ICON = { procedimiento: Stethoscope };
 const ACTIVITY_COLOR = { procedimiento: "text-purple-600" };
@@ -64,17 +77,19 @@ export default function HomeDashboard() {
   const [todayLabOrders, setTodayLabOrders] = useState<TodayLabOrderItem[]>([]);
   const [topServices, setTopServices] = useState<TopServiceItem[]>([]);
   const [recentActivity, setRecentActivity] = useState<RecentActivityItem[]>([]);
+  const [chartData, setChartData] = useState<DashboardChartPoint[]>([]);
   const alerts: { id: number; type: string; title: string; message: string; action: string; icon: typeof AlertCircle; color: string; bgColor: string; borderColor: string }[] = [];
 
   useEffect(() => {
     setLoading(true);
-    getDashboardData()
-      .then((data) => {
+    Promise.all([getDashboardData(), getDashboardChartData()])
+      .then(([data, chart]) => {
         setStats(data.stats);
         setTodayAppointments(data.todayAppointments);
         setTodayLabOrders(data.todayLabOrders);
         setTopServices(data.topServices);
         setRecentActivity(data.recentActivity);
+        setChartData(chart);
       })
       .catch((err) => {
         console.error(err);
@@ -473,115 +488,83 @@ ${data.citasDelDia.map((cita: any) =>
       </div>
       )}
 
+      {/* Gráfico: Citas medicina, procedimientos y laboratorio en el tiempo */}
+      {!loading && chartData.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="w-5 h-5 text-primary-blue" />
+              Actividad por día (últimos 14 días)
+            </CardTitle>
+            <p className="text-sm text-gray-600 mt-1">
+              Citas de medicina, citas de procedimientos y órdenes de laboratorio
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[280px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={chartData}
+                  margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200" />
+                  <XAxis
+                    dataKey="label"
+                    tick={{ fontSize: 12 }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    allowDecimals={false}
+                    tick={{ fontSize: 12 }}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{ borderRadius: "8px", border: "1px solid #e5e7eb" }}
+                    labelFormatter={(label, payload) => {
+                      const date = payload?.[0]?.payload?.date;
+                      return date
+                        ? new Date(date + "T12:00:00").toLocaleDateString("es-PE", { weekday: "short", day: "numeric", month: "short" })
+                        : label;
+                    }}
+                  />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="citasMedicina"
+                    name="Citas medicina"
+                    stroke="#2563eb"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="citasProcedimientos"
+                    name="Citas procedimientos"
+                    stroke="#16a34a"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="laboratorio"
+                    name="Laboratorio"
+                    stroke="#0891b2"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Contenido Principal */}
       {!loading && (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Citas del Día */}
-        <div className="lg:col-span-2 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-primary-blue" />
-                Citas de Hoy
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {todayAppointments.length === 0 ? (
-                  <p className="text-gray-500 text-center py-6">No hay citas programadas para hoy.</p>
-                ) : (
-                todayAppointments.map((appointment) => (
-                  <div key={appointment.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                    <div className="flex items-center space-x-4">
-                      <div className="text-center">
-                        <p className="text-sm text-gray-600">Hora</p>
-                        <p className="font-semibold">{appointment.time}</p>
-                      </div>
-                      <div className="w-px h-12 bg-gray-200"></div>
-                      <div>
-                        <p className="font-medium text-gray-900">{appointment.patient}</p>
-                        <p className="text-sm text-gray-600">{appointment.doctor}</p>
-                        <p className="text-xs text-gray-500">{appointment.type}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      {getStatusBadge(appointment.status)}
-                      {getPriorityBadge(appointment.priority)}
-                      <div className="flex space-x-1">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleViewAppointment(appointment)}
-                          title="Ver detalles de la cita"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleEditAppointment(appointment)}
-                          title="Editar cita"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Laboratorios de Hoy */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FlaskConical className="w-5 h-5 text-primary-blue" />
-                Laboratorios de Hoy
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {todayLabOrders.length === 0 ? (
-                  <p className="text-gray-500 text-center py-6">No hay tomas de muestra programadas para hoy.</p>
-                ) : (
-                  todayLabOrders.map((order) => (
-                    <div
-                      key={order.id}
-                      className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      <div>
-                        <p className="font-medium text-gray-900">{order.patientName}</p>
-                        <p className="text-sm text-gray-600">
-                          {order.itemsCount} exámenes · S/ {order.total_amount.toFixed(2)}
-                        </p>
-                      </div>
-                      <Badge variant="secondary">{order.status}</Badge>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate(`/laboratorio/ordenes/${order.id}`)}
-                        title="Ver orden"
-                      >
-                        <Eye className="w-4 h-4 mr-2" />
-                        Ver
-                      </Button>
-                    </div>
-                  ))
-                )}
-              </div>
-              {todayLabOrders.length > 0 && (
-                <Button
-                  variant="outline"
-                  className="w-full mt-3 border-primary-blue text-primary-blue hover:bg-primary-blue hover:text-white"
-                  onClick={() => navigate("/laboratorio/ordenes")}
-                >
-                  Ver todas las órdenes
-                </Button>
-              )}
-            </CardContent>
-          </Card>
+        {/* Calendario (citas medicina, procedimientos y laboratorio) */}
+        <div className="lg:col-span-2">
+          <HomeCalendar />
         </div>
 
         {/* Panel Lateral */}

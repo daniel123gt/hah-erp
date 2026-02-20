@@ -220,3 +220,185 @@ export async function getDashboardData(): Promise<DashboardData> {
     recentActivity,
   };
 }
+
+/** Genera un array de fechas YYYY-MM-DD para los últimos N días (incluye hoy). */
+function getLastDays(n: number): string[] {
+  const today = getTodayLocal();
+  const [y, m, d] = today.split("-").map(Number);
+  const dates: string[] = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const date = new Date(y, m - 1, d - i);
+    const yy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const dd = String(date.getDate()).padStart(2, "0");
+    dates.push(`${yy}-${mm}-${dd}`);
+  }
+  return dates;
+}
+
+export interface DashboardChartPoint {
+  date: string;
+  /** Formato corto para eje X (ej. "15/02") */
+  label: string;
+  citasMedicina: number;
+  citasProcedimientos: number;
+  laboratorio: number;
+}
+
+const CHART_DAYS = 14;
+
+/** Datos para el gráfico del dashboard: citas medicina, procedimientos y laboratorio por día (últimos 14 días). */
+export async function getDashboardChartData(): Promise<DashboardChartPoint[]> {
+  const dates = getLastDays(CHART_DAYS);
+  const [medicinaCitas, procedimientosCitas, ...labOrdersByDay] = await Promise.all([
+    appointmentsService.list("medicina"),
+    appointmentsService.list("procedimientos"),
+    ...dates.map((d) => labOrderService.getOrdersForSampleDate(d)),
+  ]);
+
+  const dateSet = new Set(dates);
+  const medicinaByDate: Record<string, number> = {};
+  const procedimientosByDate: Record<string, number> = {};
+  dates.forEach((d) => {
+    medicinaByDate[d] = 0;
+    procedimientosByDate[d] = 0;
+  });
+  medicinaCitas.forEach((c) => {
+    const d = c.date.length >= 10 ? c.date.slice(0, 10) : c.date;
+    if (dateSet.has(d)) medicinaByDate[d] = (medicinaByDate[d] ?? 0) + 1;
+  });
+  procedimientosCitas.forEach((c) => {
+    const d = c.date.length >= 10 ? c.date.slice(0, 10) : c.date;
+    if (dateSet.has(d)) procedimientosByDate[d] = (procedimientosByDate[d] ?? 0) + 1;
+  });
+
+  return dates.map((date) => {
+    const [y, m, d] = date.split("-");
+    const label = `${d}/${m}`;
+    const labCount = Array.isArray(labOrdersByDay[dates.indexOf(date)]) ? (labOrdersByDay[dates.indexOf(date)] as unknown[]).length : 0;
+    return {
+      date,
+      label,
+      citasMedicina: medicinaByDate[date] ?? 0,
+      citasProcedimientos: procedimientosByDate[date] ?? 0,
+      laboratorio: labCount,
+    };
+  });
+}
+
+export type CalendarEventType = "medicina" | "procedimientos" | "laboratorio";
+
+export interface CalendarEventResource {
+  type: CalendarEventType;
+  id: string;
+  patientName?: string;
+  doctorName?: string;
+  status?: string;
+  /** Para laboratorio: número de exámenes */
+  itemsCount?: number;
+  total_amount?: number;
+}
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+  resource: CalendarEventResource;
+}
+
+/** Parsea hora "HH:MM" o "HH:MM:SS" a minutos desde medianoche. */
+function parseTimeToMinutes(time: string): number {
+  const parts = String(time).trim().split(":");
+  const h = parseInt(parts[0], 10) || 0;
+  const m = parseInt(parts[1], 10) || 0;
+  return h * 60 + m;
+}
+
+/** Genera eventos para el calendario (citas medicina, procedimientos y laboratorio) en el rango [fromDate, toDate]. */
+export async function getCalendarEvents(fromDate: string, toDate: string): Promise<CalendarEvent[]> {
+  const [medicinaCitas, procedimientosCitas, labOrders] = await Promise.all([
+    appointmentsService.list("medicina"),
+    appointmentsService.list("procedimientos"),
+    labOrderService.getOrdersForSampleDateRange(fromDate, toDate),
+  ]);
+
+  const events: CalendarEvent[] = [];
+  const from = fromDate.slice(0, 10);
+  const to = toDate.slice(0, 10);
+
+  medicinaCitas.forEach((c) => {
+    const d = c.date.length >= 10 ? c.date.slice(0, 10) : c.date;
+    if (d < from || d > to) return;
+    const startMins = parseTimeToMinutes(c.time);
+    const start = new Date(d + "T12:00:00");
+    start.setHours(Math.floor(startMins / 60), startMins % 60, 0, 0);
+    const end = new Date(start.getTime() + (c.duration || 30) * 60 * 1000);
+    events.push({
+      id: `med-${c.id}`,
+      title: `${c.patientName} · ${c.type}`,
+      start,
+      end,
+      resource: {
+        type: "medicina",
+        id: c.id,
+        patientName: c.patientName,
+        doctorName: c.doctorName,
+        status: c.status,
+      },
+    });
+  });
+
+  procedimientosCitas.forEach((c) => {
+    const d = c.date.length >= 10 ? c.date.slice(0, 10) : c.date;
+    if (d < from || d > to) return;
+    const startMins = parseTimeToMinutes(c.time);
+    const start = new Date(d + "T12:00:00");
+    start.setHours(Math.floor(startMins / 60), startMins % 60, 0, 0);
+    const end = new Date(start.getTime() + (c.duration || 30) * 60 * 1000);
+    events.push({
+      id: `proc-${c.id}`,
+      title: `${c.patientName} · ${c.procedure_name || c.type}`,
+      start,
+      end,
+      resource: {
+        type: "procedimientos",
+        id: c.id,
+        patientName: c.patientName,
+        doctorName: c.doctorName,
+        status: c.status,
+      },
+    });
+  });
+
+  const labPatientMap: Record<string, string> = {};
+  await Promise.all(
+    [...new Set(labOrders.map((o) => o.patient_id))].map(async (pid) => {
+      const p = await patientsService.getPatientById(pid).catch(() => null);
+      if (p) labPatientMap[pid] = p.name;
+    })
+  );
+
+  labOrders.forEach((order) => {
+    const d = (order.sample_date || order.order_date || "").slice(0, 10);
+    if (!d || d < from || d > to) return;
+    const start = new Date(d + "T08:00:00");
+    const end = new Date(d + "T08:30:00");
+    const patientName = labPatientMap[order.patient_id] ?? "Paciente";
+    events.push({
+      id: `lab-${order.id}`,
+      title: `${patientName} · ${order.items.length} exám.`,
+      start,
+      end,
+      resource: {
+        type: "laboratorio",
+        id: order.id,
+        patientName,
+        itemsCount: order.items.length,
+        total_amount: order.total_amount,
+      },
+    });
+  });
+
+  return events.sort((a, b) => a.start.getTime() - b.start.getTime());
+}
