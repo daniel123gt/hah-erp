@@ -111,7 +111,7 @@ export default function HomeCalendar({ onNavigate }: HomeCalendarProps) {
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="flex items-center justify-center h-[400px]">
+          <div className="flex items-center justify-center h-[520px]">
             <Loader2 className="w-8 h-8 animate-spin text-primary-blue" />
           </div>
         ) : (
@@ -130,7 +130,7 @@ export default function HomeCalendar({ onNavigate }: HomeCalendarProps) {
               Laboratorio
             </span>
           </div>
-          <div className="h-[400px]">
+          <div className="h-[520px]">
             <Calendar
               localizer={localizer}
               events={events}
@@ -149,6 +149,7 @@ export default function HomeCalendar({ onNavigate }: HomeCalendarProps) {
                 style: getEventStyle(event as CalendarEvent),
               })}
               culture="es"
+              showAllEvents
             />
           </div>
           </>

@@ -62,3 +62,19 @@
 .rbc-date-cell.rbc-now a {
   color: #1f3666;
 }
+
+/* Contenedor con scroll cuando hay muchos eventos (showAllEvents): barra visible */
+.rbc-row-content-scrollable .rbc-row-content-scroll-container {
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.rbc-row-content-scrollable .rbc-row-content-scroll-container::-webkit-scrollbar {
+  width: 6px;
+  display: block;
+}
+
+.rbc-row-content-scrollable .rbc-row-content-scroll-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
