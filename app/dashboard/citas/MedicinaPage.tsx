@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { appointmentsService, formatDateOnly } from "~/services/appointmentsService";
+import { medicalAppointmentRecordsService } from "~/services/medicalAppointmentRecordsService";
 import { getTodayLocal } from "~/lib/dateUtils";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -115,6 +116,7 @@ export default function CitasMedicinaPage() {
   };
 
   const handleAppointmentUpdated = (updatedAppointment: Appointment) => {
+    const prevAppointment = appointments.find((a) => a.id === updatedAppointment.id);
     appointmentsService
       .update({
         id: updatedAppointment.id,
@@ -136,6 +138,26 @@ export default function CitasMedicinaPage() {
           prev.map((a) => (a.id === updated.id ? updated : a))
         );
         toast.success("Cita actualizada");
+        if (
+          prevAppointment?.status !== "completed" &&
+          updated.status === "completed"
+        ) {
+          medicalAppointmentRecordsService
+            .createFromAppointment({
+              id: updated.id,
+              date: updated.date,
+              patient_id: updated.patient_id ?? null,
+              patientName: updated.patientName,
+              type: updated.type,
+              doctorName: updated.doctorName,
+              notes: updated.notes,
+            })
+            .then(() => toast.success("Registro creado en Registro Citas Médicas"))
+            .catch((err) => {
+              console.error("Error creando registro cita médica:", err);
+              toast.error(err?.message ?? "Error al crear el registro en Registro Citas Médicas");
+            });
+        }
       })
       .catch((err) => {
         toast.error(err?.message ?? "Error al actualizar la cita");

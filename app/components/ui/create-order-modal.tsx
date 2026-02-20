@@ -212,10 +212,7 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
     }
 
     const dniFinal = selectedPatient.dni?.trim() || dniParaOrden.trim();
-    if (!dniFinal) {
-      toast.error("Para generar usuario y contraseña del portal de resultados, ingrese el Nro. de documento del paciente.");
-      return;
-    }
+    // DNI es opcional: solo se usa para generar usuario/contraseña del portal; si no hay DNI no se crea cuenta de portal.
 
     const addressFinal = selectedPatient.address?.trim() || addressParaOrden.trim();
     if (!addressFinal) {
@@ -264,10 +261,11 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
 
       toast.success("Orden de exámenes creada exitosamente");
 
-      // Crear cuenta de portal para el paciente (login por nro. documento)
-      try {
-        const password = generatePortalPassword();
-        const result = await ensurePatientPortalUser({
+      // Crear cuenta de portal solo si el paciente tiene Nro. de documento
+      if (dniFinal) {
+        try {
+          const password = generatePortalPassword();
+          const result = await ensurePatientPortalUser({
           patient_id: patientToUse.id,
           dni: dniFinal,
           full_name: patientToUse.name,
@@ -287,13 +285,17 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
           setOpen(false);
           onOrderCreated();
         }
-      } catch (e) {
-        console.error("Error al crear cuenta de portal:", e);
-        toast.warning("Orden creada. No se pudo crear la cuenta de portal del paciente.");
+        } catch (e) {
+          console.error("Error al crear cuenta de portal:", e);
+          toast.warning("Orden creada. No se pudo crear la cuenta de portal del paciente.");
+          setOpen(false);
+          onOrderCreated();
+        }
+      } else {
         setOpen(false);
         onOrderCreated();
       }
-      
+
       if (!portalCredentials) {
         setSelectedPatient(null);
         setSearchTerm("");
@@ -641,10 +643,10 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
                   </Button>
                 </div>
                 {!selectedPatient.dni?.trim() && (
-                  <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
-                    <Label htmlFor="dniOrden" className="flex items-center gap-2 text-amber-800 font-medium">
+                  <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <Label htmlFor="dniOrden" className="flex items-center gap-2 text-gray-700 font-medium">
                       <KeyRound className="w-4 h-4" />
-                      Nro. de documento del paciente (requerido para generar usuario y contraseña del portal de resultados)
+                      Nro. de documento (opcional; para generar usuario y contraseña del portal de resultados)
                     </Label>
                     <Input
                       id="dniOrden"
@@ -805,7 +807,6 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
               disabled={
                 isLoading ||
                 !selectedPatient ||
-                (!(selectedPatient.dni?.trim()) && !dniParaOrden.trim()) ||
                 (!(selectedPatient.address?.trim()) && !addressParaOrden.trim()) ||
                 (!(selectedPatient.district?.trim()) && !districtParaOrden.trim())
               }

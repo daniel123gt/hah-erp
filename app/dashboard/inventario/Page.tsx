@@ -1,11 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
   Table,
   TableBody,
-  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -15,137 +14,100 @@ import { Badge } from "~/components/ui/badge";
 import { AddInventoryModal } from "~/components/ui/add-inventory-modal";
 import { ViewInventoryModal } from "~/components/ui/view-inventory-modal";
 import { EditInventoryModal } from "~/components/ui/edit-inventory-modal";
-import { 
-  Search, 
-  Plus, 
-  Filter, 
-  Package, 
-  AlertTriangle, 
-  TrendingUp, 
-  TrendingDown,
+import { TablePagination } from "~/components/ui/table-pagination";
+import { inventoryService, type InventoryItem } from "~/services/inventoryService";
+import { toast } from "sonner";
+import {
+  Search,
+  Filter,
+  Package,
+  AlertTriangle,
+  TrendingUp,
   DollarSign,
   Calendar,
   Minus,
-  Plus as PlusIcon
+  Loader2,
 } from "lucide-react";
 
-interface InventoryItem {
-  id: string;
-  name: string;
-  category: string;
-  description: string;
-  currentStock: number;
-  minStock: number;
-  maxStock: number;
-  unit: string;
-  price: number;
-  supplier: string;
-  lastRestocked: string;
-  expiryDate?: string;
-  status: "in_stock" | "low_stock" | "out_of_stock" | "expired";
-}
-
-const mockInventory: InventoryItem[] = [
-  {
-    id: "INV001",
-    name: "Jeringas 10ml",
-    category: "Insumos",
-    description: "Jeringas estériles de 10ml con aguja",
-    currentStock: 150,
-    minStock: 50,
-    maxStock: 500,
-    unit: "unidades",
-    price: 2.50,
-    supplier: "MedSupply S.A.",
-    lastRestocked: "2025-01-15",
-    status: "in_stock"
-  },
-  {
-    id: "INV002",
-    name: "Guantes Látex M",
-    category: "Protección",
-    description: "Guantes de látex tamaño mediano",
-    currentStock: 25,
-    minStock: 100,
-    maxStock: 300,
-    unit: "pares",
-    price: 1.80,
-    supplier: "SafeGloves",
-    lastRestocked: "2025-01-10",
-    status: "low_stock"
-  },
-  {
-    id: "INV003",
-    name: "Paracetamol 500mg",
-    category: "Medicamentos",
-    description: "Tabletas de paracetamol 500mg",
-    currentStock: 0,
-    minStock: 200,
-    maxStock: 1000,
-    unit: "tabletas",
-    price: 0.15,
-    supplier: "PharmaCorp",
-    lastRestocked: "2025-01-05",
-    status: "out_of_stock"
-  },
-  {
-    id: "INV004",
-    name: "Vendas Elásticas",
-    category: "Vendajes",
-    description: "Vendas elásticas de 10cm x 5m",
-    currentStock: 45,
-    minStock: 30,
-    maxStock: 150,
-    unit: "rollos",
-    price: 8.50,
-    supplier: "BandagePro",
-    lastRestocked: "2025-01-18",
-    status: "in_stock"
-  },
-  {
-    id: "INV005",
-    name: "Alcohol Isopropílico",
-    category: "Limpieza",
-    description: "Alcohol isopropílico 70% 500ml",
-    currentStock: 12,
-    minStock: 20,
-    maxStock: 100,
-    unit: "botellas",
-    price: 12.00,
-    supplier: "CleanChem",
-    lastRestocked: "2025-01-12",
-    expiryDate: "2026-01-12",
-    status: "low_stock"
-  }
-];
+const DEFAULT_PAGE_SIZE = 10;
 
 export default function InventarioPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [inventory, setInventory] = useState<InventoryItem[]>(mockInventory);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
 
-  const filteredInventory = inventory.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.id.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesCategory = filterCategory === "all" || item.category === filterCategory;
-    const matchesStatus = filterStatus === "all" || item.status === filterStatus;
-    
+  useEffect(() => {
+    setLoading(true);
+    inventoryService
+      .list()
+      .then(setInventory)
+      .catch((err) => {
+        console.error(err);
+        toast.error("Error al cargar el inventario");
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filteredInventory = inventory.filter((item) => {
+    const matchesSearch =
+      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.id.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory =
+      filterCategory === "all" || item.category === filterCategory;
+    const matchesStatus =
+      filterStatus === "all" || item.status === filterStatus;
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
+  const totalFiltered = filteredInventory.length;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / limit));
+  const from = (page - 1) * limit;
+  const paginatedRows = filteredInventory.slice(from, from + limit);
+
+  const handlePageChange = (newPage: number) => {
+    setPage(Math.max(1, Math.min(newPage, totalPages)));
+  };
+
+  const handleLimitChange = (newLimit: number) => {
+    setLimit(newLimit);
+    setPage(1);
+  };
+
+  // Ir a página 1 cuando cambian filtros o búsqueda (evita quedarse en una página vacía)
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, filterCategory, filterStatus]);
+
   const handleInventoryAdded = (newItem: InventoryItem) => {
-    setInventory(prev => [newItem, ...prev]);
+    const { id: _id, ...rest } = newItem;
+    inventoryService
+      .create(rest)
+      .then((created) => {
+        setInventory((prev) => [created, ...prev]);
+        toast.success("Producto agregado al inventario");
+      })
+      .catch((err) => {
+        toast.error(err?.message ?? "Error al agregar el producto");
+      });
   };
 
   const handleInventoryUpdated = (updatedItem: InventoryItem) => {
-    setInventory(prev => 
-      prev.map(item => 
-        item.id === updatedItem.id ? updatedItem : item
-      )
-    );
+    inventoryService
+      .update(updatedItem)
+      .then((updated) => {
+        setInventory((prev) =>
+          prev.map((item) => (item.id === updated.id ? updated : item))
+        );
+        toast.success("Producto actualizado");
+      })
+      .catch((err) => {
+        toast.error(err?.message ?? "Error al actualizar el producto");
+      });
   };
 
   const getStatusBadge = (status: string) => {
@@ -191,10 +153,15 @@ export default function InventarioPage() {
   };
 
   const totalItems = inventory.length;
-  const inStockItems = inventory.filter(i => i.status === "in_stock").length;
-  const lowStockItems = inventory.filter(i => i.status === "low_stock").length;
-  const outOfStockItems = inventory.filter(i => i.status === "out_of_stock").length;
-  const totalValue = inventory.reduce((acc, item) => acc + (item.currentStock * item.price), 0);
+  const inStockItems = inventory.filter((i) => i.status === "in_stock").length;
+  const lowStockItems = inventory.filter((i) => i.status === "low_stock").length;
+  const outOfStockItems = inventory.filter(
+    (i) => i.status === "out_of_stock"
+  ).length;
+  const totalValue = inventory.reduce(
+    (acc, item) => acc + item.currentStock * item.price,
+    0
+  );
 
   return (
     <div className="space-y-6">
@@ -316,6 +283,11 @@ export default function InventarioPage() {
           <CardTitle>Lista de Inventario</CardTitle>
         </CardHeader>
         <CardContent>
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-primary-blue" />
+            </div>
+          ) : (
           <div className="overflow-x-auto">
             <Table>
             <TableHeader>
@@ -331,7 +303,7 @@ export default function InventarioPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredInventory.map((item) => (
+              {paginatedRows.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell>
                     <div>
@@ -369,7 +341,9 @@ export default function InventarioPage() {
                     <div className="flex items-center space-x-2">
                       <Calendar className="w-4 h-4 text-gray-400" />
                       <span className="text-sm">
-                        {new Date(item.lastRestocked).toLocaleDateString('es-ES')}
+                        {item.lastRestocked
+                          ? new Date(item.lastRestocked).toLocaleDateString("es-ES")
+                          : "—"}
                       </span>
                     </div>
                   </TableCell>
@@ -388,6 +362,17 @@ export default function InventarioPage() {
             </TableBody>
             </Table>
           </div>
+          )}
+          {!loading && (
+            <TablePagination
+              page={page}
+              limit={limit}
+              total={totalFiltered}
+              onPageChange={handlePageChange}
+              onLimitChange={handleLimitChange}
+              itemLabel="productos"
+            />
+          )}
         </CardContent>
       </Card>
     </div>

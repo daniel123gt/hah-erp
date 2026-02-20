@@ -20,24 +20,9 @@ import {
   Building2,
   Minus,
   Plus as PlusIcon,
-  Clock
+  Clock,
 } from "lucide-react";
-
-interface InventoryItem {
-  id: string;
-  name: string;
-  category: string;
-  description: string;
-  currentStock: number;
-  minStock: number;
-  maxStock: number;
-  unit: string;
-  price: number;
-  supplier: string;
-  lastRestocked: string;
-  expiryDate?: string;
-  status: "in_stock" | "low_stock" | "out_of_stock" | "expired";
-}
+import type { InventoryItem } from "~/services/inventoryService";
 
 interface ViewInventoryModalProps {
   item: InventoryItem;

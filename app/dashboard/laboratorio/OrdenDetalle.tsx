@@ -22,6 +22,7 @@ import {
   generatePortalPassword,
 } from "~/services/patientPortalService";
 import { UploadResultPdf } from "~/components/ui/upload-result-pdf";
+import { AddDocumentCreatePortalUserModal } from "~/components/ui/add-document-create-portal-user-modal";
 import { getExams } from "~/services/labService";
 import {
   Select,
@@ -48,6 +49,7 @@ export default function OrdenDetalle() {
   const [isRemoving, setIsRemoving] = useState<string | null>(null);
   const [credentialsModal, setCredentialsModal] = useState<{ dni: string; password: string } | null>(null);
   const [credentialsLoading, setCredentialsLoading] = useState(false);
+  const [addDocumentPortalOpen, setAddDocumentPortalOpen] = useState(false);
   const [updatingPayment, setUpdatingPayment] = useState(false);
 
   useEffect(() => {
@@ -504,35 +506,33 @@ export default function OrdenDetalle() {
                   onClick={async () => {
                     setCredentialsLoading(true);
                     try {
-                      let result = await getPortalCredentialsByOrder(order.id);
+                      const result = await getPortalCredentialsByOrder(order.id);
                       if ("error" in result) {
                         const noAccount =
                           result.error.includes("404") ||
                           result.error.includes("no tiene cuenta") ||
                           result.error.includes("no existe") ||
                           result.error.includes("not found");
-                        if (noAccount && order.patient_id && patient?.dni?.trim()) {
-                          const password = generatePortalPassword();
-                          const ensureResult = await ensurePatientPortalUser({
-                            patient_id: order.patient_id,
-                            dni: patient.dni.trim(),
-                            full_name: patient.name || "",
-                            email: patient.email?.trim(),
-                            phone: patient.phone?.trim(),
-                            password,
-                          });
-                          if (!ensureResult.ok) {
-                            toast.error(ensureResult.error || "No se pudo crear la cuenta del portal");
-                            return;
+                        if (noAccount && order.patient_id && patient) {
+                          if (patient.dni?.trim()) {
+                            const password = generatePortalPassword();
+                            const ensureResult = await ensurePatientPortalUser({
+                              patient_id: order.patient_id,
+                              dni: patient.dni.trim(),
+                              full_name: patient.name || "",
+                              email: patient.email?.trim(),
+                              phone: patient.phone?.trim(),
+                              password,
+                            });
+                            if (ensureResult.ok) {
+                              setCredentialsModal({ dni: patient.dni.trim(), password });
+                              toast.success("Se creó la cuenta del portal. Entregue estas credenciales al paciente.");
+                            } else {
+                              setAddDocumentPortalOpen(true);
+                            }
+                          } else {
+                            setAddDocumentPortalOpen(true);
                           }
-                          setCredentialsModal({ dni: patient.dni.trim(), password });
-                          toast.success("Se creó la cuenta del portal. Entregue estas credenciales al paciente.");
-                          return;
-                        }
-                        if (noAccount && (!patient || !patient.dni?.trim())) {
-                          toast.error(
-                            "Este paciente no tiene cuenta en el portal. Para crearla, el paciente debe tener DNI registrado (edite el perfil del paciente)."
-                          );
                           return;
                         }
                         toast.error(result.error);
@@ -734,6 +734,17 @@ export default function OrdenDetalle() {
           </Card>
         </div>
       </div>
+
+      {/* Modal agregar documento y crear usuario de portal */}
+      <AddDocumentCreatePortalUserModal
+        open={addDocumentPortalOpen}
+        onOpenChange={setAddDocumentPortalOpen}
+        patient={patient}
+        onSuccess={(dni, password) => {
+          setPatient((prev) => (prev ? { ...prev, dni } : null));
+          setCredentialsModal({ dni, password });
+        }}
+      />
 
       {/* Modal Ver credenciales de portal */}
       <Dialog open={!!credentialsModal} onOpenChange={(open) => !open && setCredentialsModal(null)}>
