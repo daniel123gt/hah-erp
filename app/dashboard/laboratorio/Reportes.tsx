@@ -32,6 +32,23 @@ import {
   TrendingUp,
   X
 } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
 
 interface ReportStats {
   totalOrders: number;
@@ -70,6 +87,8 @@ export default function LaboratorioReportes() {
     rows: Array<{ id: string; order_date: string; physician_name: string | null; status: string; n_items: number; total_amount: number; cost: number; utility: number }>;
   } | null>(null);
   const [tomaMuestraProcedure, setTomaMuestraProcedure] = useState<{ base_price_soles: number; total_cost_soles: number } | null>(null);
+  type ChartTabId = 'distribucion' | 'evolucion' | 'examenes' | 'ordenes';
+  const [chartTab, setChartTab] = useState<ChartTabId>('distribucion');
 
   /** Reporte de BD filtrado por estado (Resumen y Órdenes detalladas usan esto) */
   const filteredReport = useMemo(() => {
@@ -87,6 +106,42 @@ export default function LaboratorioReportes() {
       rows,
     };
   }, [dbReport, statusFilter]);
+
+  /** Datos agregados por fecha (para gráficas y sparklines) */
+  const chartDataByDate = useMemo(() => {
+    const rows = filteredReport?.rows ?? [];
+    if (!rows.length) return [];
+    const map = new Map<string, { ingreso: number; costo: number; utilidad: number; orders: number; examenes: number }>();
+    rows.forEach((r) => {
+      const d = String(r.order_date).trim().slice(0, 10);
+      const cur = map.get(d) || { ingreso: 0, costo: 0, utilidad: 0, orders: 0, examenes: 0 };
+      cur.ingreso += r.total_amount;
+      cur.costo += r.cost;
+      cur.utilidad += r.utility;
+      cur.orders += 1;
+      cur.examenes += r.n_items ?? 0;
+      map.set(d, cur);
+    });
+    return Array.from(map.entries())
+      .map(([date, v]) => ({ date, label: formatDateOnly(date), ...v }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [filteredReport?.rows]);
+
+  /** Top órdenes por utilidad (para gráfica de barras horizontales) */
+  const chartDataTopOrders = useMemo(() => {
+    const rows = filteredReport?.rows ?? [];
+    return [...rows]
+      .sort((a, b) => b.utility - a.utility)
+      .slice(0, 15)
+      .map((r, i) => ({
+        name: `#${i + 1} ${formatDateOnly(r.order_date)}`,
+        utilidad: r.utility,
+        total: r.total_amount,
+      }));
+  }, [filteredReport?.rows]);
+
+  /** Colores para donut (exámenes) */
+  const CHART_COLORS = ['#2563eb', '#16a34a', '#0891b2', '#dc2626', '#ea580c', '#7c3aed', '#db2777', '#64748b'];
 
   const getStatusBadgeClassName = (status: string) => {
     switch (status) {
@@ -297,55 +352,100 @@ export default function LaboratorioReportes() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-gray-600">Total Órdenes</p>
                   <p className="text-2xl font-bold text-gray-900">{filteredReport?.totals?.total_orders ?? stats.totalOrders}</p>
+                  {chartDataByDate.length > 0 && (
+                    <div className="h-9 w-full mt-1">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={chartDataByDate} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
+                          <Line type="monotone" dataKey="orders" stroke="#3b82f6" strokeWidth={1.5} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
                 </div>
-                <FileText className="w-8 h-8 text-blue-500" />
+                <FileText className="w-8 h-8 text-blue-500 shrink-0" />
               </div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-gray-600">Ingresos Totales</p>
                   <p className="text-2xl font-bold text-green-600">S/ {(filteredReport?.totals?.total_revenue ?? stats.totalRevenue).toFixed(2)}</p>
+                  {chartDataByDate.length > 0 && (
+                    <div className="h-9 w-full mt-1">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={chartDataByDate} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
+                          <Line type="monotone" dataKey="ingreso" stroke="#16a34a" strokeWidth={1.5} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
                 </div>
-                <DollarSign className="w-8 h-8 text-green-500" />
+                <DollarSign className="w-8 h-8 text-green-500 shrink-0" />
               </div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-gray-600">Total Exámenes</p>
                   <p className="text-2xl font-bold text-gray-900">{filteredReport?.totals?.total_exams ?? stats.totalExams}</p>
+                  {chartDataByDate.length > 0 && (
+                    <div className="h-9 w-full mt-1">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={chartDataByDate} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
+                          <Line type="monotone" dataKey="examenes" stroke="#8b5cf6" strokeWidth={1.5} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
                 </div>
-                <FileCheck className="w-8 h-8 text-purple-500" />
+                <FileCheck className="w-8 h-8 text-purple-500 shrink-0" />
               </div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-gray-600">Costo total</p>
                   <p className="text-2xl font-bold text-gray-900">S/ {(filteredReport?.totals?.total_cost ?? 0).toFixed(2)}</p>
+                  {chartDataByDate.length > 0 && (
+                    <div className="h-9 w-full mt-1">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={chartDataByDate} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
+                          <Line type="monotone" dataKey="costo" stroke="#f59e0b" strokeWidth={1.5} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
                 </div>
-                <FileText className="w-8 h-8 text-amber-500" />
+                <FileText className="w-8 h-8 text-amber-500 shrink-0" />
               </div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-gray-600">Utilidad</p>
                   <p className="text-2xl font-bold text-green-600">S/ {(filteredReport?.totals?.total_utility ?? 0).toFixed(2)}</p>
+                  {chartDataByDate.length > 0 && (
+                    <div className="h-9 w-full mt-1">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={chartDataByDate} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
+                          <Line type="monotone" dataKey="utilidad" stroke="#16a34a" strokeWidth={1.5} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
                 </div>
-                <TrendingUp className="w-8 h-8 text-green-500" />
+                <TrendingUp className="w-8 h-8 text-green-500 shrink-0" />
               </div>
             </CardContent>
           </Card>
@@ -363,6 +463,123 @@ export default function LaboratorioReportes() {
             Exportar CSV
           </Button>
         </div>
+      )}
+
+      {/* Tabs de gráficas (solo en Resumen General, sin loading) */}
+      {reportType === 'summary' && !isLoading && (
+        <>
+          <div className="flex border-b border-gray-200 gap-0">
+            {([
+              { id: 'distribucion' as ChartTabId, label: 'Distribución (Costo / Utilidad)' },
+              { id: 'evolucion' as ChartTabId, label: 'Evolución en el tiempo' },
+              { id: 'examenes' as ChartTabId, label: 'Composición por exámenes' },
+              { id: 'ordenes' as ChartTabId, label: 'Top órdenes por utilidad' },
+            ]).map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setChartTab(tab.id)}
+                className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                  chartTab === tab.id
+                    ? 'border-primary-blue text-primary-blue'
+                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          <Card>
+            <CardContent className="pt-6">
+              {chartTab === 'distribucion' && (
+                <div className="h-[320px]">
+                  {chartDataByDate.length === 0 ? (
+                    <p className="text-gray-500 text-center py-12">No hay datos en el rango seleccionado.</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartDataByDate} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200" />
+                        <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `S/ ${v}`} />
+                        <Tooltip formatter={(v: number) => [`S/ ${v.toFixed(2)}`, '']} labelFormatter={(_, payload) => payload?.[0]?.payload?.label} />
+                        <Legend />
+                        <Bar dataKey="costo" name="Costo" stackId="a" fill="#f59e0b" />
+                        <Bar dataKey="utilidad" name="Utilidad" stackId="a" fill="#16a34a" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              )}
+              {chartTab === 'evolucion' && (
+                <div className="h-[320px]">
+                  {chartDataByDate.length === 0 ? (
+                    <p className="text-gray-500 text-center py-12">No hay datos en el rango seleccionado.</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={chartDataByDate} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200" />
+                        <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `S/ ${v}`} />
+                        <Tooltip formatter={(v: number) => [`S/ ${v.toFixed(2)}`, '']} labelFormatter={(_, payload) => payload?.[0]?.payload?.label} />
+                        <Legend />
+                        <Area type="monotone" dataKey="ingreso" name="Ingresos" stroke="#2563eb" fill="#2563eb" fillOpacity={0.3} />
+                        <Area type="monotone" dataKey="costo" name="Costo" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.3} />
+                        <Area type="monotone" dataKey="utilidad" name="Utilidad" stroke="#16a34a" fill="#16a34a" fillOpacity={0.3} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              )}
+              {chartTab === 'examenes' && (
+                <div className="h-[320px] flex items-center justify-center">
+                  {examStats.length === 0 ? (
+                    <p className="text-gray-500 text-center py-12">No hay datos de exámenes en el rango.</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={examStats.slice(0, 8).map((e) => ({ name: e.exam_name.length > 25 ? e.exam_name.slice(0, 25) + '…' : e.exam_name, value: e.total_revenue }))}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius="40%"
+                          outerRadius="70%"
+                          paddingAngle={2}
+                          dataKey="value"
+                          nameKey="name"
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        >
+                          {examStats.slice(0, 8).map((_, i) => (
+                            <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(v: number) => [`S/ ${v.toFixed(2)}`, 'Ingresos']} />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              )}
+              {chartTab === 'ordenes' && (
+                <div className="h-[320px]">
+                  {chartDataTopOrders.length === 0 ? (
+                    <p className="text-gray-500 text-center py-12">No hay órdenes en el rango seleccionado.</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartDataTopOrders} layout="vertical" margin={{ top: 5, right: 30, left: 80, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200" />
+                        <XAxis type="number" tickFormatter={(v) => `S/ ${v}`} tick={{ fontSize: 11 }} />
+                        <YAxis type="category" dataKey="name" width={75} tick={{ fontSize: 10 }} />
+                        <Tooltip formatter={(v: number) => [`S/ ${v.toFixed(2)}`, '']} />
+                        <Legend />
+                        <Bar dataKey="utilidad" name="Utilidad (S/.)" fill="#16a34a" radius={[0, 4, 4, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
       )}
 
       {/* Contenido del Reporte */}

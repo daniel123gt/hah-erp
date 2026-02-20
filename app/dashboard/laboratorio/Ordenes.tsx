@@ -189,13 +189,13 @@ export default function OrdenesLaboratorio() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>ID</TableHead>
+                      <TableHead>Estado</TableHead>
                       <TableHead>Fecha</TableHead>
                       <TableHead>Paciente</TableHead>
                       <TableHead>Exámenes</TableHead>
                       <TableHead>Fecha toma muestra</TableHead>
                       <TableHead>Médico</TableHead>
                       <TableHead>Prioridad</TableHead>
-                      <TableHead>Estado</TableHead>
                       <TableHead>Total</TableHead>
                       <TableHead className="whitespace-nowrap sticky right-0 bg-muted shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10 min-w-[100px]">Acciones</TableHead>
                     </TableRow>
@@ -207,6 +207,11 @@ export default function OrdenesLaboratorio() {
                         <TableRow key={order.id}>
                           <TableCell className="font-mono text-xs">
                             {order.id.slice(0, 8)}...
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary" className={getStatusBadgeClassName(order.status)}>
+                              {order.status}
+                            </Badge>
                           </TableCell>
                           <TableCell>
                             {formatDateOnly(order.order_date)}
@@ -226,11 +231,6 @@ export default function OrdenesLaboratorio() {
                           <TableCell>
                             <Badge variant={getPriorityBadgeVariant(order.priority)}>
                               {order.priority}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="secondary" className={getStatusBadgeClassName(order.status)}>
-                              {order.status}
                             </Badge>
                           </TableCell>
                           <TableCell className="font-semibold">
