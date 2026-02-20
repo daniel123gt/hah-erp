@@ -109,6 +109,23 @@ export default function CitasMedicinaPage() {
       .then((created) => {
         setAppointments((prev) => [created, ...prev]);
         toast.success("Cita creada");
+        if (created.status === "completed") {
+          medicalAppointmentRecordsService
+            .createFromAppointment({
+              id: created.id,
+              date: created.date,
+              patient_id: created.patient_id ?? null,
+              patientName: created.patientName,
+              type: created.type,
+              doctorName: created.doctorName,
+              notes: created.notes,
+            })
+            .then(() => toast.success("Registro creado en Registro Citas Médicas"))
+            .catch((err) => {
+              console.error("Error creando registro cita médica:", err);
+              toast.error(err?.message ?? "Error al crear el registro en Registro Citas Médicas");
+            });
+        }
       })
       .catch((err) => {
         toast.error(err?.message ?? "Error al crear la cita");
