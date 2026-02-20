@@ -4,6 +4,7 @@ import { Card } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { getExams, getExamStats, calculateQuote } from "~/services/labService";
+import { procedureService } from "~/services/procedureService";
 
 // Definir tipos directamente en la página para evitar problemas de importación
 interface LaboratoryExam {
@@ -53,6 +54,15 @@ export default function LaboratorioPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [stats, setStats] = useState({ total: 0, categories: 0 });
   const [quote, setQuote] = useState<ExamQuote | null>(null);
+  // Recargo por toma de muestra: mismo valor que usa el modal Crear Orden (procedimiento en BD)
+  const [recargoTomaMuestra, setRecargoTomaMuestra] = useState(120);
+
+  // Cargar recargo del procedimiento "toma de muestra" para que la cotización coincida con el modal
+  useEffect(() => {
+    procedureService.getProcedureByName("toma de muestra").then((p) => {
+      if (p?.base_price_soles != null) setRecargoTomaMuestra(p.base_price_soles);
+    }).catch(() => {});
+  }, []);
 
   // Función para normalizar texto (sin acentos) - igual que en tu MVP
   const normalize = (text: string) =>
@@ -97,15 +107,15 @@ export default function LaboratorioPage() {
     loadStats();
   }, [loadStats]);
 
-  // Calcular cotización cuando cambien los exámenes seleccionados
+  // Calcular cotización cuando cambien los exámenes seleccionados (usamos mismo recargo que el modal Crear Orden)
   useEffect(() => {
     if (selectedExams.length > 0) {
-      const calculatedQuote = calculateQuote(selectedExams);
+      const calculatedQuote = calculateQuote(selectedExams, recargoTomaMuestra);
       setQuote(calculatedQuote);
     } else {
       setQuote(null);
     }
-  }, [selectedExams]);
+  }, [selectedExams, recargoTomaMuestra]);
 
   // Filtrar exámenes: debe coincidir por nombre (si hay texto) y por código (si hay texto)
   const filteredExams = exams.filter((exam) => {

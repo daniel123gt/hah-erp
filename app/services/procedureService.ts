@@ -336,12 +336,13 @@ export const procedureService = {
     if (error) throw error;
   },
 
-  /** Obtiene un procedimiento del catálogo por nombre (p. ej. "Toma de muestra" para recargo en lab). */
+  /** Obtiene un procedimiento del catálogo por nombre exacto (p. ej. "toma de muestra" para recargo en lab; no "toma de muestra orina"). */
   async getProcedureByName(namePattern: string): Promise<{ base_price_soles: number; total_cost_soles: number } | null> {
+    const nameTrimmed = namePattern.trim();
     const { data, error } = await supabase
       .from("procedure_catalog")
       .select("base_price_soles, total_cost_soles")
-      .ilike("name", `%${namePattern}%`)
+      .ilike("name", nameTrimmed)
       .eq("is_active", true)
       .limit(1)
       .maybeSingle();
