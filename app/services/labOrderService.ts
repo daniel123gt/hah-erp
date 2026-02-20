@@ -29,6 +29,8 @@ export interface LabExamOrder {
   status: 'Pendiente' | 'En toma de muestra' | 'En Proceso' | 'Completado' | 'Cancelado';
   payment_method?: LabOrderPaymentMethod | null;
   payment_status?: LabOrderPaymentStatus | null;
+  /** Número de referencia u operación del pago (sustento) */
+  payment_reference?: string | null;
   result_pdf_url?: string;
   result_date?: string;
   result_notes?: string;
@@ -272,14 +274,32 @@ export const labOrderService = {
     }
   },
 
+  async updateOrderSampleDate(orderId: string, sample_date: string | null): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('lab_exam_orders')
+        .update({ sample_date, updated_at: new Date().toISOString() })
+        .eq('id', orderId);
+      if (error) throw error;
+    } catch (error: any) {
+      console.error('Error al actualizar fecha de toma de muestra:', error);
+      throw new Error(error?.message || 'Error al actualizar la fecha de toma de muestra');
+    }
+  },
+
   async updateOrderPayment(
     orderId: string,
-    data: { payment_method?: LabOrderPaymentMethod | null; payment_status?: LabOrderPaymentStatus | null }
+    data: {
+      payment_method?: LabOrderPaymentMethod | null;
+      payment_status?: LabOrderPaymentStatus | null;
+      payment_reference?: string | null;
+    }
   ): Promise<void> {
     try {
       const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
       if (data.payment_method !== undefined) updateData.payment_method = data.payment_method;
       if (data.payment_status !== undefined) updateData.payment_status = data.payment_status;
+      if (data.payment_reference !== undefined) updateData.payment_reference = data.payment_reference;
       const { error } = await supabase
         .from('lab_exam_orders')
         .update(updateData)

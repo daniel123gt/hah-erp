@@ -51,12 +51,20 @@ export default function OrdenDetalle() {
   const [credentialsLoading, setCredentialsLoading] = useState(false);
   const [addDocumentPortalOpen, setAddDocumentPortalOpen] = useState(false);
   const [updatingPayment, setUpdatingPayment] = useState(false);
+  const [paymentReferenceInput, setPaymentReferenceInput] = useState("");
+  const [updatingSampleDate, setUpdatingSampleDate] = useState(false);
 
   useEffect(() => {
     if (id) {
       loadOrder();
     }
   }, [id]);
+
+  useEffect(() => {
+    if (order?.payment_reference !== undefined) {
+      setPaymentReferenceInput(order.payment_reference ?? "");
+    }
+  }, [order?.id, order?.payment_reference]);
 
   const loadOrder = async () => {
     try {
@@ -98,6 +106,7 @@ export default function OrdenDetalle() {
   const handlePaymentUpdate = async (data: {
     payment_method?: LabOrderPaymentMethod | null;
     payment_status?: LabOrderPaymentStatus | null;
+    payment_reference?: string | null;
   }) => {
     if (!order) return;
     try {
@@ -110,6 +119,29 @@ export default function OrdenDetalle() {
       toast.error(error?.message || "Error al actualizar el pago");
     } finally {
       setUpdatingPayment(false);
+    }
+  };
+
+  const handleSavePaymentReference = () => {
+    const v = paymentReferenceInput.trim() || null;
+    if (v === (order?.payment_reference ?? null)) return;
+    handlePaymentUpdate({ payment_reference: v });
+  };
+
+  const handleSampleDateChange = async (newDate: string) => {
+    if (!order) return;
+    const value = newDate || null;
+    if (value === (order.sample_date ?? null)) return;
+    try {
+      setUpdatingSampleDate(true);
+      await labOrderService.updateOrderSampleDate(order.id, value);
+      toast.success("Fecha de toma de muestra actualizada");
+      loadOrder();
+    } catch (error: any) {
+      console.error("Error al actualizar fecha:", error);
+      toast.error(error?.message || "Error al actualizar la fecha");
+    } finally {
+      setUpdatingSampleDate(false);
     }
   };
 
@@ -307,8 +339,14 @@ export default function OrdenDetalle() {
                 <p className="font-medium">{formatDateOnly(order.order_date)}</p>
               </div>
               <div>
-                <span className="text-sm text-gray-500">Fecha de toma de muestra (programación):</span>
-                <p className="font-medium">{formatDateOnly(order.sample_date ?? order.order_date)}</p>
+                <Label className="text-sm text-gray-500">Fecha de toma de muestra (programación)</Label>
+                <Input
+                  type="date"
+                  className="mt-1 font-medium"
+                  value={(order.sample_date ?? order.order_date).toString().slice(0, 10)}
+                  onChange={(e) => handleSampleDateChange(e.target.value || null)}
+                  disabled={updatingSampleDate}
+                />
               </div>
               {order.physician_name && (
                 <div>
@@ -388,6 +426,27 @@ export default function OrdenDetalle() {
                       <SelectItem value="Pagado">Pagado</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div>
+                  <Label className="text-sm text-gray-500">Número de referencia (sustento del pago)</Label>
+                  <div className="flex gap-2 mt-1">
+                    <Input
+                      placeholder="Ej: código Yape/Plin, nro. operación..."
+                      value={paymentReferenceInput}
+                      onChange={(e) => setPaymentReferenceInput(e.target.value)}
+                      disabled={updatingPayment}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={handleSavePaymentReference}
+                      disabled={updatingPayment || (paymentReferenceInput.trim() || null) === (order.payment_reference ?? null)}
+                    >
+                      Guardar nro referencia
+                    </Button>
+                  </div>
                 </div>
               </div>
               {order.observations && (
