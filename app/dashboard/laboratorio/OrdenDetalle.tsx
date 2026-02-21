@@ -429,13 +429,13 @@ export default function OrdenDetalle() {
                 </div>
                 <div>
                   <Label className="text-sm text-gray-500">Número de referencia (sustento del pago)</Label>
-                  <div className="flex gap-2 mt-1">
+                  <div className="flex flex-col gap-2 mt-1">
                     <Input
                       placeholder="Ej: código Yape/Plin, nro. operación..."
                       value={paymentReferenceInput}
                       onChange={(e) => setPaymentReferenceInput(e.target.value)}
                       disabled={updatingPayment}
-                      className="flex-1"
+                      className="w-full"
                     />
                     <Button
                       type="button"
@@ -443,6 +443,7 @@ export default function OrdenDetalle() {
                       size="sm"
                       onClick={handleSavePaymentReference}
                       disabled={updatingPayment || (paymentReferenceInput.trim() || null) === (order.payment_reference ?? null)}
+                      className="w-full sm:w-auto"
                     >
                       Guardar nro referencia
                     </Button>
