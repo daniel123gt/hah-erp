@@ -44,7 +44,7 @@ export function AddHomeCarePatientModal({ onAdded }: AddHomeCarePatientModalProp
 
   const [contract, setContract] = useState({
     familiar_encargado: "",
-    hora_inicio: "8:00 AM",
+    hora_inicio: "08:00",
     fecha_inicio: new Date().toISOString().split("T")[0],
     plan_id: "",
   });
@@ -304,9 +304,9 @@ export function AddHomeCarePatientModal({ onAdded }: AddHomeCarePatientModalProp
                   <Label htmlFor="hora_inicio">Hora de inicio</Label>
                   <Input
                     id="hora_inicio"
+                    type="time"
                     value={contract.hora_inicio}
                     onChange={(e) => setContract((c) => ({ ...c, hora_inicio: e.target.value }))}
-                    placeholder="8:00 AM"
                   />
                 </div>
                 <div className="space-y-2">

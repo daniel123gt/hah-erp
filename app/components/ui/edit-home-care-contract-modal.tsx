@@ -11,6 +11,7 @@ import {
 } from "./dialog";
 import { Loader2 } from "lucide-react";
 import type { HomeCareContractWithPatient, HomeCarePlan } from "~/services/homeCareService";
+import { toTimeInputValue } from "~/lib/dateUtils";
 
 export type ContractFormData = {
   familiar_encargado: string;
@@ -41,7 +42,7 @@ export function EditHomeCareContractModal({
 }: EditHomeCareContractModalProps) {
   const [form, setForm] = useState<ContractFormData>({
     familiar_encargado: "",
-    hora_inicio: "8:00 AM",
+    hora_inicio: "08:00",
     fecha_inicio: "",
     plan_id: "",
     plan_nombre: "",
@@ -66,7 +67,7 @@ export function EditHomeCareContractModal({
       const planId = plan ? plan.id : rawPlanId;
       setForm({
         familiar_encargado: contract.familiar_encargado ?? "",
-        hora_inicio: contract.hora_inicio ?? "8:00 AM",
+        hora_inicio: toTimeInputValue(contract.hora_inicio) || "08:00",
         fecha_inicio: contract.fecha_inicio ? contract.fecha_inicio.toString().slice(0, 10) : "",
         plan_id: planId,
         plan_nombre: contract.plan_nombre ?? plan?.name ?? "",
@@ -122,9 +123,9 @@ export function EditHomeCareContractModal({
           <div className="space-y-2">
             <Label>Hora inicio</Label>
             <Input
+              type="time"
               value={form.hora_inicio}
               onChange={(e) => setForm((p) => ({ ...p, hora_inicio: e.target.value }))}
-              placeholder="Ej: 8:00 AM"
             />
           </div>
           <div className="space-y-2">

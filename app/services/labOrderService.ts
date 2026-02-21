@@ -31,6 +31,8 @@ export interface LabExamOrder {
   payment_status?: LabOrderPaymentStatus | null;
   /** Número de referencia u operación del pago (sustento) */
   payment_reference?: string | null;
+  /** Descuento en soles aplicado a la orden. Total a pagar = total_amount - discount_amount */
+  discount_amount?: number;
   result_pdf_url?: string;
   result_date?: string;
   result_notes?: string;
@@ -308,6 +310,32 @@ export const labOrderService = {
     } catch (error: any) {
       console.error('Error al actualizar pago:', error);
       throw new Error(error?.message || 'Error al actualizar el pago de la orden');
+    }
+  },
+
+  /** Aplica descuento a la orden. El descuento no puede ser mayor al total (total_amount). */
+  async updateOrderDiscount(orderId: string, discountAmount: number): Promise<void> {
+    try {
+      if (discountAmount < 0) {
+        throw new Error('El descuento no puede ser negativo');
+      }
+      const order = await this.getOrderById(orderId);
+      const total = Number(order.total_amount ?? 0);
+      if (discountAmount > total) {
+        throw new Error('El descuento no puede ser mayor al total de la orden');
+      }
+      const { error } = await supabase
+        .from('lab_exam_orders')
+        .update({
+          discount_amount: discountAmount,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', orderId);
+      if (error) throw error;
+    } catch (error: any) {
+      if (error?.message?.startsWith('El descuento')) throw error;
+      console.error('Error al aplicar descuento:', error);
+      throw new Error(error?.message || 'Error al aplicar descuento');
     }
   },
 
