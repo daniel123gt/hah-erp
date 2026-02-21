@@ -15,6 +15,7 @@ import { PERSONAL_CATEGORIES } from "./categories";
 import { HeartPulse, Stethoscope, Briefcase, X, Users, UserCheck, Calendar, Loader2 } from "lucide-react";
 import { staffService, type Staff } from "~/services/staffService";
 import { formatDateOnly } from "~/lib/dateUtils";
+import { TablePagination } from "~/components/ui/table-pagination";
 
 const categoryIcons: Record<string, React.ReactNode> = {
   enfermeria: <HeartPulse className="w-8 h-8 text-green-600" />,
@@ -34,6 +35,7 @@ export default function PersonalDashboard() {
   const [staffHiredThisYear, setStaffHiredThisYear] = useState<Staff[]>([]);
   const [loadingStats, setLoadingStats] = useState(true);
   const [loadingHiredThisYear, setLoadingHiredThisYear] = useState(true);
+  const [paginationHired, setPaginationHired] = useState({ page: 1, limit: 10 });
 
   const loadStats = useCallback(async () => {
     try {
@@ -172,10 +174,17 @@ export default function PersonalDashboard() {
       {/* Tabla resumen: Empleados que ingresaron este año */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-primary-blue" />
-            Empleados que ingresaron este año
-          </CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-primary-blue" />
+              Empleados que ingresaron este año
+            </CardTitle>
+            {!loadingHiredThisYear && staffHiredThisYear.length > 0 && (
+              <div className="text-sm text-gray-600">
+                Mostrando {((paginationHired.page - 1) * paginationHired.limit) + 1} - {Math.min(paginationHired.page * paginationHired.limit, staffHiredThisYear.length)} de {staffHiredThisYear.length} empleados
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {loadingHiredThisYear ? (
@@ -198,7 +207,9 @@ export default function PersonalDashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {staffHiredThisYear.map((member) => (
+                  {staffHiredThisYear
+                    .slice((paginationHired.page - 1) * paginationHired.limit, paginationHired.page * paginationHired.limit)
+                    .map((member) => (
                     <TableRow key={member.id}>
                       <TableCell className="font-medium">{member.name}</TableCell>
                       <TableCell>{member.position}</TableCell>
@@ -216,6 +227,18 @@ export default function PersonalDashboard() {
             </div>
           )}
         </CardContent>
+        {!loadingHiredThisYear && staffHiredThisYear.length > 0 && (
+          <TablePagination
+            page={paginationHired.page}
+            limit={paginationHired.limit}
+            total={staffHiredThisYear.length}
+            onPageChange={(p) => setPaginationHired((prev) => ({ ...prev, page: p }))}
+            onLimitChange={(l) => setPaginationHired({ page: 1, limit: l })}
+            itemLabel="empleados"
+            showSummary={false}
+            showLimitSelect={false}
+          />
+        )}
       </Card>
     </div>
   );

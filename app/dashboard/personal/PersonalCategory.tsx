@@ -22,7 +22,8 @@ import {
   getDepartmentForCategory,
 } from "./categories";
 import { formatDateOnly } from "~/lib/dateUtils";
-import { Search, Users, Phone, Mail, Calendar, ChevronLeft, ChevronRight, ArrowLeft } from "lucide-react";
+import { Search, Users, Phone, Mail, Calendar, ArrowLeft } from "lucide-react";
+import { TablePagination } from "~/components/ui/table-pagination";
 import { staffService, type Staff as SupabaseStaff } from "~/services/staffService";
 import { toast } from "sonner";
 
@@ -160,6 +161,14 @@ export default function PersonalCategoryPage() {
     setStaff((prev) => prev.map((x) => (x.id === s.id ? s : x)));
   };
 
+  const handlePageChange = (newPage: number) => {
+    setPagination((p) => ({ ...p, page: newPage }));
+  };
+
+  const handleLimitChange = (newLimit: number) => {
+    setPagination((p) => ({ ...p, limit: newLimit, page: 1 }));
+  };
+
   const getStatusBadge = (status?: string) => {
     switch (status) {
       case "Activo":
@@ -265,7 +274,7 @@ export default function PersonalCategoryPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Lista de personal ({pagination.total})</CardTitle>
+          <CardTitle>Lista de personal</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -363,36 +372,21 @@ export default function PersonalCategoryPage() {
             </Table>
           </div>
         </CardContent>
-      </Card>
 
-      {!loading && pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
-          <span className="text-sm text-gray-700">
-            Mostrando {(pagination.page - 1) * pagination.limit + 1}-
-            {Math.min(pagination.page * pagination.limit, pagination.total)} de {pagination.total}
-          </span>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!pagination.hasPrevPage}
-              onClick={() => setPagination((p) => ({ ...p, page: p.page - 1 }))}
-            >
-              <ChevronLeft className="w-4 h-4" />
-              Anterior
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!pagination.hasNextPage}
-              onClick={() => setPagination((p) => ({ ...p, page: p.page + 1 }))}
-            >
-              Siguiente
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-      )}
+        {/* Paginación estándar (igual que home de pacientes) */}
+        {!loading && (
+          <TablePagination
+            page={pagination.page}
+            limit={pagination.limit}
+            total={pagination.total}
+            onPageChange={handlePageChange}
+            onLimitChange={handleLimitChange}
+            itemLabel="empleados"
+            showSummary={true}
+            showLimitSelect={true}
+          />
+        )}
+      </Card>
     </div>
   );
 }

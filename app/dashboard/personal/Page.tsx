@@ -29,14 +29,13 @@ import {
   Stethoscope,
   UserCheck,
   Clock,
-  ChevronLeft,
-  ChevronRight,
   X
 } from "lucide-react";
 import { staffService, type Staff as SupabaseStaff } from "~/services/staffService";
 import { OFFICIAL_POSITIONS } from "~/dashboard/personal/categories";
 import { formatDateOnly } from "~/lib/dateUtils";
 import { toast } from "sonner";
+import { TablePagination } from "~/components/ui/table-pagination";
 
 // Interfaz para la UI (compatible con modales existentes)
 interface ModalStaff {
@@ -103,6 +102,7 @@ export default function PersonalPage() {
   });
   const [staffHiredThisYear, setStaffHiredThisYear] = useState<SupabaseStaff[]>([]);
   const [loadingHiredThisYear, setLoadingHiredThisYear] = useState(false);
+  const [paginationHired, setPaginationHired] = useState({ page: 1, limit: 10 });
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
@@ -342,10 +342,17 @@ export default function PersonalPage() {
       {/* Tabla resumen: Empleados que ingresaron este año */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-primary-blue" />
-            Empleados que ingresaron este año
-          </CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-primary-blue" />
+              Empleados que ingresaron este año
+            </CardTitle>
+            {!loadingHiredThisYear && staffHiredThisYear.length > 0 && (
+              <div className="text-sm text-gray-600">
+                Mostrando {((paginationHired.page - 1) * paginationHired.limit) + 1} - {Math.min(paginationHired.page * paginationHired.limit, staffHiredThisYear.length)} de {staffHiredThisYear.length} empleados
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {loadingHiredThisYear ? (
@@ -365,7 +372,9 @@ export default function PersonalPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {staffHiredThisYear.map((member) => (
+                  {staffHiredThisYear
+                    .slice((paginationHired.page - 1) * paginationHired.limit, paginationHired.page * paginationHired.limit)
+                    .map((member) => (
                     <TableRow key={member.id}>
                       <TableCell className="font-medium">{member.name}</TableCell>
                       <TableCell>{member.position}</TableCell>
@@ -383,6 +392,18 @@ export default function PersonalPage() {
             </div>
           )}
         </CardContent>
+        {!loadingHiredThisYear && staffHiredThisYear.length > 0 && (
+          <TablePagination
+            page={paginationHired.page}
+            limit={paginationHired.limit}
+            total={staffHiredThisYear.length}
+            onPageChange={(p) => setPaginationHired((prev) => ({ ...prev, page: p }))}
+            onLimitChange={(l) => setPaginationHired({ page: 1, limit: l })}
+            itemLabel="empleados"
+            showSummary={false}
+            showLimitSelect={false}
+          />
+        )}
       </Card>
 
       {/* Filters and Search */}
@@ -496,7 +517,12 @@ export default function PersonalPage() {
       {/* Staff Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Lista de Personal</CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle>Lista de Personal</CardTitle>
+            <div className="text-sm text-gray-600">
+              Mostrando {((pagination.page - 1) * pagination.limit) + 1} - {Math.min(pagination.page * pagination.limit, pagination.total)} de {pagination.total} empleados
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -597,58 +623,21 @@ export default function PersonalPage() {
             </Table>
           </div>
         </CardContent>
-      </Card>
 
-      {/* Paginación */}
-      {!loading && pagination.totalPages > 1 && (
-        <div className="px-6 py-4 border-t border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-700">
-              Mostrando {((pagination.page - 1) * pagination.limit) + 1}-{Math.min(pagination.page * pagination.limit, pagination.total)} de {pagination.total} empleados
-            </div>
-            <div className="flex items-center space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(pagination.page - 1)}
-                disabled={!pagination.hasPrevPage}
-              >
-                <ChevronLeft className="w-4 h-4" />
-                Anterior
-              </Button>
-              
-              {/* Números de página */}
-              {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                const startPage = Math.max(1, pagination.page - 2);
-                const pageNum = startPage + i;
-                if (pageNum > pagination.totalPages) return null;
-                
-                return (
-                  <Button
-                    key={pageNum}
-                    variant={pageNum === pagination.page ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => handlePageChange(pageNum)}
-                    className={pageNum === pagination.page ? "bg-primary-blue text-white" : ""}
-                  >
-                    {pageNum}
-                  </Button>
-                );
-              })}
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(pagination.page + 1)}
-                disabled={!pagination.hasNextPage}
-              >
-                Siguiente
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+        {/* Paginación estándar (igual que home de pacientes) */}
+        {!loading && (
+          <TablePagination
+            page={pagination.page}
+            limit={pagination.limit}
+            total={pagination.total}
+            onPageChange={handlePageChange}
+            onLimitChange={handleLimitChange}
+            itemLabel="empleados"
+            showSummary={false}
+            showLimitSelect={false}
+          />
+        )}
+      </Card>
     </div>
   );
 }
