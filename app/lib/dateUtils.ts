@@ -67,3 +67,23 @@ export function getTodayLocal(): string {
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
+
+/** Convierte hora guardada (ej. "8:00 AM", "09:00") a "HH:mm" para input type="time". */
+export function toTimeInputValue(h: string | null | undefined): string {
+  if (!h || !String(h).trim()) return "";
+  const t = String(h).trim();
+  if (/^\d{1,2}:\d{2}$/.test(t)) {
+    const [hour, min] = t.split(":").map(Number);
+    return `${String(hour).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+  }
+  const match = t.match(/^(\d{1,2}):?(\d{2})?\s*(AM|PM)?$/i);
+  if (match) {
+    let hour = parseInt(match[1], 10);
+    const min = match[2] ? parseInt(match[2], 10) : 0;
+    const ampm = (match[3] || "").toUpperCase();
+    if (ampm === "PM" && hour !== 12) hour += 12;
+    if (ampm === "AM" && hour === 12) hour = 0;
+    return `${String(hour).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+  }
+  return "";
+}

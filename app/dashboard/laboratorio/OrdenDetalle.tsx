@@ -33,7 +33,7 @@ import {
 } from "~/components/ui/select";
 
 export default function OrdenDetalle() {
-  const { id } = useParams("/laboratorio/ordenes/:id");
+  const { id } = useParams();
   const navigate = useNavigate();
   const [order, setOrder] = useState<LabExamOrder | null>(null);
   const [patient, setPatient] = useState<Patient | null>(null);
@@ -53,6 +53,8 @@ export default function OrdenDetalle() {
   const [updatingPayment, setUpdatingPayment] = useState(false);
   const [paymentReferenceInput, setPaymentReferenceInput] = useState("");
   const [updatingSampleDate, setUpdatingSampleDate] = useState(false);
+  const [discountInput, setDiscountInput] = useState("");
+  const [updatingDiscount, setUpdatingDiscount] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -65,6 +67,12 @@ export default function OrdenDetalle() {
       setPaymentReferenceInput(order.payment_reference ?? "");
     }
   }, [order?.id, order?.payment_reference]);
+
+  useEffect(() => {
+    if (order?.discount_amount !== undefined) {
+      setDiscountInput(order.discount_amount === 0 ? "" : String(order.discount_amount));
+    }
+  }, [order?.id, order?.discount_amount]);
 
   const loadOrder = async () => {
     try {
@@ -126,6 +134,30 @@ export default function OrdenDetalle() {
     const v = paymentReferenceInput.trim() || null;
     if (v === (order?.payment_reference ?? null)) return;
     handlePaymentUpdate({ payment_reference: v });
+  };
+
+  const handleApplyDiscount = async () => {
+    if (!order) return;
+    const value = parseFloat(discountInput.replace(",", ".").trim());
+    if (Number.isNaN(value) || value < 0) {
+      toast.error("Ingrese un monto de descuento válido (número mayor o igual a 0)");
+      return;
+    }
+    const total = Number(order.total_amount ?? 0);
+    if (value > total) {
+      toast.error("El descuento no puede ser mayor al total de la orden");
+      return;
+    }
+    try {
+      setUpdatingDiscount(true);
+      await labOrderService.updateOrderDiscount(order.id, value);
+      toast.success(value === 0 ? "Descuento quitado" : "Descuento aplicado");
+      loadOrder();
+    } catch (error: any) {
+      toast.error(error?.message || "Error al aplicar descuento");
+    } finally {
+      setUpdatingDiscount(false);
+    }
   };
 
   const handleSampleDateChange = async (newDate: string) => {
@@ -344,7 +376,7 @@ export default function OrdenDetalle() {
                   type="date"
                   className="mt-1 font-medium"
                   value={(order.sample_date ?? order.order_date).toString().slice(0, 10)}
-                  onChange={(e) => handleSampleDateChange(e.target.value || null)}
+                  onChange={(e) => handleSampleDateChange(e.target.value)}
                   disabled={updatingSampleDate}
                 />
               </div>
@@ -449,6 +481,31 @@ export default function OrdenDetalle() {
                     </Button>
                   </div>
                 </div>
+                <div>
+                  <Label className="text-sm text-gray-500">Descuento (S/)</Label>
+                  <div className="flex flex-col gap-2 mt-1">
+                    <Input
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      placeholder="0.00"
+                      value={discountInput}
+                      onChange={(e) => setDiscountInput(e.target.value)}
+                      disabled={updatingDiscount}
+                      className="w-full"
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={handleApplyDiscount}
+                      disabled={updatingDiscount}
+                      className="w-full sm:w-auto"
+                    >
+                      Aplicar descuento
+                    </Button>
+                  </div>
+                </div>
               </div>
               {order.observations && (
                 <div>
@@ -482,11 +539,21 @@ export default function OrdenDetalle() {
                   </div>
                 )}
               </div>
-              <div className="pt-4 border-t">
-                <div className="flex items-center justify-between">
+              <div className="pt-4 border-t space-y-1">
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>Subtotal:</span>
+                  <span>S/ {Number(order.total_amount ?? 0).toFixed(2)}</span>
+                </div>
+                {(order.discount_amount ?? 0) > 0 && (
+                  <div className="flex justify-between text-sm text-gray-600">
+                    <span>Descuento:</span>
+                    <span className="text-red-600">- S/ {Number(order.discount_amount ?? 0).toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between pt-2">
                   <span className="text-lg font-semibold text-gray-700">Total:</span>
                   <span className="text-2xl font-bold text-green-600">
-                    S/ {order.total_amount.toFixed(2)}
+                    S/ {Math.max(0, Number(order.total_amount ?? 0) - Number(order.discount_amount ?? 0)).toFixed(2)}
                   </span>
                 </div>
               </div>
@@ -785,7 +852,7 @@ export default function OrdenDetalle() {
                     </div>
                     <div className="flex justify-between text-lg font-bold pt-2 border-t">
                       <span>Total:</span>
-                      <span className="text-green-600">S/ {order.total_amount.toFixed(2)}</span>
+                      <span className="text-green-600">S/ {Math.max(0, Number(order.total_amount ?? 0) - Number(order.discount_amount ?? 0)).toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
