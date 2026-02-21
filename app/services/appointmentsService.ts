@@ -106,14 +106,32 @@ export const appointmentsService = {
   },
 
   async create(payload: CreateAppointmentData): Promise<Appointment> {
+    let patientName = payload.patientName?.trim() ?? "";
+    let patientEmail = payload.patientEmail?.trim() ?? null;
+    let patientPhone = payload.patientPhone?.trim() ?? null;
+
+    // Si hay patient_id pero faltan datos del paciente, rellenar desde la tabla patients (evita bug de crear cita sin nombre)
+    if (payload.patient_id && (!patientName || !patientEmail || !patientPhone)) {
+      const { data: patient } = await supabase
+        .from("patients")
+        .select("name, email, phone")
+        .eq("id", payload.patient_id)
+        .maybeSingle();
+      if (patient) {
+        if (!patientName) patientName = (patient.name ?? "").trim();
+        if (!patientEmail) patientEmail = (patient.email ?? "").trim() || null;
+        if (!patientPhone) patientPhone = (patient.phone ?? "").trim() || null;
+      }
+    }
+
     const { data, error } = await supabase
       .from("appointments")
       .insert({
         variant: payload.variant,
         patient_id: payload.patient_id ?? null,
-        patient_name: payload.patientName,
-        patient_email: payload.patientEmail ?? null,
-        patient_phone: payload.patientPhone ?? null,
+        patient_name: patientName,
+        patient_email: patientEmail,
+        patient_phone: patientPhone,
         doctor_name: payload.doctorName,
         doctor_specialty: payload.doctorSpecialty ?? null,
         date: toNoonUtc(payload.date),

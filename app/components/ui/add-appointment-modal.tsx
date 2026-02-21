@@ -205,7 +205,15 @@ export function AddAppointmentModal({
         district: newPatientData.district?.trim() || undefined,
       });
       setPatients((prev) => [newPatient, ...prev]);
-      handlePatientChange(newPatient.id);
+      // Rellenar el formulario con el paciente recién creado (no usar handlePatientChange: patients aún no tiene al nuevo por el estado asíncrono)
+      setFormData((prev) => ({
+        ...prev,
+        patientId: newPatient.id,
+        patientName: newPatient.name?.trim() || newPatientData.name.trim() || "",
+        patientEmail: newPatient.email?.trim() || newPatientData.email?.trim() || "",
+        patientPhone: newPatient.phone?.trim() || newPatientData.phone?.trim() || "",
+        location: newPatient.address?.trim() || newPatientData.address?.trim() || prev.location,
+      }));
       setAddPatientModalOpen(false);
       setNewPatientData({ name: "", dni: "", email: "", phone: "", gender: "", address: "", district: "" });
       toast.success("Paciente creado. Ya está seleccionado para la cita.");
@@ -228,9 +236,18 @@ export function AddAppointmentModal({
       return;
     }
     const { patientId, procedureCatalogId, procedureName, ...rest } = formData;
+    // Asegurar nombre/email/teléfono del paciente (por si el combobox no los rellenó)
+    const patient = patients.find((p) => p.id === patientId);
+    const patientName = (rest.patientName?.trim() || patient?.name) ?? "";
+    const patientEmail = (rest.patientEmail?.trim() || patient?.email) ?? "";
+    const patientPhone = (rest.patientPhone?.trim() || patient?.phone) ?? "";
+
     const newAppointment: Appointment = {
       id: `A${Date.now()}`,
       ...rest,
+      patientName,
+      patientEmail,
+      patientPhone,
       patient_id: patientId || undefined,
       type: variant === "procedimientos" ? "procedimiento" : formData.type,
       ...(variant === "procedimientos" && {
