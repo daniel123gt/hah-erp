@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -24,6 +24,23 @@ import {
   Download,
   Clock,
 } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
 
 function firstDayOfMonth(year: number, month: number): string {
   const m = String(month).padStart(2, "0");
@@ -79,6 +96,49 @@ export default function CuidadosPorTurnosReportes() {
   const totalRevenue = totals ? totals.total_revenue : shifts.reduce((s, x) => s + (x.monto_a_pagar ?? 0), 0);
   const totalShifts = totals ? totals.total_shifts : shifts.length;
   const promedio = totals ? totals.promedio : (totalShifts ? totalRevenue / totalShifts : 0);
+
+  const reportRows = dbReport?.rows ?? [];
+
+  type ChartTabId = "distribucion" | "evolucion" | "pacientes" | "turnos";
+  const [chartTab, setChartTab] = useState<ChartTabId>("distribucion");
+
+  const chartDataByDate = useMemo(() => {
+    if (!reportRows.length) return [];
+    const map = new Map<string, { ingreso: number; turnos: number }>();
+    reportRows.forEach((r) => {
+      const d = String(r.fecha).trim().slice(0, 10);
+      const cur = map.get(d) || { ingreso: 0, turnos: 0 };
+      cur.ingreso += Number(r.monto_a_pagar ?? 0);
+      cur.turnos += 1;
+      map.set(d, cur);
+    });
+    return Array.from(map.entries())
+      .map(([date, v]) => ({ date, label: formatDateOnly(date, "es-PE"), ...v }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [reportRows]);
+
+  const chartDataTopTurnos = useMemo(() => {
+    return [...reportRows]
+      .sort((a, b) => Number(b.monto_a_pagar ?? 0) - Number(a.monto_a_pagar ?? 0))
+      .slice(0, 15)
+      .map((r, i) => ({
+        name: `#${i + 1} ${formatDateOnly(r.fecha, "es-PE")} ${(r.patient_name ?? "").slice(0, 15)}${(r.patient_name?.length ?? 0) > 15 ? "…" : ""}`,
+        monto: Number(r.monto_a_pagar ?? 0),
+      }));
+  }, [reportRows]);
+
+  const patientStats = useMemo(() => {
+    const map = new Map<string, number>();
+    reportRows.forEach((r) => {
+      const name = r.patient_name ?? "Sin nombre";
+      map.set(name, (map.get(name) ?? 0) + Number(r.monto_a_pagar ?? 0));
+    });
+    return Array.from(map.entries())
+      .map(([patient_name, total_ingreso]) => ({ patient_name, total_ingreso }))
+      .sort((a, b) => b.total_ingreso - a.total_ingreso);
+  }, [reportRows]);
+
+  const CHART_COLORS = ["#2563eb", "#16a34a", "#0891b2", "#dc2626", "#ea580c", "#7c3aed", "#db2777", "#64748b"];
 
   const handleExportCSV = () => {
     const headers = "Fecha,Hora,Paciente,Distrito,Turno,Monto (S/.),Enfermera,Forma de pago\n";
@@ -146,48 +206,66 @@ export default function CuidadosPorTurnosReportes() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-gray-600">Ingresos del período</p>
                   <p className="text-2xl font-bold text-green-600">S/ {totalRevenue.toFixed(2)}</p>
+                  {chartDataByDate.length > 0 && (
+                    <div className="h-9 w-full mt-1">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={chartDataByDate} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
+                          <Line type="monotone" dataKey="ingreso" stroke="#16a34a" strokeWidth={1.5} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
                 </div>
-                <DollarSign className="w-8 h-8 text-green-500" />
+                <DollarSign className="w-8 h-8 text-green-500 shrink-0" />
               </div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-gray-600">Turnos realizados</p>
                   <p className="text-2xl font-bold text-gray-900">{totalShifts}</p>
+                  {chartDataByDate.length > 0 && (
+                    <div className="h-9 w-full mt-1">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={chartDataByDate} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
+                          <Line type="monotone" dataKey="turnos" stroke="#3b82f6" strokeWidth={1.5} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
                 </div>
-                <Clock className="w-8 h-8 text-blue-500" />
+                <Clock className="w-8 h-8 text-blue-500 shrink-0" />
               </div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-gray-600">Rango</p>
                   <p className="text-lg font-bold text-gray-900">
                     {formatDateOnly(startDate, "es-PE")} – {formatDateOnly(endDate, "es-PE")}
                   </p>
                 </div>
-                <FileText className="w-8 h-8 text-amber-500" />
+                <FileText className="w-8 h-8 text-amber-500 shrink-0" />
               </div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-gray-600">Promedio por turno</p>
                   <p className="text-2xl font-bold text-gray-900">
                     S/ {promedio.toFixed(2)}
                   </p>
                 </div>
-                <TrendingUp className="w-8 h-8 text-purple-500" />
+                <TrendingUp className="w-8 h-8 text-purple-500 shrink-0" />
               </div>
             </CardContent>
           </Card>
@@ -201,6 +279,126 @@ export default function CuidadosPorTurnosReportes() {
             Exportar CSV
           </Button>
         </div>
+      )}
+
+      {!loading && (
+        <>
+          <div className="flex border-b border-gray-200 gap-0">
+            {(
+              [
+                { id: "distribucion" as ChartTabId, label: "Distribución por fecha" },
+                { id: "evolucion" as ChartTabId, label: "Evolución en el tiempo" },
+                { id: "pacientes" as ChartTabId, label: "Composición por paciente" },
+                { id: "turnos" as ChartTabId, label: "Top turnos por monto" },
+              ] as const
+            ).map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setChartTab(tab.id)}
+                className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                  chartTab === tab.id
+                    ? "border-primary-blue text-primary-blue"
+                    : "border-transparent text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          <Card>
+            <CardContent className="pt-6">
+              {chartTab === "distribucion" && (
+                <div className="h-[320px]">
+                  {chartDataByDate.length === 0 ? (
+                    <p className="text-gray-500 text-center py-12">No hay datos en el rango seleccionado.</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartDataByDate} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200" />
+                        <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `S/ ${v}`} />
+                        <Tooltip formatter={(v: number) => [`S/ ${v.toFixed(2)}`, ""]} labelFormatter={(_, payload) => payload?.[0]?.payload?.label} />
+                        <Legend />
+                        <Bar dataKey="ingreso" name="Ingresos (S/.)" fill="#16a34a" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              )}
+              {chartTab === "evolucion" && (
+                <div className="h-[320px]">
+                  {chartDataByDate.length === 0 ? (
+                    <p className="text-gray-500 text-center py-12">No hay datos en el rango seleccionado.</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={chartDataByDate} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200" />
+                        <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                        <YAxis yAxisId="left" tick={{ fontSize: 11 }} tickFormatter={(v) => `S/ ${v}`} />
+                        <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} />
+                        <Tooltip formatter={(v: number, name: string) => [name === "turnos" ? v : `S/ ${Number(v).toFixed(2)}`, name === "turnos" ? "Turnos" : "Ingresos"]} labelFormatter={(_, payload) => payload?.[0]?.payload?.label} />
+                        <Legend />
+                        <Area yAxisId="left" type="monotone" dataKey="ingreso" name="Ingresos" stroke="#16a34a" fill="#16a34a" fillOpacity={0.3} />
+                        <Area yAxisId="right" type="monotone" dataKey="turnos" name="Turnos" stroke="#2563eb" fill="#2563eb" fillOpacity={0.3} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              )}
+              {chartTab === "pacientes" && (
+                <div className="h-[320px] flex items-center justify-center">
+                  {patientStats.length === 0 ? (
+                    <p className="text-gray-500 text-center py-12">No hay datos por paciente en el rango.</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={patientStats.slice(0, 8).map((p) => ({
+                            name: p.patient_name.length > 25 ? p.patient_name.slice(0, 25) + "…" : p.patient_name,
+                            value: p.total_ingreso,
+                          }))}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius="40%"
+                          outerRadius="70%"
+                          paddingAngle={2}
+                          dataKey="value"
+                          nameKey="name"
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        >
+                          {patientStats.slice(0, 8).map((_, i) => (
+                            <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(v: number) => [`S/ ${v.toFixed(2)}`, "Ingresos"]} />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              )}
+              {chartTab === "turnos" && (
+                <div className="h-[320px]">
+                  {chartDataTopTurnos.length === 0 ? (
+                    <p className="text-gray-500 text-center py-12">No hay turnos en el rango seleccionado.</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartDataTopTurnos} layout="vertical" margin={{ top: 5, right: 30, left: 80, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200" />
+                        <XAxis type="number" tickFormatter={(v) => `S/ ${v}`} tick={{ fontSize: 11 }} />
+                        <YAxis type="category" dataKey="name" width={75} tick={{ fontSize: 10 }} />
+                        <Tooltip formatter={(v: number) => [`S/ ${v.toFixed(2)}`, "Monto"]} />
+                        <Legend />
+                        <Bar dataKey="monto" name="Monto (S/.)" fill="#16a34a" radius={[0, 4, 4, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
       )}
 
       {loading ? (
