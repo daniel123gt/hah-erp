@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
@@ -35,6 +35,23 @@ import {
   Download,
   FileText,
 } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
 
 export type EstadoFilterValue = "todos" | "pendientes" | "completados";
 
@@ -199,6 +216,80 @@ export default function ReportesPage() {
   const tableTotalEgresos = displayRows.reduce((s, r) => s + r.egresos, 0);
   const tableTotalUtilidad = displayRows.reduce((s, r) => s + r.utilidad, 0);
 
+  type ChartTabId = "distribucion" | "evolucion" | "origen" | "registros";
+  const [chartTab, setChartTab] = useState<ChartTabId>("distribucion");
+
+  const chartDataByDate = useMemo(() => {
+    if (!displayRows.length) return [];
+    const map = new Map<string, { ingreso: number; costo: number; utilidad: number; registros: number }>();
+    displayRows.forEach((r) => {
+      const d = String(r.fecha).trim().slice(0, 10);
+      const cur = map.get(d) || { ingreso: 0, costo: 0, utilidad: 0, registros: 0 };
+      cur.ingreso += r.monto;
+      cur.costo += r.egresos;
+      cur.utilidad += r.utilidad;
+      cur.registros += 1;
+      map.set(d, cur);
+    });
+    return Array.from(map.entries())
+      .map(([date, v]) => ({ date, label: formatDateOnly(date, "es-PE"), ...v }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [displayRows]);
+
+  const chartDataByDateLab = useMemo(() => {
+    const labRows = displayRows.filter((r) => r.origen === "Laboratorio");
+    if (!labRows.length) return [];
+    const map = new Map<string, number>();
+    labRows.forEach((r) => {
+      const d = String(r.fecha).trim().slice(0, 10);
+      map.set(d, (map.get(d) ?? 0) + r.monto);
+    });
+    return chartDataByDate.map(({ date, label }) => ({ date, label, monto: map.get(date) ?? 0 }));
+  }, [displayRows, chartDataByDate]);
+
+  const chartDataByDateProc = useMemo(() => {
+    const procRows = displayRows.filter((r) => r.origen === "Procedimientos");
+    if (!procRows.length) return [];
+    const map = new Map<string, number>();
+    procRows.forEach((r) => {
+      const d = String(r.fecha).trim().slice(0, 10);
+      map.set(d, (map.get(d) ?? 0) + r.monto);
+    });
+    return chartDataByDate.map(({ date, label }) => ({ date, label, monto: map.get(date) ?? 0 }));
+  }, [displayRows, chartDataByDate]);
+
+  const chartDataByDateShift = useMemo(() => {
+    const shiftRows = displayRows.filter((r) => r.origen === "Cuidados por turnos");
+    if (!shiftRows.length) return [];
+    const map = new Map<string, number>();
+    shiftRows.forEach((r) => {
+      const d = String(r.fecha).trim().slice(0, 10);
+      map.set(d, (map.get(d) ?? 0) + r.monto);
+    });
+    return chartDataByDate.map(({ date, label }) => ({ date, label, monto: map.get(date) ?? 0 }));
+  }, [displayRows, chartDataByDate]);
+
+  const chartDataTopRows = useMemo(() => {
+    return [...displayRows]
+      .sort((a, b) => b.utilidad - a.utilidad)
+      .slice(0, 15)
+      .map((r, i) => ({
+        name: `#${i + 1} ${formatDateOnly(r.fecha, "es-PE")} ${r.origen.slice(0, 8)} ${(r.detalle ?? "").slice(0, 12)}${(r.detalle?.length ?? 0) > 12 ? "…" : ""}`,
+        utilidad: r.utilidad,
+        monto: r.monto,
+      }));
+  }, [displayRows]);
+
+  const originStats = useMemo(() => {
+    const map = new Map<string, number>();
+    displayRows.forEach((r) => {
+      map.set(r.origen, (map.get(r.origen) ?? 0) + r.monto);
+    });
+    return Array.from(map.entries()).map(([origen, total_ingreso]) => ({ origen, total_ingreso }));
+  }, [displayRows]);
+
+  const CHART_COLORS = ["#2563eb", "#16a34a", "#ea580c", "#7c3aed", "#db2777", "#64748b"];
+
   const handleExportCSV = () => {
     const headers = "Fecha,Origen,Detalle,Paciente,Monto (S/.),Egresos (S/.),Utilidad (S/.)\n";
     const csvRows = displayRows.map((r) =>
@@ -286,13 +377,22 @@ export default function ReportesPage() {
             <Card className="bg-primary-blue/5 border-primary-blue/20">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-gray-600">Total consolidado</p>
                     <p className="text-2xl font-bold text-gray-900">S/ {totalRevenue.toFixed(2)}</p>
                     <p className="text-xs text-gray-500 mt-1">Egresos: S/ {totalEgresos.toFixed(2)} · Utilidad: S/ {totalUtilidad.toFixed(2)}</p>
                     <p className="text-xs text-gray-500 mt-0.5">{periodLabel}</p>
+                    {chartDataByDate.length > 0 && (
+                      <div className="h-9 w-full mt-1">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={chartDataByDate} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
+                            <Line type="monotone" dataKey="ingreso" stroke="#2563eb" strokeWidth={1.5} dot={false} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
                   </div>
-                  <DollarSign className="w-8 h-8 text-primary-blue" />
+                  <DollarSign className="w-8 h-8 text-primary-blue shrink-0" />
                 </div>
               </CardContent>
             </Card>
@@ -300,12 +400,21 @@ export default function ReportesPage() {
             <Card className="hover:shadow-md transition-shadow">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-gray-600">Laboratorio</p>
                     <p className="text-2xl font-bold text-gray-900">S/ {labRevenue.toFixed(2)}</p>
                     <p className="text-xs text-gray-500 mt-1">Egresos: S/ {labCost.toFixed(2)} · Utilidad: S/ {labUtility.toFixed(2)}</p>
+                    {chartDataByDateLab.length > 0 && (
+                      <div className="h-9 w-full mt-1">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={chartDataByDateLab} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
+                            <Line type="monotone" dataKey="monto" stroke="#2563eb" strokeWidth={1.5} dot={false} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
                   </div>
-                  <FlaskConical className="w-8 h-8 text-blue-500" />
+                  <FlaskConical className="w-8 h-8 text-blue-500 shrink-0" />
                 </div>
                 <Button variant="ghost" size="sm" className="mt-3 w-full justify-between" asChild>
                   <Link to="/laboratorio/reportes">
@@ -319,12 +428,21 @@ export default function ReportesPage() {
             <Card className="hover:shadow-md transition-shadow">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-gray-600">Procedimientos</p>
                     <p className="text-2xl font-bold text-gray-900">S/ {procedureRevenue.toFixed(2)}</p>
                     <p className="text-xs text-gray-500 mt-1">Egresos: S/ {procedureCost.toFixed(2)} · Utilidad: S/ {procedureUtility.toFixed(2)}</p>
+                    {chartDataByDateProc.length > 0 && (
+                      <div className="h-9 w-full mt-1">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={chartDataByDateProc} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
+                            <Line type="monotone" dataKey="monto" stroke="#16a34a" strokeWidth={1.5} dot={false} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
                   </div>
-                  <ClipboardList className="w-8 h-8 text-green-500" />
+                  <ClipboardList className="w-8 h-8 text-green-500 shrink-0" />
                 </div>
                 <Button variant="ghost" size="sm" className="mt-3 w-full justify-between" asChild>
                   <Link to="/procedimientos/reportes">
@@ -338,12 +456,21 @@ export default function ReportesPage() {
             <Card className="hover:shadow-md transition-shadow">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-gray-600">Cuidados por turnos</p>
                     <p className="text-2xl font-bold text-gray-900">S/ {shiftRevenue.toFixed(2)}</p>
                     <p className="text-xs text-gray-500 mt-1">Utilidad: S/ {shiftUtility.toFixed(2)}</p>
+                    {chartDataByDateShift.length > 0 && (
+                      <div className="h-9 w-full mt-1">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={chartDataByDateShift} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
+                            <Line type="monotone" dataKey="monto" stroke="#ea580c" strokeWidth={1.5} dot={false} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
                   </div>
-                  <Clock className="w-8 h-8 text-amber-500" />
+                  <Clock className="w-8 h-8 text-amber-500 shrink-0" />
                 </div>
                 <Button variant="ghost" size="sm" className="mt-3 w-full justify-between" asChild>
                   <Link to="/cuidados-por-turnos/reportes">
@@ -363,6 +490,120 @@ export default function ReportesPage() {
               </Button>
             </div>
           )}
+
+          <div className="flex border-b border-gray-200 gap-0">
+            {(
+              [
+                { id: "distribucion" as ChartTabId, label: "Distribución (Costo / Utilidad)" },
+                { id: "evolucion" as ChartTabId, label: "Evolución en el tiempo" },
+                { id: "origen" as ChartTabId, label: "Composición por origen" },
+                { id: "registros" as ChartTabId, label: "Top registros por utilidad" },
+              ] as const
+            ).map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setChartTab(tab.id)}
+                className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                  chartTab === tab.id
+                    ? "border-primary-blue text-primary-blue"
+                    : "border-transparent text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          <Card>
+            <CardContent className="pt-6">
+              {chartTab === "distribucion" && (
+                <div className="h-[320px]">
+                  {chartDataByDate.length === 0 ? (
+                    <p className="text-gray-500 text-center py-12">No hay datos en el rango seleccionado.</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartDataByDate} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200" />
+                        <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `S/ ${v}`} />
+                        <Tooltip formatter={(v: number) => [`S/ ${v.toFixed(2)}`, ""]} labelFormatter={(_, payload) => payload?.[0]?.payload?.label} />
+                        <Legend />
+                        <Bar dataKey="costo" name="Egresos" stackId="a" fill="#f59e0b" />
+                        <Bar dataKey="utilidad" name="Utilidad" stackId="a" fill="#16a34a" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              )}
+              {chartTab === "evolucion" && (
+                <div className="h-[320px]">
+                  {chartDataByDate.length === 0 ? (
+                    <p className="text-gray-500 text-center py-12">No hay datos en el rango seleccionado.</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={chartDataByDate} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200" />
+                        <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `S/ ${v}`} />
+                        <Tooltip formatter={(v: number) => [`S/ ${v.toFixed(2)}`, ""]} labelFormatter={(_, payload) => payload?.[0]?.payload?.label} />
+                        <Legend />
+                        <Area type="monotone" dataKey="ingreso" name="Ingresos" stroke="#2563eb" fill="#2563eb" fillOpacity={0.3} />
+                        <Area type="monotone" dataKey="costo" name="Egresos" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.3} />
+                        <Area type="monotone" dataKey="utilidad" name="Utilidad" stroke="#16a34a" fill="#16a34a" fillOpacity={0.3} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              )}
+              {chartTab === "origen" && (
+                <div className="h-[320px] flex items-center justify-center">
+                  {originStats.length === 0 ? (
+                    <p className="text-gray-500 text-center py-12">No hay datos por origen en el rango.</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={originStats.map((o) => ({ name: o.origen, value: o.total_ingreso }))}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius="40%"
+                          outerRadius="70%"
+                          paddingAngle={2}
+                          dataKey="value"
+                          nameKey="name"
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        >
+                          {originStats.map((_, i) => (
+                            <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(v: number) => [`S/ ${v.toFixed(2)}`, "Ingresos"]} />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              )}
+              {chartTab === "registros" && (
+                <div className="h-[320px]">
+                  {chartDataTopRows.length === 0 ? (
+                    <p className="text-gray-500 text-center py-12">No hay registros en el rango seleccionado.</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartDataTopRows} layout="vertical" margin={{ top: 5, right: 30, left: 100, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200" />
+                        <XAxis type="number" tickFormatter={(v) => `S/ ${v}`} tick={{ fontSize: 11 }} />
+                        <YAxis type="category" dataKey="name" width={95} tick={{ fontSize: 10 }} />
+                        <Tooltip formatter={(v: number) => [`S/ ${v.toFixed(2)}`, ""]} />
+                        <Legend />
+                        <Bar dataKey="utilidad" name="Utilidad (S/.)" fill="#16a34a" radius={[0, 4, 4, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>

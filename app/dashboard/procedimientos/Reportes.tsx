@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -25,6 +25,23 @@ import {
   Package,
   Fuel,
 } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
 
 function totalIngreso(r: ProcedureRecordWithDetails): number {
   return (
@@ -78,6 +95,54 @@ export default function ProcedimientosReportes() {
   } | null>(null);
   const [records, setRecords] = useState<ProcedureRecordWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
+  type ChartTabId = "distribucion" | "evolucion" | "procedimientos" | "registros";
+  const [chartTab, setChartTab] = useState<ChartTabId>("distribucion");
+
+  const reportRows = dbReport?.rows ?? [];
+
+  /** Datos agregados por fecha (para gráficas y sparklines) */
+  const chartDataByDate = useMemo(() => {
+    if (!reportRows.length) return [];
+    const map = new Map<string, { ingreso: number; costo: number; utilidad: number; registros: number }>();
+    reportRows.forEach((r) => {
+      const d = String(r.fecha).trim().slice(0, 10);
+      const cur = map.get(d) || { ingreso: 0, costo: 0, utilidad: 0, registros: 0 };
+      cur.ingreso += r.ingreso;
+      cur.costo += r.costo;
+      cur.utilidad += r.utility;
+      cur.registros += 1;
+      map.set(d, cur);
+    });
+    return Array.from(map.entries())
+      .map(([date, v]) => ({ date, label: formatDateOnly(date, "es-PE"), ...v }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [reportRows]);
+
+  /** Top registros por utilidad (barras horizontales) */
+  const chartDataTopRecords = useMemo(() => {
+    return [...reportRows]
+      .sort((a, b) => b.utility - a.utility)
+      .slice(0, 15)
+      .map((r, i) => ({
+        name: `#${i + 1} ${formatDateOnly(r.fecha, "es-PE")} ${(r.procedure_name ?? "").slice(0, 20)}${(r.procedure_name?.length ?? 0) > 20 ? "…" : ""}`,
+        utilidad: r.utility,
+        total: r.ingreso,
+      }));
+  }, [reportRows]);
+
+  /** Composición por procedimiento (ingresos por tipo de procedimiento) para pie */
+  const procedureStats = useMemo(() => {
+    const map = new Map<string, number>();
+    reportRows.forEach((r) => {
+      const name = r.procedure_name ?? "Sin nombre";
+      map.set(name, (map.get(name) ?? 0) + r.ingreso);
+    });
+    return Array.from(map.entries())
+      .map(([procedure_name, total_ingreso]) => ({ procedure_name, total_ingreso }))
+      .sort((a, b) => b.total_ingreso - a.total_ingreso);
+  }, [reportRows]);
+
+  const CHART_COLORS = ["#2563eb", "#16a34a", "#0891b2", "#dc2626", "#ea580c", "#7c3aed", "#db2777", "#64748b"];
 
   useEffect(() => {
     setLoading(true);
@@ -193,65 +258,83 @@ export default function ProcedimientosReportes() {
         </CardContent>
       </Card>
 
-      {/* Resumen general: 5 cards */}
+      {/* Resumen general: 5 cards (con sparklines como en laboratorio) */}
       {!loading && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-gray-600">Ingreso Total</p>
                   <p className="text-2xl font-bold text-green-600">
                     S/ {(totals?.total_ingreso ?? fallbackIngreso).toFixed(2)}
                   </p>
+                  {chartDataByDate.length > 0 && (
+                    <div className="h-9 w-full mt-1">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={chartDataByDate} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
+                          <Line type="monotone" dataKey="ingreso" stroke="#16a34a" strokeWidth={1.5} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
                 </div>
-                <DollarSign className="w-8 h-8 text-green-500" />
+                <DollarSign className="w-8 h-8 text-green-500 shrink-0" />
               </div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-gray-600">Gastos material y honorarios</p>
                   <p className="text-2xl font-bold text-gray-900">
                     S/ {(totals?.total_costo ?? fallbackCosto).toFixed(2)}
                   </p>
+                  {chartDataByDate.length > 0 && (
+                    <div className="h-9 w-full mt-1">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={chartDataByDate} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
+                          <Line type="monotone" dataKey="costo" stroke="#f59e0b" strokeWidth={1.5} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
                 </div>
-                <FileText className="w-8 h-8 text-slate-500" />
+                <FileText className="w-8 h-8 text-slate-500 shrink-0" />
               </div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-gray-600">Materiales extras</p>
                   <p className="text-2xl font-bold text-gray-900">
                     S/ {(totals?.total_materiales ?? fallbackMateriales).toFixed(2)}
                   </p>
                 </div>
-                <Package className="w-8 h-8 text-blue-500" />
+                <Package className="w-8 h-8 text-blue-500 shrink-0" />
               </div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-gray-600">Combustible</p>
                   <p className="text-2xl font-bold text-gray-900">
                     S/ {(totals?.total_movilidad ?? fallbackMovilidad).toFixed(2)}
                   </p>
                 </div>
-                <Fuel className="w-8 h-8 text-amber-500" />
+                <Fuel className="w-8 h-8 text-amber-500 shrink-0" />
               </div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-gray-600">Saldo Final</p>
                   <p className="text-2xl font-bold text-gray-900">
                     S/ {saldoFinal.toFixed(2)}
@@ -259,8 +342,17 @@ export default function ProcedimientosReportes() {
                   <p className="text-xs text-gray-500 mt-1">
                     {displayRecordsCount} registros en el período
                   </p>
+                  {chartDataByDate.length > 0 && (
+                    <div className="h-9 w-full mt-1">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={chartDataByDate} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
+                          <Line type="monotone" dataKey="utilidad" stroke="#16a34a" strokeWidth={1.5} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
                 </div>
-                <TrendingUp className="w-8 h-8 text-purple-500" />
+                <TrendingUp className="w-8 h-8 text-purple-500 shrink-0" />
               </div>
             </CardContent>
           </Card>
@@ -275,6 +367,128 @@ export default function ProcedimientosReportes() {
             Exportar CSV
           </Button>
         </div>
+      )}
+
+      {/* Tabs de gráficas (mismo estilo que laboratorio) */}
+      {!loading && (
+        <>
+          <div className="flex border-b border-gray-200 gap-0">
+            {(
+              [
+                { id: "distribucion" as ChartTabId, label: "Distribución (Costo / Utilidad)" },
+                { id: "evolucion" as ChartTabId, label: "Evolución en el tiempo" },
+                { id: "procedimientos" as ChartTabId, label: "Composición por procedimientos" },
+                { id: "registros" as ChartTabId, label: "Top registros por utilidad" },
+              ] as const
+            ).map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setChartTab(tab.id)}
+                className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                  chartTab === tab.id
+                    ? "border-primary-blue text-primary-blue"
+                    : "border-transparent text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          <Card>
+            <CardContent className="pt-6">
+              {chartTab === "distribucion" && (
+                <div className="h-[320px]">
+                  {chartDataByDate.length === 0 ? (
+                    <p className="text-gray-500 text-center py-12">No hay datos en el rango seleccionado.</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartDataByDate} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200" />
+                        <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `S/ ${v}`} />
+                        <Tooltip formatter={(v: number) => [`S/ ${v.toFixed(2)}`, ""]} labelFormatter={(_, payload) => payload?.[0]?.payload?.label} />
+                        <Legend />
+                        <Bar dataKey="costo" name="Costo" stackId="a" fill="#f59e0b" />
+                        <Bar dataKey="utilidad" name="Utilidad" stackId="a" fill="#16a34a" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              )}
+              {chartTab === "evolucion" && (
+                <div className="h-[320px]">
+                  {chartDataByDate.length === 0 ? (
+                    <p className="text-gray-500 text-center py-12">No hay datos en el rango seleccionado.</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={chartDataByDate} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200" />
+                        <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `S/ ${v}`} />
+                        <Tooltip formatter={(v: number) => [`S/ ${v.toFixed(2)}`, ""]} labelFormatter={(_, payload) => payload?.[0]?.payload?.label} />
+                        <Legend />
+                        <Area type="monotone" dataKey="ingreso" name="Ingresos" stroke="#2563eb" fill="#2563eb" fillOpacity={0.3} />
+                        <Area type="monotone" dataKey="costo" name="Costo" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.3} />
+                        <Area type="monotone" dataKey="utilidad" name="Utilidad" stroke="#16a34a" fill="#16a34a" fillOpacity={0.3} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              )}
+              {chartTab === "procedimientos" && (
+                <div className="h-[320px] flex items-center justify-center">
+                  {procedureStats.length === 0 ? (
+                    <p className="text-gray-500 text-center py-12">No hay datos de procedimientos en el rango.</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={procedureStats.slice(0, 8).map((p) => ({
+                            name: p.procedure_name.length > 25 ? p.procedure_name.slice(0, 25) + "…" : p.procedure_name,
+                            value: p.total_ingreso,
+                          }))}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius="40%"
+                          outerRadius="70%"
+                          paddingAngle={2}
+                          dataKey="value"
+                          nameKey="name"
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        >
+                          {procedureStats.slice(0, 8).map((_, i) => (
+                            <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(v: number) => [`S/ ${v.toFixed(2)}`, "Ingresos"]} />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              )}
+              {chartTab === "registros" && (
+                <div className="h-[320px]">
+                  {chartDataTopRecords.length === 0 ? (
+                    <p className="text-gray-500 text-center py-12">No hay registros en el rango seleccionado.</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartDataTopRecords} layout="vertical" margin={{ top: 5, right: 30, left: 80, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200" />
+                        <XAxis type="number" tickFormatter={(v) => `S/ ${v}`} tick={{ fontSize: 11 }} />
+                        <YAxis type="category" dataKey="name" width={75} tick={{ fontSize: 10 }} />
+                        <Tooltip formatter={(v: number) => [`S/ ${v.toFixed(2)}`, ""]} />
+                        <Legend />
+                        <Bar dataKey="utilidad" name="Utilidad (S/.)" fill="#16a34a" radius={[0, 4, 4, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
       )}
 
       {/* Contenido del reporte */}
