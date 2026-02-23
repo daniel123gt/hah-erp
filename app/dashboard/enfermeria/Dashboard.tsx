@@ -242,9 +242,7 @@ export default function EnfermeriaDashboard() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <p className="font-medium text-gray-900">
-                        {assessment.patient
-                          ? `${assessment.patient.nombre} ${assessment.patient.apellido_paterno || ''} ${assessment.patient.apellido_materno || ''}`.trim()
-                          : `Paciente ID: ${assessment.patient_id.slice(0, 8)}`}
+                        {assessment.patient?.name ?? `Paciente ID: ${assessment.patient_id.slice(0, 8)}`}
                       </p>
                     </div>
                     <div className="flex items-center gap-4 text-sm text-gray-600">

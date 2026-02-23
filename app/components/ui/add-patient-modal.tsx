@@ -321,24 +321,22 @@ export function AddPatientModal({ onPatientAdded }: AddPatientModalProps) {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email *</Label>
+                  <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
                     type="email"
                     value={formData.email}
                     onChange={(e) => handleInputChange("email", e.target.value)}
                     placeholder="Ej: maria@email.com"
-                    required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Teléfono *</Label>
+                  <Label htmlFor="phone">Teléfono</Label>
                   <Input
                     id="phone"
                     value={formData.phone}
                     onChange={(e) => handleInputChange("phone", e.target.value)}
                     placeholder="Ej: +51 999 123 456"
-                    required
                   />
                 </div>
                 <div className="space-y-2">

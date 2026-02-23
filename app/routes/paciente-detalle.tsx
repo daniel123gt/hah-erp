@@ -10,6 +10,7 @@ import patientsService, { type Patient } from "~/services/patientsService";
 import { patientHistoryService, type PatientHistory } from "~/services/patientHistoryService";
 import { nursingHistoryService, type NursingHistory } from "~/services/nursingHistoryService";
 import { examHistoryService, type ExamHistory } from "~/services/examHistoryService";
+import labOrderService, { type LabExamOrder } from "~/services/labOrderService";
 import { nursingInitialAssessmentService, type NursingInitialAssessment } from "~/services/nursingInitialAssessmentService";
 import medicalRestsService, { type MedicalRest } from "~/services/medicalRestsService";
 import medicalPrescriptionsService, { type MedicalPrescription } from "~/services/medicalPrescriptionsService";
@@ -29,6 +30,7 @@ export default function PacienteDetalleRoute() {
   const [clinicalHistory, setClinicalHistory] = useState<PatientHistory[]>([]);
   const [nursingHistory, setNursingHistory] = useState<NursingHistory[]>([]);
   const [examHistory, setExamHistory] = useState<ExamHistory[]>([]);
+  const [labOrders, setLabOrders] = useState<LabExamOrder[]>([]);
   const [initialAssessment, setInitialAssessment] = useState<NursingInitialAssessment | null>(null);
   const [medicalRests, setMedicalRests] = useState<MedicalRest[]>([]);
   const [medicalPrescriptions, setMedicalPrescriptions] = useState<MedicalPrescription[]>([]);
@@ -69,6 +71,10 @@ export default function PacienteDetalleRoute() {
             console.warn('Error al cargar historia de exámenes:', err);
             return [];
           }),
+          labOrderService.getOrdersByPatient(id).catch(err => {
+            console.warn('Error al cargar órdenes de laboratorio:', err);
+            return [];
+          }),
           nursingInitialAssessmentService.getByPatient(id).catch(err => {
             console.warn('Error al cargar valoración inicial:', err);
             return null;
@@ -83,11 +89,12 @@ export default function PacienteDetalleRoute() {
           }),
         ];
         
-        const [ch, nh, eh, ia, mr, mp] = await Promise.all(historyPromises);
+        const [ch, nh, eh, labOrd, ia, mr, mp] = await Promise.all(historyPromises);
         if (!isMounted) return;
         setClinicalHistory(ch);
         setNursingHistory(nh);
         setExamHistory(eh);
+        setLabOrders(labOrd);
         setInitialAssessment(ia);
         setMedicalRests(mr);
         setMedicalPrescriptions(mp);
@@ -465,48 +472,80 @@ export default function PacienteDetalleRoute() {
             </CardContent>
           </Card>
 
-          {/* Historia de Exámenes */}
+          {/* Historia de Exámenes (órdenes de laboratorio + tabla exam_history) */}
           <Card>
             <CardHeader>
               <CardTitle>Historia de Exámenes</CardTitle>
             </CardHeader>
             <CardContent>
-              {examHistory.length === 0 ? (
-                <p className="text-gray-500">Aún no hay registros de exámenes.</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Fecha</TableHead>
-                        <TableHead>Examen</TableHead>
-                        <TableHead>Código</TableHead>
-                        <TableHead>Tipo</TableHead>
-                        <TableHead>Estado</TableHead>
-                        <TableHead>Ordenado por</TableHead>
-                        <TableHead>Resultados</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {examHistory.map((entry) => (
-                        <TableRow key={entry.id}>
-                          <TableCell>{new Date(entry.exam_date).toLocaleDateString()}</TableCell>
-                          <TableCell>{entry.exam_name}</TableCell>
-                          <TableCell>{entry.exam_code || '-'}</TableCell>
-                          <TableCell>{entry.exam_type}</TableCell>
-                          <TableCell>
-                            <Badge variant={entry.status === 'Completado' ? 'default' : entry.status === 'Pendiente' ? 'secondary' : 'outline'}>
-                              {entry.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{entry.ordered_by || '-'}</TableCell>
-                          <TableCell className="max-w-xl whitespace-pre-wrap">{entry.results || entry.notes || '-'}</TableCell>
+              {(() => {
+                const labRows = labOrders.flatMap((order) =>
+                  order.items.map((item) => ({
+                    key: `${order.id}-${item.exam_id}-${item.exam_code}`,
+                    date: order.sample_date ?? order.order_date,
+                    exam_name: item.exam_name,
+                    exam_code: item.exam_code,
+                    exam_type: 'Laboratorio',
+                    status: item.status,
+                    ordered_by: order.physician_name ?? undefined,
+                    results: order.result_notes ?? undefined,
+                  }))
+                );
+                const hasLab = labRows.length > 0;
+                const hasExamHistory = examHistory.length > 0;
+                if (!hasLab && !hasExamHistory) {
+                  return <p className="text-gray-500">Aún no hay registros de exámenes.</p>;
+                }
+                return (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Fecha</TableHead>
+                          <TableHead>Examen</TableHead>
+                          <TableHead>Código</TableHead>
+                          <TableHead>Tipo</TableHead>
+                          <TableHead>Estado</TableHead>
+                          <TableHead>Ordenado por</TableHead>
+                          <TableHead>Resultados</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
+                      </TableHeader>
+                      <TableBody>
+                        {labRows.map((row) => (
+                          <TableRow key={row.key}>
+                            <TableCell>{formatDateOnly(row.date)}</TableCell>
+                            <TableCell>{row.exam_name}</TableCell>
+                            <TableCell>{row.exam_code || '-'}</TableCell>
+                            <TableCell>{row.exam_type}</TableCell>
+                            <TableCell>
+                              <Badge variant={row.status === 'Completado' ? 'default' : row.status === 'Pendiente' ? 'secondary' : 'outline'}>
+                                {row.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{row.ordered_by || '-'}</TableCell>
+                            <TableCell className="max-w-xl whitespace-pre-wrap">{row.results || '-'}</TableCell>
+                          </TableRow>
+                        ))}
+                        {examHistory.map((entry) => (
+                          <TableRow key={`eh-${entry.id}`}>
+                            <TableCell>{formatDateOnly(entry.exam_date)}</TableCell>
+                            <TableCell>{entry.exam_name}</TableCell>
+                            <TableCell>{entry.exam_code || '-'}</TableCell>
+                            <TableCell>{entry.exam_type}</TableCell>
+                            <TableCell>
+                              <Badge variant={entry.status === 'Completado' ? 'default' : entry.status === 'Pendiente' ? 'secondary' : 'outline'}>
+                                {entry.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{entry.ordered_by || '-'}</TableCell>
+                            <TableCell className="max-w-xl whitespace-pre-wrap">{entry.results || entry.notes || '-'}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
 

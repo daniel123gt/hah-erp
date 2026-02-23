@@ -53,7 +53,7 @@ export default function OrdenDetalle() {
   const [updatingPayment, setUpdatingPayment] = useState(false);
   const [paymentReferenceInput, setPaymentReferenceInput] = useState("");
   const [updatingSampleDate, setUpdatingSampleDate] = useState(false);
-  const [discountInput, setDiscountInput] = useState("");
+  const [discountPercent, setDiscountPercent] = useState<string>("0");
   const [updatingDiscount, setUpdatingDiscount] = useState(false);
 
   useEffect(() => {
@@ -69,10 +69,18 @@ export default function OrdenDetalle() {
   }, [order?.id, order?.payment_reference]);
 
   useEffect(() => {
-    if (order?.discount_amount !== undefined) {
-      setDiscountInput(order.discount_amount === 0 ? "" : String(order.discount_amount));
+    if (order?.discount_amount === undefined || order?.total_amount == null) return;
+    const total = Number(order.total_amount) || 0;
+    const discount = Number(order.discount_amount) || 0;
+    if (discount <= 0 || total <= 0) {
+      setDiscountPercent("0");
+      return;
     }
-  }, [order?.id, order?.discount_amount]);
+    const ratio = discount / total;
+    if (ratio >= 0.15) setDiscountPercent("20");
+    else if (ratio >= 0.05) setDiscountPercent("10");
+    else setDiscountPercent("0");
+  }, [order?.id, order?.discount_amount, order?.total_amount]);
 
   const loadOrder = async () => {
     try {
@@ -136,22 +144,16 @@ export default function OrdenDetalle() {
     handlePaymentUpdate({ payment_reference: v });
   };
 
-  const handleApplyDiscount = async () => {
+  const handleDiscountPercentChange = async (value: string) => {
     if (!order) return;
-    const value = parseFloat(discountInput.replace(",", ".").trim());
-    if (Number.isNaN(value) || value < 0) {
-      toast.error("Ingrese un monto de descuento válido (número mayor o igual a 0)");
-      return;
-    }
     const total = Number(order.total_amount ?? 0);
-    if (value > total) {
-      toast.error("El descuento no puede ser mayor al total de la orden");
-      return;
-    }
+    const percent = value === "0" ? 0 : value === "10" ? 10 : 20;
+    const amount = total * (percent / 100);
     try {
       setUpdatingDiscount(true);
-      await labOrderService.updateOrderDiscount(order.id, value);
-      toast.success(value === 0 ? "Descuento quitado" : "Descuento aplicado");
+      await labOrderService.updateOrderDiscount(order.id, Math.round(amount * 100) / 100);
+      setDiscountPercent(value);
+      toast.success(percent === 0 ? "Descuento quitado" : `Descuento ${percent}% aplicado`);
       loadOrder();
     } catch (error: any) {
       toast.error(error?.message || "Error al aplicar descuento");
@@ -482,29 +484,21 @@ export default function OrdenDetalle() {
                   </div>
                 </div>
                 <div>
-                  <Label className="text-sm text-gray-500">Descuento (S/)</Label>
-                  <div className="flex flex-col gap-2 mt-1">
-                    <Input
-                      type="number"
-                      min={0}
-                      step={0.01}
-                      placeholder="0.00"
-                      value={discountInput}
-                      onChange={(e) => setDiscountInput(e.target.value)}
-                      disabled={updatingDiscount}
-                      className="w-full"
-                    />
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      onClick={handleApplyDiscount}
-                      disabled={updatingDiscount}
-                      className="w-full sm:w-auto"
-                    >
-                      Aplicar descuento
-                    </Button>
-                  </div>
+                  <Label className="text-sm text-gray-500">Descuento</Label>
+                  <Select
+                    value={discountPercent}
+                    onValueChange={handleDiscountPercentChange}
+                    disabled={updatingDiscount}
+                  >
+                    <SelectTrigger className="mt-1 w-full">
+                      <SelectValue placeholder="Seleccionar..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">Sin descuento</SelectItem>
+                      <SelectItem value="10">10%</SelectItem>
+                      <SelectItem value="20">20%</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               {order.observations && (
