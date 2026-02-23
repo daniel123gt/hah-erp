@@ -190,10 +190,10 @@ export default function OrdenesLaboratorio() {
                     <TableRow>
                       <TableHead>ID</TableHead>
                       <TableHead>Estado</TableHead>
-                      <TableHead>Fecha</TableHead>
+                      <TableHead>Fecha toma muestra</TableHead>
                       <TableHead>Paciente</TableHead>
                       <TableHead>Exámenes</TableHead>
-                      <TableHead>Fecha toma muestra</TableHead>
+                      <TableHead>Fecha</TableHead>
                       <TableHead>Médico</TableHead>
                       <TableHead>Prioridad</TableHead>
                       <TableHead>Total</TableHead>
@@ -214,7 +214,7 @@ export default function OrdenesLaboratorio() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            {formatDateOnly(order.order_date)}
+                            {formatDateOnly(order.sample_date ?? order.order_date)}
                           </TableCell>
                           <TableCell className="font-medium">
                             {patient?.name || 'Paciente no encontrado'}
@@ -223,7 +223,7 @@ export default function OrdenesLaboratorio() {
                             <Badge variant="outline">{order.items.length} exámenes</Badge>
                           </TableCell>
                           <TableCell>
-                            {formatDateOnly(order.sample_date ?? order.order_date)}
+                            {formatDateOnly(order.order_date)}
                           </TableCell>
                           <TableCell>
                             {order.physician_name || '-'}

@@ -15,6 +15,8 @@ import eliminationRecordsService, {
   type EliminationRecord,
   type CreateEliminationRecordData
 } from "~/services/eliminationRecordsService";
+import { getTodayLocal } from "~/lib/dateUtils";
+import { formatDateOnly } from "~/lib/utils";
 
 export default function EliminacionHecesOrina() {
   const navigate = useNavigate();
@@ -34,7 +36,7 @@ export default function EliminacionHecesOrina() {
     patient_name: "",
     age: undefined,
     nurse_name: "",
-    record_date: new Date().toISOString().split('T')[0],
+    record_date: getTodayLocal(),
     // Inicializar todos los campos vacíos
     feces_morning_count: undefined,
     feces_morning_color: "",
@@ -233,25 +235,48 @@ export default function EliminacionHecesOrina() {
         <CardHeader>
           <CardTitle>Seleccionar Paciente</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           {!selectedPatient ? (
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Input
-                placeholder="Buscar por nombre, nro. documento, email..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              />
-              <Button onClick={handleSearch} disabled={isSearching}>
-                {isSearching ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
-                Buscar
-              </Button>
-            </div>
+            <>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Input
+                  placeholder="Buscar por nombre, nro. documento, email..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  className="flex-1"
+                />
+                <Button onClick={handleSearch} disabled={isSearching}>
+                  {isSearching ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
+                  Buscar
+                </Button>
+              </div>
+
+              {patientResults.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="font-semibold">Resultados:</h3>
+                  {patientResults.map((p) => (
+                    <Card
+                      key={p.id}
+                      className="cursor-pointer hover:bg-gray-50 border border-gray-200"
+                      onClick={() => handleSelectPatient(p)}
+                    >
+                      <CardContent className="p-4">
+                        <p className="font-medium text-gray-900">
+                          {p.name || [p.nombre, p.apellido_paterno, p.apellido_materno].filter(Boolean).join(' ').trim() || 'Sin nombre'}
+                        </p>
+                        <p className="text-sm text-gray-500">{p.dni || p.email || p.phone || 'Sin contacto'}</p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </>
           ) : (
-            <div className="flex items-center justify-between bg-gray-50 p-3 rounded">
+            <div className="flex items-center justify-between bg-green-50 p-4 rounded-lg border border-green-200">
               <div>
-                <p className="font-medium text-gray-900">{form.patient_name}</p>
-                <p className="text-sm text-gray-600">{selectedPatient.email || selectedPatient.dni}</p>
+                <p className="font-semibold text-gray-900">Paciente seleccionado: {form.patient_name}</p>
+                <p className="text-sm text-gray-600">{selectedPatient.dni || selectedPatient.email || selectedPatient.phone || 'Sin contacto'}</p>
               </div>
               <Button variant="outline" onClick={() => {
                 setSelectedPatient(null);
@@ -262,7 +287,7 @@ export default function EliminacionHecesOrina() {
                   patient_name: "",
                   age: undefined,
                   nurse_name: "",
-                  record_date: new Date().toISOString().split('T')[0],
+                  record_date: getTodayLocal(),
                   feces_morning_count: undefined,
                   feces_morning_color: "",
                   feces_morning_appearance: "",
@@ -291,23 +316,6 @@ export default function EliminacionHecesOrina() {
               }}>
                 Cambiar
               </Button>
-            </div>
-          )}
-
-          {!selectedPatient && patientResults.length > 0 && (
-            <div className="mt-3 border rounded divide-y">
-              {patientResults.map((p) => (
-                <button
-                  key={p.id}
-                  className="w-full text-left p-3 hover:bg-gray-50"
-                  onClick={() => handleSelectPatient(p)}
-                >
-                  <div className="font-medium text-gray-900">
-                    {p.nombre} {p.apellido_paterno || ''} {p.apellido_materno || ''}
-                  </div>
-                  <div className="text-sm text-gray-600">{p.email || p.dni}</div>
-                </button>
-              ))}
             </div>
           )}
         </CardContent>
@@ -470,7 +478,7 @@ export default function EliminacionHecesOrina() {
                     {historyRecords.map((record) => (
                       <TableRow key={record.id}>
                         <TableCell className="border border-gray-300">
-                          {new Date(record.record_date).toLocaleDateString('es-ES')}
+                          {formatDateOnly(record.record_date, "es-PE")}
                         </TableCell>
                         <TableCell className="border border-gray-300">{record.nurse_name}</TableCell>
                         <TableCell className="border border-gray-300 bg-amber-50/40">
