@@ -87,11 +87,12 @@ export interface CreateEliminationRecordData {
 const eliminationRecordsService = {
   async create(data: CreateEliminationRecordData): Promise<EliminationRecord> {
     try {
+      const recordDateYmd = String(data.record_date ?? '').trim().slice(0, 10);
       const { data: record, error } = await supabase
         .from('elimination_records')
         .insert([{
           ...data,
-          record_date: new Date(data.record_date).toISOString().split('T')[0]
+          record_date: recordDateYmd
         }])
         .select()
         .single();
@@ -139,7 +140,7 @@ const eliminationRecordsService = {
 
   async getByDate(patientId: string, date: string): Promise<EliminationRecord | null> {
     try {
-      const dateStr = new Date(date).toISOString().split('T')[0];
+      const dateStr = String(date ?? '').trim().slice(0, 10);
       const { data: record, error } = await supabase
         .from('elimination_records')
         .select('*')
@@ -159,7 +160,7 @@ const eliminationRecordsService = {
     try {
       const updateData: any = { ...data };
       if (updateData.record_date) {
-        updateData.record_date = new Date(updateData.record_date).toISOString().split('T')[0];
+        updateData.record_date = String(updateData.record_date).trim().slice(0, 10);
       }
 
       const { data: record, error } = await supabase
