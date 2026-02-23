@@ -320,24 +320,22 @@ export function EditPatientModal({ patient, onPatientUpdated }: EditPatientModal
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-email">Email *</Label>
+                  <Label htmlFor="edit-email">Email</Label>
                   <Input
                     id="edit-email"
                     type="email"
                     value={formData.email}
                     onChange={(e) => handleInputChange("email", e.target.value)}
                     placeholder="Ej: maria@email.com"
-                    required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-phone">Teléfono *</Label>
+                  <Label htmlFor="edit-phone">Teléfono</Label>
                   <Input
                     id="edit-phone"
                     value={formData.phone}
                     onChange={(e) => handleInputChange("phone", e.target.value)}
                     placeholder="Ej: +51 999 123 456"
-                    required
                   />
                 </div>
                 <div className="space-y-2">
