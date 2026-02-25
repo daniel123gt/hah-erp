@@ -62,7 +62,7 @@ export interface Appointment {
 
 export default function CitasMedicinaPage() {
   const navigate = useNavigate();
-  const { addNotification } = useNotifications();
+  const { addNotification, markCreatedByMe } = useNotifications();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDate, setFilterDate] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -136,6 +136,7 @@ export default function CitasMedicinaPage() {
           "Cita programada",
           `${created.patientName} — ${created.date} ${created.time}${created.doctorName ? ` · ${created.doctorName}` : ""}`
         );
+        markCreatedByMe("appointment", created.id);
         if (created.status === "completed") {
           medicalAppointmentRecordsService
             .createFromAppointment({

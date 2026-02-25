@@ -38,7 +38,7 @@ import type { Appointment } from "./MedicinaPage";
 
 export default function CitasProcedimientosPage() {
   const navigate = useNavigate();
-  const { addNotification } = useNotifications();
+  const { addNotification, markCreatedByMe } = useNotifications();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDate, setFilterDate] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -152,6 +152,7 @@ export default function CitasProcedimientosPage() {
           "Cita programada",
           `${created.patientName} — ${created.date} ${created.time}${created.procedure_name ? ` · ${created.procedure_name}` : ""}`
         );
+        markCreatedByMe("appointment", created.id);
         if (
           created.status === "completed" &&
           created.procedure_catalog_id &&

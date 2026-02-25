@@ -4,6 +4,7 @@ import { RightSidebar } from "~/components/ui/right-sidebar";
 import { NotificationsProvider } from "~/contexts/NotificationsContext";
 import { NotificationBell } from "~/components/NotificationBell";
 import { ReminderChecker } from "~/components/ReminderChecker";
+import { RealtimeNotificationsSubscriber } from "~/components/RealtimeNotificationsSubscriber";
 import { useAuthStore, getAppRole } from "~/store/authStore";
 import { Navigate, Outlet, useLocation } from "react-router";
 import Loading from "~/components/root/Loading/Loading";
@@ -41,6 +42,7 @@ export default function Layout() {
   return (
     <NotificationsProvider>
       <ReminderChecker />
+      <RealtimeNotificationsSubscriber />
       <SidebarProvider style={{
           "--sidebar-width": "17rem",
           "--sidebar-background": "#1F3666"
