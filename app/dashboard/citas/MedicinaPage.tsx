@@ -58,6 +58,10 @@ export interface Appointment {
   /** Solo citas de procedimientos: id y nombre del procedimiento del catálogo */
   procedure_catalog_id?: string;
   procedure_name?: string;
+  procedure_ingreso?: number | null;
+  appointment_ingreso?: number | null;
+  payment_method?: string | null;
+  numero_operacion?: string | null;
 }
 
 export default function CitasMedicinaPage() {
@@ -127,6 +131,9 @@ export default function CitasMedicinaPage() {
         status: newAppointment.status,
         notes: newAppointment.notes,
         location: newAppointment.location,
+        appointment_ingreso: newAppointment.appointment_ingreso ?? null,
+        payment_method: newAppointment.payment_method ?? null,
+        numero_operacion: newAppointment.numero_operacion ?? null,
       })
       .then((created) => {
         setAppointments((prev) => [created, ...prev]);
@@ -147,6 +154,9 @@ export default function CitasMedicinaPage() {
               type: created.type,
               doctorName: created.doctorName,
               notes: created.notes,
+              appointment_ingreso: created.appointment_ingreso ?? null,
+              payment_method: created.payment_method ?? null,
+              numero_operacion: created.numero_operacion ?? null,
             })
             .then(() => toast.success("Registro creado en Registro Citas Médicas"))
             .catch((err) => {
@@ -178,30 +188,44 @@ export default function CitasMedicinaPage() {
         status: updatedAppointment.status,
         notes: updatedAppointment.notes,
         location: updatedAppointment.location,
+        appointment_ingreso: updatedAppointment.appointment_ingreso ?? null,
+        payment_method: updatedAppointment.payment_method ?? null,
+        numero_operacion: updatedAppointment.numero_operacion ?? null,
       })
       .then((updated) => {
         setAppointments((prev) =>
           prev.map((a) => (a.id === updated.id ? updated : a))
         );
         toast.success("Cita actualizada");
-        if (
-          prevAppointment?.status !== "completed" &&
-          updated.status === "completed"
-        ) {
+        if (updated.status === "completed") {
+          const ingreso = Number(updated.appointment_ingreso ?? 0);
           medicalAppointmentRecordsService
-            .createFromAppointment({
-              id: updated.id,
-              date: updated.date,
-              patient_id: updated.patient_id ?? null,
-              patientName: updated.patientName,
-              type: updated.type,
-              doctorName: updated.doctorName,
-              notes: updated.notes,
+            .getByAppointmentId(updated.id)
+            .then((existing) => {
+              if (existing) {
+                return medicalAppointmentRecordsService.update({
+                  id: existing.id,
+                  ingreso,
+                  payment_method: updated.payment_method ?? null,
+                  numero_operacion: updated.numero_operacion ?? null,
+                });
+              }
+              return medicalAppointmentRecordsService.createFromAppointment({
+                id: updated.id,
+                date: updated.date,
+                patient_id: updated.patient_id ?? null,
+                patientName: updated.patientName,
+                type: updated.type,
+                doctorName: updated.doctorName,
+                notes: updated.notes,
+                appointment_ingreso: updated.appointment_ingreso ?? null,
+                payment_method: updated.payment_method ?? null,
+                numero_operacion: updated.numero_operacion ?? null,
+              }).then(() => toast.success("Registro creado en Registro Citas Médicas"));
             })
-            .then(() => toast.success("Registro creado en Registro Citas Médicas"))
             .catch((err) => {
-              console.error("Error creando registro cita médica:", err);
-              toast.error(err?.message ?? "Error al crear el registro en Registro Citas Médicas");
+              console.error("Error en registro cita médica:", err);
+              toast.error(err?.message ?? "Error al actualizar el registro en Registro Citas Médicas");
             });
         }
       })

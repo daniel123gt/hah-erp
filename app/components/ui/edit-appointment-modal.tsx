@@ -20,7 +20,7 @@ import {
 } from "~/components/ui/select";
 import { Combobox } from "~/components/ui/combobox";
 import { patientsService, type Patient } from "~/services/patientsService";
-import { procedureService } from "~/services/procedureService";
+import { procedureService, PAYMENT_METHOD_OPTIONS } from "~/services/procedureService";
 import { staffService } from "~/services/staffService";
 import { getDepartmentForCategory } from "~/dashboard/personal/categories";
 import { toast } from "sonner";
@@ -55,6 +55,10 @@ interface Appointment {
   patient_id?: string;
   procedure_catalog_id?: string;
   procedure_name?: string;
+  procedure_ingreso?: number | null;
+  appointment_ingreso?: number | null;
+  payment_method?: string | null;
+  numero_operacion?: string | null;
 }
 
 interface EditAppointmentModalProps {
@@ -77,7 +81,7 @@ export function EditAppointmentModal({
   const [loadingPatients, setLoadingPatients] = useState(false);
   const [professionals, setProfessionals] = useState<{ name: string; specialty: string }[]>([]);
   const [loadingProfessionals, setLoadingProfessionals] = useState(false);
-  const [procedureCatalog, setProcedureCatalog] = useState<{ id: string; name: string; base_price_soles: number }[]>([]);
+  const [procedureCatalog, setProcedureCatalog] = useState<{ id: string; name: string; base_price_soles: number; total_cost_soles: number }[]>([]);
   const [loadingCatalog, setLoadingCatalog] = useState(false);
   const [districts, setDistricts] = useState<Array<{ name: string; zone: string }>>([]);
   const [formData, setFormData] = useState<Appointment>(appointment);
@@ -128,7 +132,16 @@ export function EditAppointmentModal({
     setLoadingCatalog(true);
     procedureService
       .getCatalog(true)
-      .then((items) => setProcedureCatalog(items.map((p) => ({ id: p.id, name: p.name, base_price_soles: Number(p.base_price_soles) || 0 }))))
+      .then((items) =>
+        setProcedureCatalog(
+          items.map((p) => ({
+            id: p.id,
+            name: p.name,
+            base_price_soles: Number(p.base_price_soles) || 0,
+            total_cost_soles: Number(p.total_cost_soles) || 0,
+          }))
+        )
+      )
       .catch(() => setProcedureCatalog([]))
       .finally(() => setLoadingCatalog(false));
   }, [isOpen, variant]);
@@ -224,8 +237,33 @@ export function EditAppointmentModal({
       </DialogTrigger>
       <DialogContent className="w-[95vw] max-w-[95vw] max-h-[90vh] overflow-y-auto sm:max-w-[95vw]">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-primary-blue">
-            Editar Cita #{appointment.id}
+          <DialogTitle className="flex items-center gap-3 text-2xl font-bold text-primary-blue">
+            Editar Cita #{appointment.id.slice(0, 8)}
+            {formData.status && (
+              <Badge
+                className={
+                  formData.status === "scheduled"
+                    ? "bg-blue-100 text-blue-800"
+                    : formData.status === "confirmed"
+                      ? "bg-green-100 text-green-800"
+                      : formData.status === "completed"
+                        ? "bg-gray-100 text-gray-800"
+                        : formData.status === "cancelled"
+                          ? "bg-red-100 text-red-800"
+                          : "bg-orange-100 text-orange-800"
+                }
+              >
+                {formData.status === "scheduled"
+                  ? "Programada"
+                  : formData.status === "confirmed"
+                    ? "Confirmada"
+                    : formData.status === "completed"
+                      ? "Completada"
+                      : formData.status === "cancelled"
+                        ? "Cancelada"
+                        : "No Asistió"}
+              </Badge>
+            )}
           </DialogTitle>
           <DialogDescription>
             Modifique la información de la cita médica
@@ -295,126 +333,175 @@ export function EditAppointmentModal({
                 Detalles de la Cita
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Estado
-                </label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => handleInputChange("status", e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
-                >
-                  <option value="scheduled">Programada</option>
-                  <option value="confirmed">Confirmada</option>
-                  <option value="completed">Completada</option>
-                  <option value="cancelled">Cancelada</option>
-                  <option value="no-show">No Asistió</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Fecha *
-                </label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <Input
-                    type="date"
-                    value={formData.date}
-                    onChange={(e) => handleInputChange("date", e.target.value)}
-                    className="pl-10"
-                    required
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Hora *
-                </label>
-                <div className="relative">
-                  <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <Input
-                    type="time"
-                    value={formData.time}
-                    onChange={(e) => handleInputChange("time", e.target.value)}
-                    className="pl-10"
-                    required
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Duración (minutos)
-                </label>
-                <Input
-                  type="number"
-                  value={formData.duration}
-                  onChange={(e) => handleInputChange("duration", parseInt(e.target.value) || 30)}
-                  min="15"
-                  max="180"
-                  step="15"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {variant === "procedimientos" ? "Procedimiento *" : "Tipo de Cita *"}
-                </label>
-                {variant === "procedimientos" ? (
-                  <Combobox
-                    options={procedureCatalog.map((p) => ({ value: p.id, label: `${p.name} (S/ ${p.base_price_soles.toFixed(2)})` }))}
-                    value={formData.procedure_catalog_id ?? ""}
-                    onValueChange={(value) => {
-                      const item = procedureCatalog.find((p) => p.id === value);
-                      setFormData((prev) => ({
-                        ...prev,
-                        procedure_catalog_id: value || undefined,
-                        procedure_name: item?.name ?? "",
-                        type: "procedimiento",
-                      }));
-                    }}
-                    placeholder={loadingCatalog ? "Cargando procedimientos..." : "Seleccionar procedimiento"}
-                    disabled={loadingCatalog}
-                  />
-                ) : (
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Columna 1: Estado, Fecha, Hora, Duración */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Estado</label>
                   <select
-                    value={formData.type}
-                    onChange={(e) => handleInputChange("type", e.target.value)}
+                    value={formData.status}
+                    onChange={(e) => handleInputChange("status", e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
-                    required
                   >
-                    <option value="consulta">Consulta</option>
-                    <option value="examen">Examen</option>
-                    <option value="emergencia">Emergencia</option>
-                    <option value="seguimiento">Seguimiento</option>
+                    <option value="scheduled">Programada</option>
+                    <option value="confirmed">Confirmada</option>
+                    <option value="completed">Completada</option>
+                    <option value="cancelled">Cancelada</option>
+                    <option value="no-show">No Asistió</option>
                   </select>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Dirección (domicilio de la cita) *
-                </label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Fecha *</label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Input
+                      type="date"
+                      value={formData.date}
+                      onChange={(e) => handleInputChange("date", e.target.value)}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Hora *</label>
+                  <div className="relative">
+                    <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Input
+                      type="time"
+                      value={formData.time}
+                      onChange={(e) => handleInputChange("time", e.target.value)}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Duración (minutos)</label>
                   <Input
-                    value={formData.location}
-                    onChange={(e) => handleInputChange("location", e.target.value)}
-                    placeholder="Si el paciente tiene dirección registrada se usará esa; si no, ingrese la dirección"
-                    className="pl-10"
-                    required
+                    type="number"
+                    value={formData.duration}
+                    onChange={(e) => handleInputChange("duration", parseInt(e.target.value) || 30)}
+                    min="15"
+                    max="180"
+                    step="15"
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Distrito
-                </label>
-                <Combobox
-                  options={districts.map((d) => ({ value: d.name, label: d.zone ? `${d.name} (${d.zone})` : d.name }))}
-                  value={formData.district ?? "__none__"}
-                  onValueChange={(value) => handleInputChange("district", value === "__none__" ? "" : value)}
-                  placeholder="Seleccionar distrito"
-                  emptyOption={{ value: "__none__", label: "Sin especificar" }}
-                />
+              {/* Columna 2: Dirección, Distrito */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Dirección (domicilio de la cita) *</label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+                    <Input
+                      value={formData.location}
+                      onChange={(e) => handleInputChange("location", e.target.value)}
+                      placeholder="Si el paciente tiene dirección registrada se usará esa; si no, ingrese la dirección"
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Distrito</label>
+                  <Combobox
+                    options={districts.map((d) => ({ value: d.name, label: d.zone ? `${d.name} (${d.zone})` : d.name }))}
+                    value={formData.district ?? "__none__"}
+                    onValueChange={(value) => handleInputChange("district", value === "__none__" ? "" : value)}
+                    placeholder="Seleccionar distrito"
+                    emptyOption={{ value: "__none__", label: "Sin especificar" }}
+                  />
+                </div>
+              </div>
+              {/* Columna 3: Procedimiento/Tipo, Ingreso, Método de pago, Nº referencia */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {variant === "procedimientos" ? "Procedimiento *" : "Tipo de Cita *"}
+                  </label>
+                  {variant === "procedimientos" ? (
+                    <Combobox
+                      options={procedureCatalog.map((p) => ({ value: p.id, label: `${p.name} (S/ ${p.base_price_soles.toFixed(2)})` }))}
+                      value={formData.procedure_catalog_id ?? ""}
+                      onValueChange={(value) => {
+                        const item = procedureCatalog.find((p) => p.id === value);
+                        const basePrice = item ? item.base_price_soles : 0;
+                        setFormData((prev) => ({
+                          ...prev,
+                          procedure_catalog_id: value || undefined,
+                          procedure_name: item?.name ?? "",
+                          type: "procedimiento",
+                          procedure_ingreso: prev.procedure_ingreso ?? basePrice,
+                        }));
+                      }}
+                      placeholder={loadingCatalog ? "Cargando procedimientos..." : "Seleccionar procedimiento"}
+                      disabled={loadingCatalog}
+                    />
+                  ) : (
+                    <select
+                      value={formData.type}
+                      onChange={(e) => handleInputChange("type", e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
+                      required
+                    >
+                      <option value="consulta">Consulta</option>
+                      <option value="examen">Examen</option>
+                      <option value="emergencia">Emergencia</option>
+                      <option value="seguimiento">Seguimiento</option>
+                    </select>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Ingreso a registrar (S/.) {formData.status === "completed" ? "" : "(editable al completar)"}
+                  </label>
+                  {variant === "procedimientos" ? (
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.procedure_ingreso ?? procedureCatalog.find((p) => p.id === formData.procedure_catalog_id)?.base_price_soles ?? ""}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, procedure_ingreso: e.target.value ? Number(e.target.value) : undefined }))}
+                      disabled={formData.status !== "completed"}
+                      className={formData.status !== "completed" ? "bg-muted" : ""}
+                    />
+                  ) : (
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.appointment_ingreso ?? ""}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, appointment_ingreso: e.target.value ? Number(e.target.value) : undefined }))}
+                      disabled={formData.status !== "completed"}
+                      className={formData.status !== "completed" ? "bg-muted" : ""}
+                    />
+                  )}
+                </div>
+                {formData.status === "completed" && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Método de pago</label>
+                      <select
+                        value={formData.payment_method ?? "efectivo"}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, payment_method: e.target.value || null }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
+                      >
+                        {PAYMENT_METHOD_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Nº operación / referencia</label>
+                      <Input
+                        value={formData.numero_operacion ?? ""}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, numero_operacion: e.target.value || undefined }))}
+                        placeholder="Opcional"
+                      />
+                    </div>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>

@@ -138,10 +138,14 @@ export const medicalAppointmentRecordsService = {
     type: string;
     doctorName: string;
     notes?: string | null;
+    appointment_ingreso?: number | null;
+    payment_method?: string | null;
+    numero_operacion?: string | null;
   }): Promise<MedicalAppointmentRecord | null> {
     const existing = await this.getByAppointmentId(appointment.id);
     if (existing) return existing;
     const fecha = appointment.date.slice(0, 10);
+    const ingreso = Number(appointment.appointment_ingreso ?? 0);
     return this.create({
       appointment_id: appointment.id,
       fecha,
@@ -149,10 +153,10 @@ export const medicalAppointmentRecordsService = {
       patient_name: appointment.patientName ?? null,
       appointment_type: appointment.type || "consulta",
       doctor_name: appointment.doctorName ?? null,
-      ingreso: 0,
+      ingreso,
       costo: 0,
-      payment_method: null,
-      numero_operacion: null,
+      payment_method: appointment.payment_method ?? null,
+      numero_operacion: appointment.numero_operacion ?? null,
       notes: null,
     });
   },

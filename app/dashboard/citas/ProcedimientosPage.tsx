@@ -30,7 +30,7 @@ import {
   HeartPulse,
 } from "lucide-react";
 import { toast } from "sonner";
-import { procedureService } from "~/services/procedureService";
+import { procedureService, recordToPaymentPayload, type PaymentMethodKey } from "~/services/procedureService";
 import { appointmentsService, formatDateOnly } from "~/services/appointmentsService";
 import { patientsService, type Patient } from "~/services/patientsService";
 import { getTodayLocal } from "~/lib/dateUtils";
@@ -99,7 +99,9 @@ export default function CitasProcedimientosPage() {
           toast.error("No se encontró el procedimiento en el catálogo. No se creó el registro.");
           return;
         }
-        const ingreso = Number(catalogItem.base_price_soles ?? 0);
+        const ingreso = Number(apt.procedure_ingreso ?? catalogItem.base_price_soles ?? 0);
+        const method = (apt.payment_method as PaymentMethodKey) || "efectivo";
+        const payment = recordToPaymentPayload(method, ingreso);
         return procedureService.createRecord({
           fecha: apt.date,
           patient_id: apt.patient_id ?? null,
@@ -107,7 +109,8 @@ export default function CitasProcedimientosPage() {
           procedure_catalog_id: apt.procedure_catalog_id,
           procedure_name: apt.procedure_name,
           district: null,
-          efectivo: ingreso,
+          ...payment,
+          numero_operacion: apt.numero_operacion ?? null,
           gastos_material: 0,
           combustible: 0,
           costo_adicional_servicio: 0,
@@ -143,6 +146,9 @@ export default function CitasProcedimientosPage() {
         location: newAppointment.location,
         procedure_catalog_id: newAppointment.procedure_catalog_id ?? null,
         procedure_name: newAppointment.procedure_name ?? null,
+        procedure_ingreso: newAppointment.procedure_ingreso ?? null,
+        payment_method: newAppointment.payment_method ?? null,
+        numero_operacion: newAppointment.numero_operacion ?? null,
       })
       .then((created) => {
         setAppointments((prev) => [created, ...prev]);
@@ -186,6 +192,9 @@ export default function CitasProcedimientosPage() {
         location: updatedAppointment.location,
         procedure_catalog_id: updatedAppointment.procedure_catalog_id ?? null,
         procedure_name: updatedAppointment.procedure_name ?? null,
+        procedure_ingreso: updatedAppointment.procedure_ingreso ?? null,
+        payment_method: updatedAppointment.payment_method ?? null,
+        numero_operacion: updatedAppointment.numero_operacion ?? null,
       })
       .then((updated) => {
         setAppointments((prev) =>
