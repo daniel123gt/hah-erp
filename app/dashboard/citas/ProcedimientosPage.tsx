@@ -98,7 +98,6 @@ export default function CitasProcedimientosPage() {
           return;
         }
         const ingreso = Number(catalogItem.base_price_soles ?? 0);
-        const gastosMaterial = Number(catalogItem.total_cost_soles ?? 0);
         return procedureService.createRecord({
           fecha: apt.date,
           patient_id: apt.patient_id ?? null,
@@ -107,7 +106,7 @@ export default function CitasProcedimientosPage() {
           procedure_name: apt.procedure_name,
           district: null,
           efectivo: ingreso,
-          gastos_material: gastosMaterial,
+          gastos_material: 0,
           combustible: 0,
           costo_adicional_servicio: 0,
         });

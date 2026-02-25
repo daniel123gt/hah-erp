@@ -129,7 +129,8 @@ export default function PersonalCategoryPage() {
       }));
     } catch (err) {
       console.error(err);
-      toast.error("Error al cargar la lista de personal");
+      if (pagination.page > 1) setPagination((p) => ({ ...p, page: 1 }));
+      else toast.error("Error al cargar la lista de personal");
     } finally {
       setLoading(false);
     }
@@ -143,9 +144,10 @@ export default function PersonalCategoryPage() {
     filterStatus,
   ]);
 
+  // Volver a página 1 cuando cambien filtros o búsqueda (evita error si los resultados caben en una sola página)
   useEffect(() => {
     setPagination((p) => ({ ...p, page: 1 }));
-  }, [subcategorySlug]);
+  }, [subcategorySlug, debouncedSearchTerm, filterStatus]);
 
   useEffect(() => {
     loadStaff();

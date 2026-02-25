@@ -129,6 +129,11 @@ export default function PersonalPage() {
     loadStaffHiredThisYear();
   }, []);
 
+  // Volver a página 1 cuando cambien filtros o búsqueda (evita error si los resultados caben en una sola página)
+  useEffect(() => {
+    setPagination(prev => ({ ...prev, page: 1 }));
+  }, [debouncedSearchTerm, filterStatus, filterDepartment, filterGender, filterPosition]);
+
   // Recargar personal cuando cambien los filtros o paginación
   useEffect(() => {
     loadStaff();
@@ -157,7 +162,8 @@ export default function PersonalPage() {
       }));
     } catch (error) {
       console.error('Error al cargar personal:', error);
-      toast.error('Error al cargar la lista de personal');
+      if (pagination.page > 1) setPagination(prev => ({ ...prev, page: 1 }));
+      else toast.error('Error al cargar la lista de personal');
     } finally {
       setLoading(false);
     }

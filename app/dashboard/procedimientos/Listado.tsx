@@ -72,11 +72,17 @@ export default function ListadoProcedimientos() {
       setTotal(res.total);
     } catch (e) {
       console.error(e);
-      toast.error("Error al cargar el listado");
+      if (page > 1) setPage(1);
+      else toast.error("Error al cargar el listado");
     } finally {
       setLoading(false);
     }
   }, [page, search, fromDate, toDate, paymentStatus]);
+
+  // Volver a página 1 cuando cambien filtros o búsqueda
+  useEffect(() => {
+    setPage(1);
+  }, [search, fromDate, toDate, paymentStatus]);
 
   useEffect(() => {
     loadRecords();

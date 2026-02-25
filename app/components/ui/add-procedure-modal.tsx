@@ -273,12 +273,13 @@ export function AddProcedureModal({ onCreated }: AddProcedureModalProps) {
               </CardHeader>
               <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Gastos de material</label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min={0}
-                    value={form.gastos_material || ""}
+<label className="block text-sm font-medium mb-1">Gastos de material extra</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min={0}
+                      placeholder="0"
+                      value={form.gastos_material || ""}
                     onChange={(e) => setForm((f) => ({ ...f, gastos_material: Number(e.target.value) || 0 }))}
                   />
                 </div>

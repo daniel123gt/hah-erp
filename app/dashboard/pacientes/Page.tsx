@@ -147,6 +147,11 @@ export default function PacientesPage() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
+  // Volver a página 1 cuando cambien filtros o búsqueda (evita error si los resultados caben en una sola página)
+  useEffect(() => {
+    setPagination(prev => ({ ...prev, page: 1 }));
+  }, [debouncedSearchTerm, filterStatus, filterGender, filterBloodType, filterDistrict]);
+
   // Recargar pacientes cuando cambien los filtros o paginación
   useEffect(() => {
     loadPatients();
@@ -175,7 +180,11 @@ export default function PacientesPage() {
       }));
     } catch (error) {
       console.error('Error al cargar pacientes:', error);
-      toast.error('Error al cargar los pacientes');
+      if (pagination.page > 1) {
+        setPagination(prev => ({ ...prev, page: 1 }));
+      } else {
+        toast.error('Error al cargar los pacientes');
+      }
     } finally {
       setLoading(false);
     }
