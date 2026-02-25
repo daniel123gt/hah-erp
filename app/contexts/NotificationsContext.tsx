@@ -25,6 +25,9 @@ export interface AppNotification {
   reminderKey?: string;
 }
 
+type CreatedByMeType = "appointment" | "lab_order";
+const CREATED_BY_ME_TTL_MS = 15_000;
+
 interface NotificationsContextValue {
   notifications: AppNotification[];
   permission: NotificationPermission | "default";
@@ -38,6 +41,9 @@ interface NotificationsContextValue {
   clearNotifications: () => void;
   markReminderSent: (key: string) => boolean;
   wasReminderSent: (key: string) => boolean;
+  /** Para no mostrar por Realtime la acción que acabo de hacer en esta pestaña */
+  markCreatedByMe: (type: CreatedByMeType, id: string) => void;
+  isCreatedByMe: (type: CreatedByMeType, id: string) => boolean;
 }
 
 const NotificationsContext = createContext<NotificationsContextValue | null>(null);
@@ -67,6 +73,26 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     typeof window !== "undefined" && "Notification" in window ? Notification.permission : "default"
   );
   const remindedKeysRef = useRef<Set<string>>(new Set());
+  const createdByMeRef = useRef<Map<string, number>>(new Map());
+
+  const markCreatedByMe = useCallback((type: CreatedByMeType, id: string) => {
+    const key = `${type}:${id}`;
+    createdByMeRef.current.set(key, Date.now());
+    setTimeout(() => {
+      createdByMeRef.current.delete(key);
+    }, CREATED_BY_ME_TTL_MS);
+  }, []);
+
+  const isCreatedByMe = useCallback((type: CreatedByMeType, id: string): boolean => {
+    const key = `${type}:${id}`;
+    const ts = createdByMeRef.current.get(key);
+    if (!ts) return false;
+    if (Date.now() - ts > CREATED_BY_ME_TTL_MS) {
+      createdByMeRef.current.delete(key);
+      return false;
+    }
+    return true;
+  }, []);
 
   const requestPermission = useCallback(async (): Promise<boolean> => {
     if (typeof window === "undefined" || !("Notification" in window)) return false;
@@ -117,6 +143,8 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     clearNotifications,
     markReminderSent,
     wasReminderSent,
+    markCreatedByMe,
+    isCreatedByMe,
   };
 
   return (
@@ -130,4 +158,9 @@ export function useNotifications(): NotificationsContextValue {
   const ctx = useContext(NotificationsContext);
   if (!ctx) throw new Error("useNotifications must be used within NotificationsProvider");
   return ctx;
+}
+
+/** Versión opcional: devuelve null si no hay provider (evita error en modales/portales). */
+export function useNotificationsOptional(): NotificationsContextValue | null {
+  return useContext(NotificationsContext);
 }
