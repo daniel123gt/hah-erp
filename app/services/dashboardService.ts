@@ -380,10 +380,39 @@ export async function getCalendarEvents(fromDate: string, toDate: string): Promi
   );
 
   labOrders.forEach((order) => {
-    const d = (order.sample_date || order.order_date || "").slice(0, 10);
-    if (!d || d < from || d > to) return;
-    const start = new Date(d + "T08:00:00");
-    const end = new Date(d + "T08:30:00");
+    const raw = order.sample_date || order.order_date || "";
+    const rawStr = String(raw);
+    const d =
+      raw instanceof Date
+        ? `${raw.getFullYear()}-${String(raw.getMonth() + 1).padStart(2, "0")}-${String(raw.getDate()).padStart(2, "0")}`
+        : rawStr.slice(0, 10);
+    if (!d || !/^\d{4}-\d{2}-\d{2}$/.test(d) || d < from || d > to) return;
+    const hasTime = raw instanceof Date || rawStr.includes("T");
+    let start: Date;
+    if (hasTime) {
+      const parsed = raw instanceof Date ? raw : new Date(raw as string);
+      if (isNaN(parsed.getTime())) {
+        start = new Date(d + "T08:00:00");
+      } else {
+        const utcH = parsed.getUTCHours();
+        const localH = parsed.getHours();
+        const offsetMinutes = parsed.getTimezoneOffset();
+        const looksLikeLocalStoredAsUtc =
+          offsetMinutes > 0 &&
+          utcH >= 7 &&
+          utcH <= 22 &&
+          localH >= 0 &&
+          localH <= 9;
+        if (looksLikeLocalStoredAsUtc) {
+          start = new Date(parsed.getTime() + offsetMinutes * 60 * 1000);
+        } else {
+          start = parsed;
+        }
+      }
+    } else {
+      start = new Date(d + "T08:00:00");
+    }
+    const end = hasTime ? new Date(start.getTime() + 30 * 60 * 1000) : new Date(d + "T08:30:00");
     const patientName = labPatientMap[order.patient_id] ?? "Paciente";
     events.push({
       id: `lab-${order.id}`,

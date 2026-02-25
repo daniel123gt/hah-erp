@@ -3,7 +3,6 @@ import { Button } from "./button";
 import { Card, CardContent, CardHeader, CardTitle } from "./card";
 import { Avatar, AvatarFallback, AvatarImage } from "./avatar";
 import { Badge } from "./badge";
-import { NotificationBell } from "~/components/NotificationBell";
 import { Settings, Calendar, Hash, HeartPulse, FlaskConical } from "lucide-react";
 import { useAuthStore, getAppRole } from "~/store/authStore";
 import { useNavigate } from "react-router";
@@ -54,9 +53,6 @@ export function RightSidebar() {
 
   return (
     <div className="w-80 bg-white border-l border-gray-200 p-6 space-y-6">
-      <div className="flex justify-end">
-        <NotificationBell />
-      </div>
       {/* Perfil del Usuario */}
       <Card>
         <CardHeader className="pb-4">

@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { toast } from "sonner";
 
 export type NotificationType =
   | "cita_programada"
@@ -129,6 +130,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
       const showNative = options?.showNative !== false;
       if (showNative && permission === "granted") showNativeNotification(title, body);
+      toast.info(title, { description: body, duration: 5000 });
     },
     [permission]
   );
