@@ -193,6 +193,7 @@ export default function ListadoProcedimientos() {
                   const util = ing - costo - materialExtra - combustible;
                   const displayName = (r.patient as { name?: string } | null)?.name ?? r.patient_name ?? "-";
                   const procName = proc?.name ?? r.procedure_name ?? "-";
+                  const displayDistrict = r.district ?? (r.patient as { district?: string | null } | null)?.district ?? "-";
                   const estadoPago = ing === 0 ? "Pendiente" : "Cancelado";
                   return (
                     <TableRow key={r.id}>
@@ -201,7 +202,7 @@ export default function ListadoProcedimientos() {
                       </TableCell>
                       <TableCell>{displayName}</TableCell>
                       <TableCell>{procName}</TableCell>
-                      <TableCell>{r.district ?? "-"}</TableCell>
+                      <TableCell>{displayDistrict}</TableCell>
                       <TableCell>
                         <Badge
                           variant="secondary"

@@ -55,6 +55,7 @@ interface Appointment {
   status: "scheduled" | "confirmed" | "completed" | "cancelled" | "no-show";
   notes?: string;
   location: string;
+  district?: string | null;
   patient_id?: string;
   procedure_catalog_id?: string;
   procedure_name?: string;
@@ -109,6 +110,7 @@ export function AddAppointmentModal({
     status: "scheduled" as const,
     notes: "",
     location: "",
+    district: "",
     procedureCatalogId: "",
     procedureName: "",
   });
@@ -185,6 +187,7 @@ export function AddAppointmentModal({
       patientEmail: patient?.email ?? "",
       patientPhone: patient?.phone ?? "",
       location: patient?.address ?? "",
+      district: patient?.district ?? "",
     }));
   };
 
@@ -213,6 +216,7 @@ export function AddAppointmentModal({
         patientEmail: newPatient.email?.trim() || newPatientData.email?.trim() || "",
         patientPhone: newPatient.phone?.trim() || newPatientData.phone?.trim() || "",
         location: newPatient.address?.trim() || newPatientData.address?.trim() || prev.location,
+        district: newPatient.district?.trim() || newPatientData.district?.trim() || prev.district,
       }));
       setAddPatientModalOpen(false);
       setNewPatientData({ name: "", dni: "", email: "", phone: "", gender: "", address: "", district: "" });
@@ -225,7 +229,7 @@ export function AddAppointmentModal({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.patientId?.trim()) {
       toast.error("Debe seleccionar un paciente de la lista.");
@@ -235,9 +239,29 @@ export function AddAppointmentModal({
       toast.error("Debe asignar un profesional (enfermera o médico).");
       return;
     }
+    const patient = patients.find((p) => p.id === formData.patientId);
+    const locationTrim = formData.location?.trim() ?? "";
+    const districtTrim = formData.district?.trim() ?? "";
+    if (patient && (locationTrim || districtTrim)) {
+      const shouldUpdate =
+        (!patient.address?.trim() && locationTrim) || (!patient.district?.trim() && districtTrim);
+      if (shouldUpdate) {
+        try {
+          await patientsService.updatePatient({
+            id: patient.id,
+            ...(locationTrim && { address: locationTrim }),
+            ...(districtTrim && { district: districtTrim }),
+          });
+          const updated = await patientsService.getPatientById(patient.id);
+          setPatients((prev) => prev.map((p) => (p.id === patient.id ? updated : p)));
+        } catch (err) {
+          console.error(err);
+          toast.error("No se pudo actualizar los datos del paciente.");
+          return;
+        }
+      }
+    }
     const { patientId, procedureCatalogId, procedureName, ...rest } = formData;
-    // Asegurar nombre/email/teléfono del paciente (por si el combobox no los rellenó)
-    const patient = patients.find((p) => p.id === patientId);
     const patientName = (rest.patientName?.trim() || patient?.name) ?? "";
     const patientEmail = (rest.patientEmail?.trim() || patient?.email) ?? "";
     const patientPhone = (rest.patientPhone?.trim() || patient?.phone) ?? "";
@@ -273,6 +297,7 @@ export function AddAppointmentModal({
       status: "scheduled",
       notes: "",
       location: "",
+      district: "",
       procedureCatalogId: "",
       procedureName: "",
     });
@@ -391,6 +416,22 @@ export function AddAppointmentModal({
             <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Estado
+                </label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => handleInputChange("status", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
+                >
+                  <option value="scheduled">Programada</option>
+                  <option value="confirmed">Confirmada</option>
+                  <option value="completed">Completada</option>
+                  <option value="cancelled">Cancelada</option>
+                  <option value="no-show">No Asistió</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Fecha *
                 </label>
                 <div className="relative">
@@ -467,22 +508,6 @@ export function AddAppointmentModal({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Estado
-                </label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => handleInputChange("status", e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
-                >
-                  <option value="scheduled">Programada</option>
-                  <option value="confirmed">Confirmada</option>
-                  <option value="completed">Completada</option>
-                  <option value="cancelled">Cancelada</option>
-                  <option value="no-show">No Asistió</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Dirección (domicilio de la cita) *
                 </label>
                 <div className="relative">
@@ -490,11 +515,24 @@ export function AddAppointmentModal({
                   <Input
                     value={formData.location}
                     onChange={(e) => handleInputChange("location", e.target.value)}
-                    placeholder="Si el paciente tiene dirección registrada se usará esa; si no, ingrese la dirección"
+                    placeholder="Se toma del paciente; si no tiene, ingrese y se guardará en su ficha"
                     className="pl-10"
                     required
                   />
                 </div>
+                <p className="text-xs text-gray-500 mt-1">Dirección y distrito del paciente. Si no los tiene, se guardarán al crear la cita.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Distrito
+                </label>
+                <Combobox
+                  options={districts.map((d) => ({ value: d.name, label: d.zone ? `${d.name} (${d.zone})` : d.name }))}
+                  value={formData.district || "__none__"}
+                  onValueChange={(value) => handleInputChange("district", value === "__none__" ? "" : value)}
+                  placeholder="Seleccionar distrito"
+                  emptyOption={{ value: "__none__", label: "Sin especificar" }}
+                />
               </div>
             </CardContent>
           </Card>

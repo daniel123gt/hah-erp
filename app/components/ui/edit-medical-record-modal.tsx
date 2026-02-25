@@ -17,9 +17,20 @@ interface EditMedicalRecordModalProps {
   onUpdated: () => void;
 }
 
+const PAYMENT_METHODS = [
+  { value: "", label: "Sin especificar" },
+  { value: "Efectivo", label: "Efectivo" },
+  { value: "Yape", label: "Yape" },
+  { value: "Plin", label: "Plin" },
+  { value: "Transferencia/Depósito", label: "Transferencia / Depósito" },
+  { value: "Tarjeta/Link/POS", label: "Tarjeta / Link / POS" },
+];
+
 export function EditMedicalRecordModal({ record, onClose, onUpdated }: EditMedicalRecordModalProps) {
   const [ingreso, setIngreso] = useState(String(record.ingreso ?? 0));
   const [costo, setCosto] = useState(String(record.costo ?? 0));
+  const [payment_method, setPayment_method] = useState(record.payment_method ?? "");
+  const [numero_operacion, setNumero_operacion] = useState(record.numero_operacion ?? "");
   const [notes, setNotes] = useState(record.notes ?? "");
   const [loading, setLoading] = useState(false);
 
@@ -31,6 +42,8 @@ export function EditMedicalRecordModal({ record, onClose, onUpdated }: EditMedic
         id: record.id,
         ingreso: Number(ingreso) || 0,
         costo: Number(costo) || 0,
+        payment_method: payment_method?.trim() || null,
+        numero_operacion: numero_operacion?.trim() || null,
         notes: notes.trim() || null,
       });
       toast.success("Registro actualizado");
@@ -71,6 +84,29 @@ export function EditMedicalRecordModal({ record, onClose, onUpdated }: EditMedic
               min="0"
               value={costo}
               onChange={(e) => setCosto(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label>Método de pago</Label>
+            <select
+              value={payment_method}
+              onChange={(e) => setPayment_method(e.target.value)}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              {PAYMENT_METHODS.map((opt) => (
+                <option key={opt.value || "none"} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="grid gap-2">
+            <Label>Número de operación</Label>
+            <Input
+              value={numero_operacion}
+              onChange={(e) => setNumero_operacion(e.target.value)}
+              placeholder="Ej. ref. transferencia, código Yape/Plin..."
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             />
           </div>
           <div className="grid gap-2">

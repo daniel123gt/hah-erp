@@ -11,6 +11,8 @@ export interface MedicalAppointmentRecord {
   doctor_name: string | null;
   ingreso: number;
   costo: number;
+  payment_method: string | null;
+  numero_operacion: string | null;
   notes: string | null;
   created_at?: string;
   updated_at?: string;
@@ -26,6 +28,8 @@ export interface CreateMedicalRecordData {
   doctor_name?: string | null;
   ingreso?: number;
   costo?: number;
+  payment_method?: string | null;
+  numero_operacion?: string | null;
   notes?: string | null;
 }
 
@@ -33,6 +37,8 @@ export interface UpdateMedicalRecordData {
   id: string;
   ingreso?: number;
   costo?: number;
+  payment_method?: string | null;
+  numero_operacion?: string | null;
   notes?: string | null;
 }
 
@@ -114,6 +120,8 @@ export const medicalAppointmentRecordsService = {
         doctor_name: data.doctor_name ?? null,
         ingreso: Number(data.ingreso ?? 0),
         costo: Number(data.costo ?? 0),
+        payment_method: data.payment_method ?? null,
+        numero_operacion: data.numero_operacion ?? null,
         notes: data.notes ?? null,
       })
       .select()
@@ -143,7 +151,9 @@ export const medicalAppointmentRecordsService = {
       doctor_name: appointment.doctorName ?? null,
       ingreso: 0,
       costo: 0,
-      notes: appointment.notes ?? null,
+      payment_method: null,
+      numero_operacion: null,
+      notes: null,
     });
   },
 

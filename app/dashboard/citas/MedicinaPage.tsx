@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { appointmentsService, formatDateOnly } from "~/services/appointmentsService";
+import { patientsService, type Patient } from "~/services/patientsService";
 import { medicalAppointmentRecordsService } from "~/services/medicalAppointmentRecordsService";
 import { getTodayLocal } from "~/lib/dateUtils";
 import { Button } from "~/components/ui/button";
@@ -50,6 +51,7 @@ export interface Appointment {
   status: "scheduled" | "confirmed" | "completed" | "cancelled" | "no-show";
   notes?: string;
   location: string;
+  district?: string | null;
   /** Solo citas de procedimientos: id del paciente (para crear registro en listado) */
   patient_id?: string;
   /** Solo citas de procedimientos: id y nombre del procedimiento del catálogo */
@@ -64,6 +66,7 @@ export default function CitasMedicinaPage() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [patients, setPatients] = useState<Record<string, Patient>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -77,6 +80,23 @@ export default function CitasMedicinaPage() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    const ids = [...new Set(appointments.map((a) => a.patient_id).filter(Boolean))] as string[];
+    if (ids.length === 0) {
+      setPatients({});
+      return;
+    }
+    Promise.all(ids.map((id) => patientsService.getPatientById(id).catch(() => null)))
+      .then((list) => {
+        const map: Record<string, Patient> = {};
+        list.forEach((p, i) => {
+          if (p) map[ids[i]] = p;
+        });
+        setPatients(map);
+      })
+      .catch(() => setPatients({}));
+  }, [appointments]);
 
   const filteredAppointments = appointments.filter((appointment) => {
     const matchesSearch =
@@ -137,6 +157,7 @@ export default function CitasMedicinaPage() {
     appointmentsService
       .update({
         id: updatedAppointment.id,
+        patient_id: updatedAppointment.patient_id ?? null,
         patientName: updatedAppointment.patientName,
         patientEmail: updatedAppointment.patientEmail,
         patientPhone: updatedAppointment.patientPhone,
@@ -340,7 +361,7 @@ export default function CitasMedicinaPage() {
                   <div className="flex items-center space-x-3">
                     {getStatusIcon(appointment.status)}
                     {getStatusBadge(appointment.status)}
-                    <ViewAppointmentModal appointment={appointment} professionalLabel="Médico" />
+                    <ViewAppointmentModal appointment={{ ...appointment, district: appointment.patient_id ? patients[appointment.patient_id]?.district ?? null : null }} professionalLabel="Médico" />
                   </div>
                 </div>
               ))}
@@ -408,11 +429,12 @@ export default function CitasMedicinaPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Fecha y Hora</TableHead>
+                  <TableHead>Estado</TableHead>
                   <TableHead>Paciente</TableHead>
+                  <TableHead>Distrito</TableHead>
+                  <TableHead>Ubicación</TableHead>
                   <TableHead>Médico</TableHead>
                   <TableHead>Tipo</TableHead>
-                  <TableHead>Ubicación</TableHead>
-                  <TableHead>Estado</TableHead>
                   <TableHead className="whitespace-nowrap sticky right-0 bg-muted shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10 min-w-[100px]">
                     Acciones
                   </TableHead>
@@ -432,6 +454,12 @@ export default function CitasMedicinaPage() {
                       </div>
                     </TableCell>
                     <TableCell>
+                      <div className="flex items-center space-x-2">
+                        {getStatusIcon(appointment.status)}
+                        {getStatusBadge(appointment.status)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
                       <div>
                         <p className="font-medium">{appointment.patientName}</p>
                         <div className="flex items-center space-x-2 text-sm text-gray-500">
@@ -441,12 +469,8 @@ export default function CitasMedicinaPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div>
-                        <p className="font-medium">{appointment.doctorName}</p>
-                        <p className="text-sm text-gray-500">{appointment.doctorSpecialty}</p>
-                      </div>
+                      <span className="text-sm">{appointment.patient_id ? (patients[appointment.patient_id]?.district ?? "—") : "—"}</span>
                     </TableCell>
-                    <TableCell>{getTypeBadge(appointment.type)}</TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
                         <MapPin className="w-4 h-4 text-gray-400" />
@@ -454,14 +478,15 @@ export default function CitasMedicinaPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center space-x-2">
-                        {getStatusIcon(appointment.status)}
-                        {getStatusBadge(appointment.status)}
+                      <div>
+                        <p className="font-medium">{appointment.doctorName}</p>
+                        <p className="text-sm text-gray-500">{appointment.doctorSpecialty}</p>
                       </div>
                     </TableCell>
+                    <TableCell>{getTypeBadge(appointment.type)}</TableCell>
                     <TableCell className="sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10">
                       <div className="flex space-x-2">
-                        <ViewAppointmentModal appointment={appointment} professionalLabel="Médico" />
+                        <ViewAppointmentModal appointment={{ ...appointment, district: appointment.patient_id ? patients[appointment.patient_id]?.district ?? null : null }} professionalLabel="Médico" />
                         <EditAppointmentModal
                           appointment={appointment}
                           onAppointmentUpdated={handleAppointmentUpdated}

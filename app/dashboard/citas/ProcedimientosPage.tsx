@@ -31,6 +31,7 @@ import {
 import { toast } from "sonner";
 import { procedureService } from "~/services/procedureService";
 import { appointmentsService, formatDateOnly } from "~/services/appointmentsService";
+import { patientsService, type Patient } from "~/services/patientsService";
 import { getTodayLocal } from "~/lib/dateUtils";
 import type { Appointment } from "./MedicinaPage";
 
@@ -41,6 +42,7 @@ export default function CitasProcedimientosPage() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [patients, setPatients] = useState<Record<string, Patient>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -54,6 +56,23 @@ export default function CitasProcedimientosPage() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    const ids = [...new Set(appointments.map((a) => a.patient_id).filter(Boolean))] as string[];
+    if (ids.length === 0) {
+      setPatients({});
+      return;
+    }
+    Promise.all(ids.map((id) => patientsService.getPatientById(id).catch(() => null)))
+      .then((list) => {
+        const map: Record<string, Patient> = {};
+        list.forEach((p, i) => {
+          if (p) map[ids[i]] = p;
+        });
+        setPatients(map);
+      })
+      .catch(() => setPatients({}));
+  }, [appointments]);
 
   const filteredAppointments = appointments.filter((appointment) => {
     const matchesSearch =
@@ -344,7 +363,7 @@ export default function CitasProcedimientosPage() {
                   <div className="flex items-center space-x-3">
                     {getStatusIcon(appointment.status)}
                     {getStatusBadge(appointment.status)}
-                    <ViewAppointmentModal appointment={appointment} professionalLabel="Enfermera" />
+                    <ViewAppointmentModal appointment={{ ...appointment, district: appointment.patient_id ? patients[appointment.patient_id]?.district ?? null : null }} professionalLabel="Enfermera" />
                   </div>
                 </div>
               ))}
@@ -409,11 +428,12 @@ export default function CitasProcedimientosPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Fecha y Hora</TableHead>
+                  <TableHead>Estado</TableHead>
                   <TableHead>Paciente</TableHead>
+                  <TableHead>Distrito</TableHead>
+                  <TableHead>Ubicación</TableHead>
                   <TableHead>Enfermera</TableHead>
                   <TableHead>Tipo</TableHead>
-                  <TableHead>Ubicación</TableHead>
-                  <TableHead>Estado</TableHead>
                   <TableHead className="whitespace-nowrap sticky right-0 bg-muted shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10 min-w-[100px]">
                     Acciones
                   </TableHead>
@@ -422,7 +442,7 @@ export default function CitasProcedimientosPage() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                       Cargando citas...
                     </TableCell>
                   </TableRow>
@@ -440,6 +460,12 @@ export default function CitasProcedimientosPage() {
                       </div>
                     </TableCell>
                     <TableCell>
+                      <div className="flex items-center space-x-2">
+                        {getStatusIcon(appointment.status)}
+                        {getStatusBadge(appointment.status)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
                       <div>
                         <p className="font-medium">{appointment.patientName}</p>
                         <div className="flex items-center space-x-2 text-sm text-gray-500">
@@ -449,12 +475,8 @@ export default function CitasProcedimientosPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div>
-                        <p className="font-medium">{appointment.doctorName}</p>
-                        <p className="text-sm text-gray-500">{appointment.doctorSpecialty}</p>
-                      </div>
+                      <span className="text-sm">{appointment.patient_id ? (patients[appointment.patient_id]?.district ?? "—") : "—"}</span>
                     </TableCell>
-                    <TableCell>{getTypeBadge(appointment)}</TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
                         <MapPin className="w-4 h-4 text-gray-400" />
@@ -462,14 +484,15 @@ export default function CitasProcedimientosPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center space-x-2">
-                        {getStatusIcon(appointment.status)}
-                        {getStatusBadge(appointment.status)}
+                      <div>
+                        <p className="font-medium">{appointment.doctorName}</p>
+                        <p className="text-sm text-gray-500">{appointment.doctorSpecialty}</p>
                       </div>
                     </TableCell>
+                    <TableCell>{getTypeBadge(appointment)}</TableCell>
                     <TableCell className="sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10">
                       <div className="flex space-x-2">
-                        <ViewAppointmentModal appointment={appointment} professionalLabel="Enfermera" />
+                        <ViewAppointmentModal appointment={{ ...appointment, district: appointment.patient_id ? patients[appointment.patient_id]?.district ?? null : null }} professionalLabel="Enfermera" />
                         <EditAppointmentModal
                           appointment={appointment}
                           onAppointmentUpdated={handleAppointmentUpdated}

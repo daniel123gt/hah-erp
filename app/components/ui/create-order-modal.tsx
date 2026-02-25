@@ -80,6 +80,7 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
   const [formData, setFormData] = useState({
     fechaOrden: getTodayLocal(),
     fechaTomaMuestra: getTodayLocal(),
+    horaTomaMuestra: "08:00",
     medicoSolicitante: "",
     prioridad: "normal" as 'urgente' | 'normal' | 'programada',
     observaciones: "",
@@ -129,6 +130,7 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
       setFormData({
         fechaOrden: getTodayLocal(),
         fechaTomaMuestra: getTodayLocal(),
+        horaTomaMuestra: "08:00",
         medicoSolicitante: "",
         prioridad: "normal",
         observaciones: "",
@@ -248,11 +250,15 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
         patientToUse = { ...selectedPatient, ...updates };
       }
 
+      const sampleDate = formData.fechaTomaMuestra || formData.fechaOrden;
+      const sampleDateTime = formData.horaTomaMuestra?.trim()
+        ? `${sampleDate}T${formData.horaTomaMuestra.trim()}:00`
+        : sampleDate;
       // Crear la orden de exámenes
       const orderCreated = await labOrderService.createOrder({
         patient_id: patientToUse.id,
         order_date: formData.fechaOrden,
-        sample_date: formData.fechaTomaMuestra || formData.fechaOrden,
+        sample_date: sampleDateTime,
         physician_name: formData.medicoSolicitante || undefined,
         priority: formData.prioridad,
         observations: formData.observaciones || undefined,
@@ -307,6 +313,7 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
         setFormData({
           fechaOrden: getTodayLocal(),
           fechaTomaMuestra: getTodayLocal(),
+          horaTomaMuestra: "08:00",
           medicoSolicitante: "",
           prioridad: "normal",
           observaciones: "",
@@ -703,7 +710,7 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
                   Información de la Orden
                 </h3>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="fechaOrden">Fecha de Orden</Label>
                     <Input
@@ -714,26 +721,21 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="fechaTomaMuestra">Fecha de toma de muestra (programación)</Label>
-                    <Input
-                      id="fechaTomaMuestra"
-                      type="date"
-                      value={formData.fechaTomaMuestra}
-                      onChange={(e) => setFormData({ ...formData, fechaTomaMuestra: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="medicoSolicitante">Médico Solicitante</Label>
-                    <Combobox
-                      id="medicoSolicitante"
-                      options={doctors.map((doc) => ({ value: doc.name, label: doc.name }))}
-                      value={formData.medicoSolicitante || "__none__"}
-                      onValueChange={(value) =>
-                        setFormData({ ...formData, medicoSolicitante: value === "__none__" ? "" : value })
-                      }
-                      placeholder="Seleccionar médico"
-                      emptyOption={{ value: "__none__", label: "Ninguno" }}
-                    />
+                    <Label>Fecha y hora de toma de muestra (programación)</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="fechaTomaMuestra"
+                        type="date"
+                        value={formData.fechaTomaMuestra}
+                        onChange={(e) => setFormData({ ...formData, fechaTomaMuestra: e.target.value })}
+                      />
+                      <Input
+                        id="horaTomaMuestra"
+                        type="time"
+                        value={formData.horaTomaMuestra}
+                        onChange={(e) => setFormData({ ...formData, horaTomaMuestra: e.target.value })}
+                      />
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="prioridad">Prioridad</Label>
@@ -752,6 +754,19 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
                         <SelectItem value="programada">Programada</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="medicoSolicitante">Médico Solicitante</Label>
+                    <Combobox
+                      id="medicoSolicitante"
+                      options={doctors.map((doc) => ({ value: doc.name, label: doc.name }))}
+                      value={formData.medicoSolicitante || "__none__"}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, medicoSolicitante: value === "__none__" ? "" : value })
+                      }
+                      placeholder="Seleccionar médico"
+                      emptyOption={{ value: "__none__", label: "Ninguno" }}
+                    />
                   </div>
                 </div>
 

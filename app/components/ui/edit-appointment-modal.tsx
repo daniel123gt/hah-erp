@@ -51,6 +51,7 @@ interface Appointment {
   status: "scheduled" | "confirmed" | "completed" | "cancelled" | "no-show";
   notes?: string;
   location: string;
+  district?: string | null;
   patient_id?: string;
   procedure_catalog_id?: string;
   procedure_name?: string;
@@ -78,6 +79,7 @@ export function EditAppointmentModal({
   const [loadingProfessionals, setLoadingProfessionals] = useState(false);
   const [procedureCatalog, setProcedureCatalog] = useState<{ id: string; name: string; base_price_soles: number }[]>([]);
   const [loadingCatalog, setLoadingCatalog] = useState(false);
+  const [districts, setDistricts] = useState<Array<{ name: string; zone: string }>>([]);
   const [formData, setFormData] = useState<Appointment>(appointment);
 
   useEffect(() => {
@@ -92,6 +94,7 @@ export function EditAppointmentModal({
       .then((res) => setPatients(res.data))
       .catch(() => setPatients([]))
       .finally(() => setLoadingPatients(false));
+    patientsService.getDistricts().then(setDistricts).catch(() => setDistricts([]));
   }, [isOpen]);
 
   useEffect(() => {
@@ -160,10 +163,11 @@ export function EditAppointmentModal({
       patientEmail: patient?.email ?? prev.patientEmail,
       patientPhone: patient?.phone ?? prev.patientPhone,
       location: patient?.address ?? prev.location,
+      district: patient?.district ?? prev.district ?? "",
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.patient_id?.trim()) {
       toast.error("Debe seleccionar un paciente de la lista.");
@@ -172,6 +176,21 @@ export function EditAppointmentModal({
     if (variant === "procedimientos" && !formData.doctorName?.trim()) {
       toast.error("Debe asignar un profesional (enfermera o médico).");
       return;
+    }
+    const locationTrim = formData.location?.trim() ?? "";
+    const districtTrim = (formData.district ?? "")?.trim() ?? "";
+    if (formData.patient_id && (locationTrim || districtTrim)) {
+      try {
+        await patientsService.updatePatient({
+          id: formData.patient_id,
+          ...(locationTrim && { address: locationTrim }),
+          ...(districtTrim && { district: districtTrim }),
+        });
+      } catch (err) {
+        console.error(err);
+        toast.error("No se pudo actualizar los datos del paciente.");
+        return;
+      }
     }
     onAppointmentUpdated(formData);
     setIsOpen(false);
@@ -279,6 +298,22 @@ export function EditAppointmentModal({
             <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Estado
+                </label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => handleInputChange("status", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
+                >
+                  <option value="scheduled">Programada</option>
+                  <option value="confirmed">Confirmada</option>
+                  <option value="completed">Completada</option>
+                  <option value="cancelled">Cancelada</option>
+                  <option value="no-show">No Asistió</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Fecha *
                 </label>
                 <div className="relative">
@@ -356,22 +391,6 @@ export function EditAppointmentModal({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Estado
-                </label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => handleInputChange("status", e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
-                >
-                  <option value="scheduled">Programada</option>
-                  <option value="confirmed">Confirmada</option>
-                  <option value="completed">Completada</option>
-                  <option value="cancelled">Cancelada</option>
-                  <option value="no-show">No Asistió</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Dirección (domicilio de la cita) *
                 </label>
                 <div className="relative">
@@ -384,6 +403,18 @@ export function EditAppointmentModal({
                     required
                   />
                 </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Distrito
+                </label>
+                <Combobox
+                  options={districts.map((d) => ({ value: d.name, label: d.zone ? `${d.name} (${d.zone})` : d.name }))}
+                  value={formData.district ?? "__none__"}
+                  onValueChange={(value) => handleInputChange("district", value === "__none__" ? "" : value)}
+                  placeholder="Seleccionar distrito"
+                  emptyOption={{ value: "__none__", label: "Sin especificar" }}
+                />
               </div>
             </CardContent>
           </Card>
