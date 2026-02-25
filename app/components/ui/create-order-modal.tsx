@@ -254,7 +254,7 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
 
       const sampleDate = formData.fechaTomaMuestra || formData.fechaOrden;
       const sampleDateTime = formData.horaTomaMuestra?.trim()
-        ? `${sampleDate}T${formData.horaTomaMuestra.trim()}:00`
+        ? new Date(`${sampleDate}T${formData.horaTomaMuestra.trim()}:00`).toISOString()
         : sampleDate;
       // Crear la orden de exámenes
       const orderCreated = await labOrderService.createOrder({
@@ -270,7 +270,9 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
       toast.success("Orden de exámenes creada exitosamente");
 
       const patientName = patientToUse?.name ?? "Paciente";
-      const sampleDisplay = sampleDateTime?.includes("T") ? sampleDateTime.slice(0, 16).replace("T", " ") : sampleDate;
+      const sampleDisplay = formData.horaTomaMuestra?.trim()
+        ? `${sampleDate} ${formData.horaTomaMuestra.trim()}`
+        : sampleDate;
       const body = `${patientName} — ${orderCreated.items?.length ?? selectedExams.length} exámenes · ${sampleDisplay}`;
       if (notificationsContext) {
         try {

@@ -167,7 +167,7 @@ export default function OrdenDetalle() {
     const datePart = newDate.trim().slice(0, 10);
     if (!datePart) return;
     const timePart = newTime.trim() || "08:00";
-    const value = `${datePart}T${timePart}:00`;
+    const value = new Date(`${datePart}T${timePart}:00`).toISOString();
     const cur = order.sample_date ?? order.order_date;
     const curDate = cur ? String(cur).slice(0, 10) : "";
     const curTime = cur && String(cur).includes("T") ? String(cur).slice(11, 16) : "08:00";
@@ -384,15 +384,39 @@ export default function OrdenDetalle() {
                   <Input
                     type="date"
                     className="font-medium flex-1"
-                    value={(order.sample_date ?? order.order_date).toString().slice(0, 10)}
-                    onChange={(e) => handleSampleDateTimeChange(e.target.value, order.sample_date && String(order.sample_date).includes("T") ? String(order.sample_date).slice(11, 16) : "08:00")}
+                    value={(() => {
+                      const sd = order.sample_date ?? order.order_date;
+                      if (!sd) return "";
+                      const dt = new Date(sd);
+                      const y = dt.getFullYear();
+                      const m = String(dt.getMonth() + 1).padStart(2, "0");
+                      const day = String(dt.getDate()).padStart(2, "0");
+                      return `${y}-${m}-${day}`;
+                    })()}
+                    onChange={(e) => {
+                      const cur = order.sample_date ?? order.order_date;
+                      const curTime = cur && String(cur).includes("T") ? (() => {
+                        const dt = new Date(cur);
+                        return `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`;
+                      })() : "08:00";
+                      handleSampleDateTimeChange(e.target.value, curTime);
+                    }}
                     disabled={updatingSampleDate}
                   />
                   <Input
                     type="time"
                     className="font-medium w-[120px]"
-                    value={order.sample_date && String(order.sample_date).includes("T") ? String(order.sample_date).slice(11, 16) : "08:00"}
-                    onChange={(e) => handleSampleDateTimeChange((order.sample_date ?? order.order_date).toString().slice(0, 10), e.target.value)}
+                    value={order.sample_date && String(order.sample_date).includes("T") ? (() => {
+                      const dt = new Date(order.sample_date!);
+                      return `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`;
+                    })() : "08:00"}
+                    onChange={(e) => {
+                      const cur = order.sample_date ?? order.order_date;
+                      const y = new Date(cur).getFullYear();
+                      const m = String(new Date(cur).getMonth() + 1).padStart(2, "0");
+                      const day = String(new Date(cur).getDate()).padStart(2, "0");
+                      handleSampleDateTimeChange(`${y}-${m}-${day}`, e.target.value);
+                    }}
                     disabled={updatingSampleDate}
                   />
                 </div>
