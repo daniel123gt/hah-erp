@@ -15,6 +15,7 @@ import { Badge } from "~/components/ui/badge";
 import { AddAppointmentModal } from "~/components/ui/add-appointment-modal";
 import { ViewAppointmentModal } from "~/components/ui/view-appointment-modal";
 import { EditAppointmentModal } from "~/components/ui/edit-appointment-modal";
+import { useNotifications } from "~/contexts/NotificationsContext";
 import {
   Search,
   Filter,
@@ -37,6 +38,7 @@ import type { Appointment } from "./MedicinaPage";
 
 export default function CitasProcedimientosPage() {
   const navigate = useNavigate();
+  const { addNotification } = useNotifications();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDate, setFilterDate] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -145,6 +147,11 @@ export default function CitasProcedimientosPage() {
       .then((created) => {
         setAppointments((prev) => [created, ...prev]);
         toast.success("Cita creada");
+        addNotification(
+          "cita_programada",
+          "Cita programada",
+          `${created.patientName} — ${created.date} ${created.time}${created.procedure_name ? ` · ${created.procedure_name}` : ""}`
+        );
         if (
           created.status === "completed" &&
           created.procedure_catalog_id &&

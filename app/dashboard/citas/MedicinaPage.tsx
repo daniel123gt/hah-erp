@@ -20,6 +20,7 @@ import { Badge } from "~/components/ui/badge";
 import { AddAppointmentModal } from "~/components/ui/add-appointment-modal";
 import { ViewAppointmentModal } from "~/components/ui/view-appointment-modal";
 import { EditAppointmentModal } from "~/components/ui/edit-appointment-modal";
+import { useNotifications } from "~/contexts/NotificationsContext";
 import {
   Search,
   Plus,
@@ -61,6 +62,7 @@ export interface Appointment {
 
 export default function CitasMedicinaPage() {
   const navigate = useNavigate();
+  const { addNotification } = useNotifications();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDate, setFilterDate] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -129,6 +131,11 @@ export default function CitasMedicinaPage() {
       .then((created) => {
         setAppointments((prev) => [created, ...prev]);
         toast.success("Cita creada");
+        addNotification(
+          "cita_programada",
+          "Cita programada",
+          `${created.patientName} — ${created.date} ${created.time}${created.doctorName ? ` · ${created.doctorName}` : ""}`
+        );
         if (created.status === "completed") {
           medicalAppointmentRecordsService
             .createFromAppointment({
