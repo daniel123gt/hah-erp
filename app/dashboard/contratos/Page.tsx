@@ -70,6 +70,11 @@ export default function ContratosPage() {
     loadStats();
   }, []);
 
+  // Volver a página 1 cuando cambien filtros o búsqueda (evita error si los resultados caben en una sola página)
+  useEffect(() => {
+    setPagination(prev => ({ ...prev, page: 1 }));
+  }, [debouncedSearchTerm, filterStatus, filterServiceType]);
+
   // Recargar contratos cuando cambien los filtros o paginación
   useEffect(() => {
     loadContracts();
@@ -95,8 +100,9 @@ export default function ContratosPage() {
         hasPrevPage: response.hasPrevPage
       }));
     } catch (error) {
-      toast.error("Error al cargar contratos.");
       console.error("Error loading contracts:", error);
+      if (pagination.page > 1) setPagination(prev => ({ ...prev, page: 1 }));
+      else toast.error("Error al cargar contratos.");
     } finally {
       setLoading(false);
     }

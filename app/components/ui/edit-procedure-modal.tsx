@@ -65,6 +65,19 @@ export function EditProcedureModal({ record, onClose, onUpdated }: EditProcedure
     })();
   }, []);
 
+  // Si gastos_material coincide con el costo del procedimiento, se trató como "material extra" por error: mostrar 0
+  useEffect(() => {
+    if (catalog.length === 0) return;
+    const catalogItem = record.procedure_catalog_id
+      ? catalog.find((p) => p.id === record.procedure_catalog_id)
+      : null;
+    const costSoles = catalogItem ? Number(catalogItem.total_cost_soles ?? 0) : 0;
+    const current = Number(record.gastos_material ?? 0);
+    if (current === costSoles && costSoles !== 0) {
+      setForm((f) => ({ ...f, gastos_material: 0 }));
+    }
+  }, [catalog, record.procedure_catalog_id, record.gastos_material]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -273,11 +286,12 @@ export function EditProcedureModal({ record, onClose, onUpdated }: EditProcedure
               </CardHeader>
               <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Gastos de material</label>
+                  <label className="block text-sm font-medium mb-1">Gastos de material extra</label>
                   <Input
                     type="number"
                     step="0.01"
                     min={0}
+                    placeholder="0"
                     value={form.gastos_material || ""}
                     onChange={(e) => setForm((f) => ({ ...f, gastos_material: Number(e.target.value) || 0 }))}
                   />

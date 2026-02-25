@@ -54,11 +54,17 @@ export default function ListadoRegistroCitasMedicas() {
       setTotal(res.total);
     } catch (e) {
       console.error(e);
-      toast.error("Error al cargar el listado");
+      if (page > 1) setPage(1);
+      else toast.error("Error al cargar el listado");
     } finally {
       setLoading(false);
     }
   }, [page, search, fromDate, toDate]);
+
+  // Volver a página 1 cuando cambien filtros o búsqueda
+  useEffect(() => {
+    setPage(1);
+  }, [search, fromDate, toDate]);
 
   useEffect(() => {
     loadRecords();

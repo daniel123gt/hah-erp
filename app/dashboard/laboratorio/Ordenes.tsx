@@ -29,6 +29,11 @@ export default function OrdenesLaboratorio() {
   const [totalOrders, setTotalOrders] = useState(0);
   const limit = 20;
 
+  // Volver a página 1 cuando cambien filtros o búsqueda (evita error si los resultados caben en una sola página)
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
+
   useEffect(() => {
     loadOrders();
   }, [currentPage, statusFilter]);
@@ -66,7 +71,8 @@ export default function OrdenesLaboratorio() {
       setPatients(patientsMap);
     } catch (error) {
       console.error("Error al cargar órdenes:", error);
-      toast.error("Error al cargar las órdenes");
+      if (currentPage > 1) setCurrentPage(1);
+      else toast.error("Error al cargar las órdenes");
     } finally {
       setLoading(false);
     }
