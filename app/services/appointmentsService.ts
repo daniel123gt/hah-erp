@@ -24,6 +24,7 @@ export interface Appointment {
   status: "scheduled" | "confirmed" | "completed" | "cancelled" | "no-show";
   notes?: string;
   location: string;
+  district?: string | null;
   patient_id?: string;
   procedure_catalog_id?: string;
   procedure_name?: string;
@@ -45,6 +46,7 @@ interface AppointmentRow {
   status: string;
   notes: string | null;
   location: string;
+  district?: string | null;
   procedure_catalog_id: string | null;
   procedure_name: string | null;
 }
@@ -64,6 +66,7 @@ function rowToAppointment(row: AppointmentRow): Appointment {
     status: row.status as Appointment["status"],
     notes: row.notes ?? undefined,
     location: row.location,
+    district: row.district ?? undefined,
     patient_id: row.patient_id ?? undefined,
     procedure_catalog_id: row.procedure_catalog_id ?? undefined,
     procedure_name: row.procedure_name ?? undefined,

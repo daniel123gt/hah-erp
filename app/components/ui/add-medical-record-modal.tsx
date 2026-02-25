@@ -25,6 +25,15 @@ const APPOINTMENT_TYPES = [
   { value: "seguimiento", label: "Seguimiento" },
 ];
 
+const PAYMENT_METHODS = [
+  { value: "", label: "Sin especificar" },
+  { value: "Efectivo", label: "Efectivo" },
+  { value: "Yape", label: "Yape" },
+  { value: "Plin", label: "Plin" },
+  { value: "Transferencia/Depósito", label: "Transferencia / Depósito" },
+  { value: "Tarjeta/Link/POS", label: "Tarjeta / Link / POS" },
+];
+
 function getTodayLocal() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -44,6 +53,8 @@ export function AddMedicalRecordModal({ onCreated }: AddMedicalRecordModalProps)
     doctor_name: "",
     ingreso: 0,
     costo: 0,
+    payment_method: "",
+    numero_operacion: "",
     notes: "",
   });
   const [patients, setPatients] = useState<Array<{ id: string; name: string }>>([]);
@@ -81,6 +92,8 @@ export function AddMedicalRecordModal({ onCreated }: AddMedicalRecordModalProps)
       doctor_name: "",
       ingreso: 0,
       costo: 0,
+      payment_method: "",
+      numero_operacion: "",
       notes: "",
     });
   };
@@ -113,6 +126,8 @@ export function AddMedicalRecordModal({ onCreated }: AddMedicalRecordModalProps)
         doctor_name: form.doctor_name.trim() || null,
         ingreso: Number(form.ingreso) || 0,
         costo: Number(form.costo) || 0,
+        payment_method: form.payment_method?.trim() || null,
+        numero_operacion: form.numero_operacion?.trim() || null,
         notes: form.notes.trim() || null,
       });
       toast.success(createdNewPatient ? "Paciente creado y registro de cita médica guardado" : "Registro de cita médica creado");
@@ -160,25 +175,19 @@ export function AddMedicalRecordModal({ onCreated }: AddMedicalRecordModalProps)
                   <User className="w-4 h-4" />
                   Paciente
                 </Label>
-                <select
+                <Combobox
+                  options={patients.map((p) => ({ value: p.id, label: p.name }))}
                   value={form.patient_id ?? ""}
-                  onChange={(e) => {
-                    const v = e.target.value;
+                  onValueChange={(value) =>
                     setForm((f) => ({
                       ...f,
-                      patient_id: v || null,
-                      patient_name: v ? patients.find((p) => p.id === v)?.name ?? f.patient_name : f.patient_name,
-                    }));
-                  }}
-                  className="w-full border rounded-md px-3 py-2"
-                >
-                  <option value="">Sin asignar / Otro</option>
-                  {patients.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
+                      patient_id: value || null,
+                      patient_name: value ? patients.find((p) => p.id === value)?.name ?? f.patient_name : f.patient_name,
+                    }))
+                  }
+                  placeholder="Buscar paciente..."
+                  emptyOption={{ value: "", label: "Sin asignar / Otro" }}
+                />
               </div>
               <div>
                 <Label>Nombre (si no está en la lista, se creará el paciente)</Label>
@@ -240,6 +249,29 @@ export function AddMedicalRecordModal({ onCreated }: AddMedicalRecordModalProps)
                     onChange={(e) => setForm((f) => ({ ...f, costo: Number(e.target.value) || 0 }))}
                   />
                 </div>
+              </div>
+              <div>
+                <Label>Método de pago</Label>
+                <select
+                  value={form.payment_method}
+                  onChange={(e) => setForm((f) => ({ ...f, payment_method: e.target.value }))}
+                  className="w-full border rounded-md px-3 py-2"
+                >
+                  {PAYMENT_METHODS.map((opt) => (
+                    <option key={opt.value || "none"} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label>Número de operación</Label>
+                <Input
+                  value={form.numero_operacion}
+                  onChange={(e) => setForm((f) => ({ ...f, numero_operacion: e.target.value }))}
+                  placeholder="Ej. ref. transferencia, código Yape/Plin..."
+                  className="w-full"
+                />
               </div>
               <div>
                 <Label className="flex items-center gap-1">

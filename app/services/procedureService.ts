@@ -48,7 +48,7 @@ export interface ProcedureRecord {
 
 export interface ProcedureRecordWithDetails extends ProcedureRecord {
   procedure_catalog?: ProcedureCatalogItem | null;
-  patient?: { id: string; name: string } | null;
+  patient?: { id: string; name: string; district?: string | null } | null;
 }
 
 export interface CreateProcedureRecordData {
@@ -368,7 +368,7 @@ export const procedureService = {
     let query = supabase
       .from("procedure_records")
       .select(
-        "*, procedure_catalog:procedure_catalog_id(id, name, base_price_soles, total_cost_soles, utility_soles), patient:patient_id(id, name)",
+        "*, procedure_catalog:procedure_catalog_id(id, name, base_price_soles, total_cost_soles, utility_soles), patient:patient_id(id, name, district)",
         { count: "exact" }
       )
       .order("fecha", { ascending: false })
@@ -412,7 +412,7 @@ export const procedureService = {
     const { data, error } = await supabase
       .from("procedure_records")
       .select(
-        "*, procedure_catalog:procedure_catalog_id(id, name, base_price_soles, total_cost_soles, utility_soles), patient:patient_id(id, name)"
+        "*, procedure_catalog:procedure_catalog_id(id, name, base_price_soles, total_cost_soles, utility_soles), patient:patient_id(id, name, district)"
       )
       .eq("id", id)
       .single();

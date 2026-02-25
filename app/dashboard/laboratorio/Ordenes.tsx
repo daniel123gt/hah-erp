@@ -213,8 +213,13 @@ export default function OrdenesLaboratorio() {
                               {order.status}
                             </Badge>
                           </TableCell>
-                          <TableCell>
-                            {formatDateOnly(order.sample_date ?? order.order_date)}
+                          <TableCell className="whitespace-nowrap">
+                            {(() => {
+                              const sd = order.sample_date ?? order.order_date;
+                              const dateStr = formatDateOnly(sd);
+                              const timeStr = sd && String(sd).includes("T") ? String(sd).slice(11, 16) : null;
+                              return timeStr ? `${dateStr} ${timeStr}` : dateStr;
+                            })()}
                           </TableCell>
                           <TableCell className="font-medium">
                             {patient?.name || 'Paciente no encontrado'}

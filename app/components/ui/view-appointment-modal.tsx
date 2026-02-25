@@ -39,6 +39,7 @@ interface Appointment {
   status: "scheduled" | "confirmed" | "completed" | "cancelled" | "no-show";
   notes?: string;
   location: string;
+  district?: string | null;
   procedure_name?: string;
 }
 
@@ -261,6 +262,14 @@ export function ViewAppointmentModal({ appointment, professionalLabel = "Médico
                       <span className="font-medium">{appointment.location}</span>
                     </div>
                   </div>
+                  {appointment.district && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Distrito
+                      </label>
+                      <span className="font-medium">{appointment.district}</span>
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-4">
                   <div>

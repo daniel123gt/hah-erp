@@ -162,17 +162,23 @@ export default function OrdenDetalle() {
     }
   };
 
-  const handleSampleDateChange = async (newDate: string) => {
+  const handleSampleDateTimeChange = async (newDate: string, newTime: string) => {
     if (!order) return;
-    const value = newDate || null;
-    if (value === (order.sample_date ?? null)) return;
+    const datePart = newDate.trim().slice(0, 10);
+    if (!datePart) return;
+    const timePart = newTime.trim() || "08:00";
+    const value = `${datePart}T${timePart}:00`;
+    const cur = order.sample_date ?? order.order_date;
+    const curDate = cur ? String(cur).slice(0, 10) : "";
+    const curTime = cur && String(cur).includes("T") ? String(cur).slice(11, 16) : "08:00";
+    if (datePart === curDate && timePart === curTime) return;
     try {
       setUpdatingSampleDate(true);
       await labOrderService.updateOrderSampleDate(order.id, value);
-      toast.success("Fecha de toma de muestra actualizada");
+      toast.success("Fecha y hora de toma de muestra actualizadas");
       loadOrder();
     } catch (error: any) {
-      console.error("Error al actualizar fecha:", error);
+      console.error("Error al actualizar fecha/hora:", error);
       toast.error(error?.message || "Error al actualizar la fecha");
     } finally {
       setUpdatingSampleDate(false);
@@ -373,14 +379,23 @@ export default function OrdenDetalle() {
                 <p className="font-medium">{formatDateOnly(order.order_date)}</p>
               </div>
               <div>
-                <Label className="text-sm text-gray-500">Fecha de toma de muestra (programación)</Label>
-                <Input
-                  type="date"
-                  className="mt-1 font-medium"
-                  value={(order.sample_date ?? order.order_date).toString().slice(0, 10)}
-                  onChange={(e) => handleSampleDateChange(e.target.value)}
-                  disabled={updatingSampleDate}
-                />
+                <Label className="text-sm text-gray-500">Fecha y hora de toma de muestra (programación)</Label>
+                <div className="flex gap-2 mt-1">
+                  <Input
+                    type="date"
+                    className="font-medium flex-1"
+                    value={(order.sample_date ?? order.order_date).toString().slice(0, 10)}
+                    onChange={(e) => handleSampleDateTimeChange(e.target.value, order.sample_date && String(order.sample_date).includes("T") ? String(order.sample_date).slice(11, 16) : "08:00")}
+                    disabled={updatingSampleDate}
+                  />
+                  <Input
+                    type="time"
+                    className="font-medium w-[120px]"
+                    value={order.sample_date && String(order.sample_date).includes("T") ? String(order.sample_date).slice(11, 16) : "08:00"}
+                    onChange={(e) => handleSampleDateTimeChange((order.sample_date ?? order.order_date).toString().slice(0, 10), e.target.value)}
+                    disabled={updatingSampleDate}
+                  />
+                </div>
               </div>
               {order.physician_name && (
                 <div>

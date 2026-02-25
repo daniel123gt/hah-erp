@@ -265,12 +265,19 @@ export const labOrderService = {
 
   async updateOrderStatus(orderId: string, status: LabExamOrder['status']): Promise<void> {
     try {
-      const { error } = await supabase
+      const { error: orderError } = await supabase
         .from('lab_exam_orders')
         .update({ status, updated_at: new Date().toISOString() })
         .eq('id', orderId);
 
-      if (error) throw error;
+      if (orderError) throw orderError;
+
+      const { error: itemsError } = await supabase
+        .from('lab_exam_order_items')
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq('order_id', orderId);
+
+      if (itemsError) throw itemsError;
     } catch (error: any) {
       console.error('Error al actualizar orden:', error);
       throw new Error(error?.message || 'Error al actualizar el estado de la orden');
@@ -622,13 +629,16 @@ export const labOrderService = {
     }
   },
 
-  /** Órdenes con fecha de toma de muestra = date (o order_date si sample_date es null, para compatibilidad). */
+  /** Órdenes con fecha de toma de muestra = date (o order_date si sample_date es null, para compatibilidad). sample_date puede ser date o timestamptz. */
   async getOrdersForSampleDate(sampleDate: string): Promise<LabExamOrder[]> {
     try {
+      const dayStart = sampleDate.includes('T') ? sampleDate : `${sampleDate}T00:00:00`;
+      const dayEnd = sampleDate.includes('T') ? sampleDate : `${sampleDate}T23:59:59.999`;
       const { data: bySample, error: e1 } = await supabase
         .from('lab_exam_orders')
         .select('*')
-        .eq('sample_date', sampleDate)
+        .gte('sample_date', dayStart)
+        .lte('sample_date', dayEnd)
         .order('created_at', { ascending: false });
       if (e1) throw e1;
       const { data: byOrderDate, error: e2 } = await supabase
@@ -666,14 +676,16 @@ export const labOrderService = {
     }
   },
 
-  /** Órdenes con fecha de toma de muestra (o order_date si sample_date es null) en el rango [fromDate, toDate]. */
+  /** Órdenes con fecha de toma de muestra (o order_date si sample_date es null) en el rango [fromDate, toDate]. sample_date puede ser date o timestamptz. */
   async getOrdersForSampleDateRange(fromDate: string, toDate: string): Promise<LabExamOrder[]> {
     try {
+      const from = fromDate.includes('T') ? fromDate : `${fromDate}T00:00:00`;
+      const to = toDate.includes('T') ? toDate : `${toDate}T23:59:59.999`;
       const { data: bySample, error: e1 } = await supabase
         .from('lab_exam_orders')
         .select('*')
-        .gte('sample_date', fromDate)
-        .lte('sample_date', toDate)
+        .gte('sample_date', from)
+        .lte('sample_date', to)
         .order('sample_date', { ascending: true })
         .order('created_at', { ascending: false });
       if (e1) throw e1;

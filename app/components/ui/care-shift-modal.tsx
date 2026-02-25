@@ -12,7 +12,8 @@ import {
   DialogTitle,
 } from "./dialog";
 import { Combobox } from "./combobox";
-import { Loader2 } from "lucide-react";
+import { Loader2, UserPlus } from "lucide-react";
+import { toast } from "sonner";
 import type { CareShiftWithPatient, CreateCareShiftData } from "~/services/shiftCareService";
 import { patientsService } from "~/services/patientsService";
 import { homeCareService, type HomeCarePlan } from "~/services/homeCareService";
@@ -114,10 +115,32 @@ export function CareShiftModal({
   const [districtOptions, setDistrictOptions] = useState<{ value: string; label: string }[]>([]);
   const [planOptions, setPlanOptions] = useState<{ value: string; label: string; monto: number }[]>([]);
   const [nurseOptions, setNurseOptions] = useState<{ value: string; label: string }[]>([]);
+  const [addPatientModalOpen, setAddPatientModalOpen] = useState(false);
+  const [creatingPatient, setCreatingPatient] = useState(false);
+  const [turnoMode, setTurnoMode] = useState<"existente" | "personalizado">("existente");
+  const [turnoPersonalizado, setTurnoPersonalizado] = useState("");
+  const [newPatientData, setNewPatientData] = useState({
+    name: "",
+    dni: "",
+    email: "",
+    phone: "",
+    address: "",
+    district: "",
+  });
 
   useEffect(() => {
     setForm(shiftToForm(shift));
+    setTurnoMode("existente");
+    setTurnoPersonalizado("");
   }, [shift, open]);
+
+  useEffect(() => {
+    if (!open || !form.turno) return;
+    if (planOptions.length > 0 && !planOptions.some((o) => o.value === form.turno)) {
+      setTurnoMode("personalizado");
+      setTurnoPersonalizado(form.turno);
+    }
+  }, [open, form.turno, planOptions]);
 
   useEffect(() => {
     if (open) {
@@ -152,19 +175,45 @@ export function CareShiftModal({
     }
   }, [open]);
 
+  const handleCreateNewPatient = async () => {
+    const name = newPatientData.name.trim();
+    if (!name) return;
+    setCreatingPatient(true);
+    try {
+      const created = await patientsService.createPatient({
+        name,
+        dni: newPatientData.dni.trim() || undefined,
+        email: newPatientData.email.trim() || undefined,
+        phone: newPatientData.phone.trim() || undefined,
+        address: newPatientData.address.trim() || undefined,
+        district: newPatientData.district.trim() || undefined,
+      });
+      setPatientOptions((prev) => [{ value: created.id, label: created.name }, ...prev]);
+      setForm((f) => ({ ...f, patient_id: created.id }));
+      setAddPatientModalOpen(false);
+      setNewPatientData({ name: "", dni: "", email: "", phone: "", address: "", district: "" });
+      toast.success("Paciente creado y seleccionado.");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Error al crear el paciente.");
+    } finally {
+      setCreatingPatient(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.fecha.trim()) return;
     const monto = parseFloat(form.monto_a_pagar) || 0;
     setLoading(true);
     try {
+      const turnoValue = turnoMode === "personalizado" ? turnoPersonalizado.trim() : form.turno.trim();
       const payload: CreateCareShiftData = {
         fecha: form.fecha.slice(0, 10),
         hora_inicio: form.hora_inicio.trim() || null,
         patient_id: form.patient_id || null,
         familiar_responsable: form.familiar_responsable.trim() || null,
         distrito: form.distrito.trim() || null,
-        turno: form.turno.trim() || null,
+        turno: turnoValue || null,
         monto_a_pagar: monto,
         forma_de_pago: form.forma_de_pago.trim() || null,
         numero_operacion: form.numero_operacion.trim() || null,
@@ -189,6 +238,7 @@ export function CareShiftModal({
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -222,7 +272,7 @@ export function CareShiftModal({
             </div>
           </div>
 
-          <div>
+          <div className="space-y-2">
             <Label>Paciente</Label>
             <Combobox
               options={patientOptions}
@@ -231,6 +281,19 @@ export function CareShiftModal({
               placeholder="Buscar paciente..."
               emptyOption={{ value: "", label: "Sin asignar" }}
             />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full mt-2"
+              onClick={() => {
+                setNewPatientData({ name: "", dni: "", email: "", phone: "", address: "", district: "" });
+                setAddPatientModalOpen(true);
+              }}
+            >
+              <UserPlus className="w-4 h-4 mr-2" />
+              Agregar paciente
+            </Button>
           </div>
 
           <div>
@@ -256,22 +319,56 @@ export function CareShiftModal({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
+            <div className="space-y-2">
               <Label>Turno (duración)</Label>
-              <Combobox
-                options={planOptions.map((o) => ({ value: o.value, label: o.label }))}
-                value={form.turno}
-                onValueChange={(v) => {
-                  const opt = planOptions.find((o) => o.value === v);
-                  setForm((f) => ({
-                    ...f,
-                    turno: v,
-                    monto_a_pagar: opt ? String(opt.monto) : f.monto_a_pagar,
-                  }));
-                }}
-                placeholder="Seleccionar turno"
-                emptyOption={{ value: "", label: "Seleccionar turno" }}
-              />
+              <div className="flex gap-4 items-center">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="turno-mode"
+                    checked={turnoMode === "existente"}
+                    onChange={() => setTurnoMode("existente")}
+                    className="rounded-full border-input"
+                  />
+                  <span className="text-sm">Turno existente</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="turno-mode"
+                    checked={turnoMode === "personalizado"}
+                    onChange={() => setTurnoMode("personalizado")}
+                    className="rounded-full border-input"
+                  />
+                  <span className="text-sm">Turno personalizado</span>
+                </label>
+              </div>
+              {turnoMode === "existente" ? (
+                <Combobox
+                  options={planOptions.map((o) => ({ value: o.value, label: o.label }))}
+                  value={form.turno}
+                  onValueChange={(v) => {
+                    const opt = planOptions.find((o) => o.value === v);
+                    setForm((f) => ({
+                      ...f,
+                      turno: v,
+                      monto_a_pagar: opt ? String(opt.monto) : f.monto_a_pagar,
+                    }));
+                  }}
+                  placeholder="Seleccionar turno"
+                  emptyOption={{ value: "", label: "Seleccionar turno" }}
+                />
+              ) : (
+                <div className="space-y-1">
+                  <Input
+                    value={turnoPersonalizado}
+                    onChange={(e) => setTurnoPersonalizado(e.target.value)}
+                    placeholder="Ej. Turno especial 2h, Cuidado puntual..."
+                    className="w-full"
+                  />
+                  <p className="text-xs text-muted-foreground">Solo para este registro; no se agrega al catálogo de turnos.</p>
+                </div>
+              )}
             </div>
             <div>
               <Label htmlFor="care-shift-monto">Monto a pagar (S/.) *</Label>
@@ -371,5 +468,95 @@ export function CareShiftModal({
         </form>
       </DialogContent>
     </Dialog>
+
+    {/* Modal Agregar paciente */}
+    <Dialog open={addPatientModalOpen} onOpenChange={setAddPatientModalOpen}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <UserPlus className="w-5 h-5 text-primary-blue" />
+            Crear nuevo paciente
+          </DialogTitle>
+          <DialogDescription>
+            Si no encuentra al paciente en la lista, créelo aquí. Se seleccionará automáticamente para el turno.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label>Nombre *</Label>
+            <Input
+              value={newPatientData.name}
+              onChange={(e) => setNewPatientData((p) => ({ ...p, name: e.target.value }))}
+              placeholder="Nombre completo"
+            />
+          </div>
+          <div>
+            <Label>Nro. documento</Label>
+            <Input
+              value={newPatientData.dni}
+              onChange={(e) => setNewPatientData((p) => ({ ...p, dni: e.target.value }))}
+              placeholder="Ej. 12345678"
+              maxLength={20}
+            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <Label>Teléfono</Label>
+              <Input
+                value={newPatientData.phone}
+                onChange={(e) => setNewPatientData((p) => ({ ...p, phone: e.target.value }))}
+                placeholder="Teléfono"
+              />
+            </div>
+            <div>
+              <Label>Email</Label>
+              <Input
+                type="email"
+                value={newPatientData.email}
+                onChange={(e) => setNewPatientData((p) => ({ ...p, email: e.target.value }))}
+                placeholder="email@ejemplo.com"
+              />
+            </div>
+          </div>
+          <div>
+            <Label>Distrito</Label>
+            <Combobox
+              options={districtOptions}
+              value={newPatientData.district}
+              onValueChange={(v) => setNewPatientData((p) => ({ ...p, district: v }))}
+              placeholder="Seleccionar distrito"
+              emptyOption={{ value: "", label: "Seleccionar distrito" }}
+            />
+          </div>
+          <div>
+            <Label>Dirección</Label>
+            <Input
+              value={newPatientData.address}
+              onChange={(e) => setNewPatientData((p) => ({ ...p, address: e.target.value }))}
+              placeholder="Dirección"
+            />
+          </div>
+          <div className="flex gap-2 justify-end pt-2">
+            <Button type="button" variant="outline" onClick={() => setAddPatientModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={handleCreateNewPatient}
+              disabled={creatingPatient || !newPatientData.name.trim()}
+              className="bg-primary-blue hover:bg-primary-blue/90"
+            >
+              {creatingPatient ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <UserPlus className="w-4 h-4 mr-2" />
+              )}
+              Crear paciente
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  </>
   );
 }
