@@ -74,6 +74,15 @@ export function AddProcedureModal({ onCreated }: AddProcedureModalProps) {
     })();
   }, [open]);
 
+  useEffect(() => {
+    if (!catalog.length || !form.procedure_catalog_id) return;
+    const item = catalog.find((p) => p.id === form.procedure_catalog_id);
+    const costSoles = item ? Number(item.total_cost_soles ?? 0) : 0;
+    if (Number(form.gastos_material) === costSoles) {
+      setForm((f) => ({ ...f, gastos_material: 0 }));
+    }
+  }, [catalog, form.procedure_catalog_id, form.gastos_material]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);

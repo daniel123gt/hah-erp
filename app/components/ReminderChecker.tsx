@@ -29,6 +29,18 @@ function parseSampleDateTime(sampleDate: string | null | undefined): number | nu
   return new Date(y, m - 1, d, 12, 0, 0).getTime();
 }
 
+/** Formatea sample_date a hora local HH:mm para mostrar en notificaciones (sin afectar calendario). */
+function formatSampleTimeLocal(sampleDate: string | null | undefined): string {
+  if (!sampleDate) return "programado";
+  const s = String(sampleDate).trim();
+  if (!s.includes("T")) return "programado";
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return "programado";
+  const h = d.getHours();
+  const m = d.getMinutes();
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
 export function ReminderChecker() {
   const { addNotification, markReminderSent, wasReminderSent } = useNotifications();
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -69,7 +81,7 @@ export function ReminderChecker() {
         const key = `lab-${order.id}-${sampleStr}`;
         if (wasReminderSent(key)) return;
         if (!markReminderSent(key)) return;
-        const timePart = String(sampleStr).includes("T") ? String(sampleStr).slice(11, 16) : "programado";
+        const timePart = formatSampleTimeLocal(sampleStr);
         addNotification(
           "recordatorio_laboratorio",
           "Recordatorio: toma de muestra en 1 hora",

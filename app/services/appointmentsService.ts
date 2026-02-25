@@ -28,6 +28,14 @@ export interface Appointment {
   patient_id?: string;
   procedure_catalog_id?: string;
   procedure_name?: string;
+  /** Ingreso (S/.) a guardar en procedure_records al completar (solo procedimientos). */
+  procedure_ingreso?: number | null;
+  /** Ingreso (S/.) a guardar en medical_appointment_records al completar (solo medicina). */
+  appointment_ingreso?: number | null;
+  /** Método de pago a guardar en el registro al completar. */
+  payment_method?: string | null;
+  /** Número de operación/referencia a guardar en el registro al completar. */
+  numero_operacion?: string | null;
 }
 
 interface AppointmentRow {
@@ -49,6 +57,10 @@ interface AppointmentRow {
   district?: string | null;
   procedure_catalog_id: string | null;
   procedure_name: string | null;
+  procedure_ingreso?: number | null;
+  appointment_ingreso?: number | null;
+  payment_method?: string | null;
+  numero_operacion?: string | null;
 }
 
 function rowToAppointment(row: AppointmentRow): Appointment {
@@ -70,6 +82,10 @@ function rowToAppointment(row: AppointmentRow): Appointment {
     patient_id: row.patient_id ?? undefined,
     procedure_catalog_id: row.procedure_catalog_id ?? undefined,
     procedure_name: row.procedure_name ?? undefined,
+    procedure_ingreso: row.procedure_ingreso != null ? Number(row.procedure_ingreso) : undefined,
+    appointment_ingreso: row.appointment_ingreso != null ? Number(row.appointment_ingreso) : undefined,
+    payment_method: row.payment_method ?? undefined,
+    numero_operacion: row.numero_operacion ?? undefined,
   };
 }
 
@@ -90,6 +106,10 @@ export interface CreateAppointmentData {
   location: string;
   procedure_catalog_id?: string | null;
   procedure_name?: string | null;
+  procedure_ingreso?: number | null;
+  appointment_ingreso?: number | null;
+  payment_method?: string | null;
+  numero_operacion?: string | null;
 }
 
 export interface UpdateAppointmentData extends Partial<CreateAppointmentData> {
@@ -146,6 +166,10 @@ export const appointmentsService = {
         location: payload.location,
         procedure_catalog_id: payload.procedure_catalog_id ?? null,
         procedure_name: payload.procedure_name ?? null,
+        procedure_ingreso: payload.procedure_ingreso ?? null,
+        appointment_ingreso: payload.appointment_ingreso ?? null,
+        payment_method: payload.payment_method ?? null,
+        numero_operacion: payload.numero_operacion ?? null,
       })
       .select()
       .single();
@@ -171,6 +195,10 @@ export const appointmentsService = {
     if (rest.location !== undefined) updatePayload.location = rest.location;
     if (rest.procedure_catalog_id !== undefined) updatePayload.procedure_catalog_id = rest.procedure_catalog_id;
     if (rest.procedure_name !== undefined) updatePayload.procedure_name = rest.procedure_name;
+    if (rest.procedure_ingreso !== undefined) updatePayload.procedure_ingreso = rest.procedure_ingreso;
+    if (rest.appointment_ingreso !== undefined) updatePayload.appointment_ingreso = rest.appointment_ingreso;
+    if (rest.payment_method !== undefined) updatePayload.payment_method = rest.payment_method;
+    if (rest.numero_operacion !== undefined) updatePayload.numero_operacion = rest.numero_operacion;
 
     const { data, error } = await supabase
       .from("appointments")
