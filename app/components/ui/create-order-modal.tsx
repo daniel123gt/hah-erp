@@ -27,6 +27,7 @@ import { useAuthStore, getAppRole } from "~/store/authStore";
 import labOrderService from "~/services/labOrderService";
 import { procedureService } from "~/services/procedureService";
 import { getTodayLocal } from "~/lib/dateUtils";
+import { useNotifications } from "~/contexts/NotificationsContext";
 import {
   ensurePatientPortalUser,
   generatePortalPassword,
@@ -53,6 +54,7 @@ interface CreateOrderModalProps {
 export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderModalProps) {
   const user = useAuthStore((s) => s.user);
   const isGestor = getAppRole(user) === "gestor";
+  const { addNotification } = useNotifications();
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
@@ -266,6 +268,14 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
       });
 
       toast.success("Orden de exámenes creada exitosamente");
+
+      const patientName = patientToUse?.name ?? "Paciente";
+      const sampleDisplay = sampleDateTime?.includes("T") ? sampleDateTime.slice(0, 16).replace("T", " ") : sampleDate;
+      addNotification(
+        "laboratorio_programado",
+        "Laboratorio programado",
+        `${patientName} — ${orderCreated.items?.length ?? selectedExams.length} exámenes · ${sampleDisplay}`
+      );
 
       // Crear cuenta de portal solo si el paciente tiene Nro. de documento
       if (dniFinal) {

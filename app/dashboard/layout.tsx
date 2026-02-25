@@ -1,6 +1,9 @@
 import { SidebarProvider } from "~/components/ui/sidebar";
 import { AppSidebar } from "~/components/ui/app-sidebar";
 import { RightSidebar } from "~/components/ui/right-sidebar";
+import { NotificationsProvider } from "~/contexts/NotificationsContext";
+import { NotificationBell } from "~/components/NotificationBell";
+import { ReminderChecker } from "~/components/ReminderChecker";
 import { useAuthStore, getAppRole } from "~/store/authStore";
 import { Navigate, Outlet, useLocation } from "react-router";
 import Loading from "~/components/root/Loading/Loading";
@@ -36,17 +39,23 @@ export default function Layout() {
   }
 
   return (
-    <SidebarProvider style={{
-        "--sidebar-width": "17rem",
-        "--sidebar-background": "#1F3666"
-    } as React.CSSProperties }>
-      <AppSidebar />
-      <main className="py-12 px-8 text-primary-blue flex-1 max-w-full overflow-hidden">
-        <div className="max-w-7xl mx-auto">
-          <Outlet />
-        </div>
-      </main>
-      <RightSidebar />
-    </SidebarProvider>
+    <NotificationsProvider>
+      <ReminderChecker />
+      <SidebarProvider style={{
+          "--sidebar-width": "17rem",
+          "--sidebar-background": "#1F3666"
+      } as React.CSSProperties }>
+        <AppSidebar />
+        <main className="py-12 px-8 text-primary-blue flex-1 max-w-full overflow-hidden">
+          <div className="max-w-7xl mx-auto flex flex-col gap-4">
+            <div className="flex justify-end">
+              <NotificationBell />
+            </div>
+            <Outlet />
+          </div>
+        </main>
+        <RightSidebar />
+      </SidebarProvider>
+    </NotificationsProvider>
   );
 }
