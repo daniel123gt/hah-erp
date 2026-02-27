@@ -36,6 +36,7 @@ import {
   Mail,
   MapPin,
   FileText,
+  DollarSign,
   AlertCircle,
   Loader2,
 } from "lucide-react";
@@ -406,133 +407,141 @@ export function AddAppointmentModal({
             </CardContent>
           </Card>
 
-          {/* Información de la Cita */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Calendar className="w-5 h-5 text-primary-blue" />
-                Detalles de la Cita
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Columna 1: Estado, Fecha, Hora, Duración */}
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Estado</label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => handleInputChange("status", e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
-                  >
-                    <option value="scheduled">Programada</option>
-                    <option value="confirmed">Confirmada</option>
-                    <option value="completed">Completada</option>
-                    <option value="cancelled">Cancelada</option>
-                    <option value="no-show">No Asistió</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Fecha *</label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <Input
-                      type="date"
-                      value={formData.date}
-                      onChange={(e) => handleInputChange("date", e.target.value)}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Hora *</label>
-                  <div className="relative">
-                    <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <Input
-                      type="time"
-                      value={formData.time}
-                      onChange={(e) => handleInputChange("time", e.target.value)}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Duración (minutos)</label>
-                  <Input
-                    type="number"
-                    value={formData.duration}
-                    onChange={(e) => handleInputChange("duration", parseInt(e.target.value) || 30)}
-                    min="15"
-                    max="180"
-                    step="15"
-                  />
-                </div>
-              </div>
-              {/* Columna 2: Dirección, Distrito */}
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Dirección (domicilio de la cita) *</label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
-                    <Input
-                      value={formData.location}
-                      onChange={(e) => handleInputChange("location", e.target.value)}
-                      placeholder="Se toma del paciente; si no tiene, ingrese y se guardará en su ficha"
-                      className="pl-10"
-                      required
-                    />
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">Si no tiene, se guardarán al crear la cita.</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Distrito</label>
-                  <Combobox
-                    options={districts.map((d) => ({ value: d.name, label: d.zone ? `${d.name} (${d.zone})` : d.name }))}
-                    value={formData.district || "__none__"}
-                    onValueChange={(value) => handleInputChange("district", value === "__none__" ? "" : value)}
-                    placeholder="Seleccionar distrito"
-                    emptyOption={{ value: "__none__", label: "Sin especificar" }}
-                  />
-                </div>
-              </div>
-              {/* Columna 3: Procedimiento/Tipo, Ingreso, Método de pago, Nº referencia */}
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {variant === "procedimientos" ? "Procedimiento *" : "Tipo de Cita *"}
-                  </label>
-                  {variant === "procedimientos" ? (
-                    <Combobox
-                      options={procedureCatalog.map((p) => ({ value: p.id, label: `${p.name} (S/ ${p.base_price_soles.toFixed(2)})` }))}
-                      value={formData.procedureCatalogId}
-                      onValueChange={(value) => {
-                        const item = procedureCatalog.find((p) => p.id === value);
-                        const basePrice = item ? item.base_price_soles : 0;
-                        setFormData((prev) => ({
-                          ...prev,
-                          procedureCatalogId: value,
-                          procedureName: item?.name ?? "",
-                          procedureIngreso: prev.procedureIngreso === "" || prev.procedureIngreso === undefined ? basePrice : prev.procedureIngreso,
-                        }));
-                      }}
-                      placeholder={loadingCatalog ? "Cargando procedimientos..." : "Seleccionar procedimiento"}
-                      disabled={loadingCatalog}
-                    />
-                  ) : (
+          {/* Detalles de la Cita (2/3) + Información de pago (1/3) */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Calendar className="w-5 h-5 text-primary-blue" />
+                  Detalles de la Cita
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Estado</label>
                     <select
-                      value={formData.type}
-                      onChange={(e) => handleInputChange("type", e.target.value)}
+                      value={formData.status}
+                      onChange={(e) => handleInputChange("status", e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
-                      required
                     >
-                      <option value="consulta">Consulta</option>
-                      <option value="examen">Examen</option>
-                      <option value="emergencia">Emergencia</option>
-                      <option value="seguimiento">Seguimiento</option>
+                      <option value="scheduled">Programada</option>
+                      <option value="confirmed">Confirmada</option>
+                      <option value="completed">Completada</option>
+                      <option value="cancelled">Cancelada</option>
+                      <option value="no-show">No Asistió</option>
                     </select>
-                  )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Fecha *</label>
+                    <div className="relative">
+                      <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Input
+                        type="date"
+                        value={formData.date}
+                        onChange={(e) => handleInputChange("date", e.target.value)}
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Hora *</label>
+                    <div className="relative">
+                      <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Input
+                        type="time"
+                        value={formData.time}
+                        onChange={(e) => handleInputChange("time", e.target.value)}
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Duración (minutos)</label>
+                    <Input
+                      type="number"
+                      value={formData.duration}
+                      onChange={(e) => handleInputChange("duration", parseInt(e.target.value) || 30)}
+                      min="15"
+                      max="180"
+                      step="15"
+                    />
+                  </div>
                 </div>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Dirección (domicilio de la cita) *</label>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+                      <Input
+                        value={formData.location}
+                        onChange={(e) => handleInputChange("location", e.target.value)}
+                        placeholder="Se toma del paciente; si no tiene, ingrese y se guardará en su ficha"
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Si no tiene, se guardarán al crear la cita.</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Distrito</label>
+                    <Combobox
+                      options={districts.map((d) => ({ value: d.name, label: d.zone ? `${d.name} (${d.zone})` : d.name }))}
+                      value={formData.district || "__none__"}
+                      onValueChange={(value) => handleInputChange("district", value === "__none__" ? "" : value)}
+                      placeholder="Seleccionar distrito"
+                      emptyOption={{ value: "__none__", label: "Sin especificar" }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      {variant === "procedimientos" ? "Procedimiento *" : "Tipo de Cita *"}
+                    </label>
+                    {variant === "procedimientos" ? (
+                      <Combobox
+                        options={procedureCatalog.map((p) => ({ value: p.id, label: `${p.name} (S/ ${p.base_price_soles.toFixed(2)})` }))}
+                        value={formData.procedureCatalogId}
+                        onValueChange={(value) => {
+                          const item = procedureCatalog.find((p) => p.id === value);
+                          const basePrice = item ? item.base_price_soles : 0;
+                          setFormData((prev) => ({
+                            ...prev,
+                            procedureCatalogId: value,
+                            procedureName: item?.name ?? "",
+                            procedureIngreso: prev.procedureIngreso === "" || prev.procedureIngreso === undefined ? basePrice : prev.procedureIngreso,
+                          }));
+                        }}
+                        placeholder={loadingCatalog ? "Cargando procedimientos..." : "Seleccionar procedimiento"}
+                        disabled={loadingCatalog}
+                      />
+                    ) : (
+                      <select
+                        value={formData.type}
+                        onChange={(e) => handleInputChange("type", e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
+                        required
+                      >
+                        <option value="consulta">Consulta</option>
+                        <option value="examen">Examen</option>
+                        <option value="emergencia">Emergencia</option>
+                        <option value="seguimiento">Seguimiento</option>
+                      </select>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="md:col-span-1">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <DollarSign className="w-5 h-5 text-primary-blue" />
+                  Información de pago
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Ingreso a registrar (S/.) {formData.status === "completed" ? "" : "(editable al completar)"}
@@ -585,9 +594,9 @@ export function AddAppointmentModal({
                     </div>
                   </>
                 )}
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Información del profesional (Médico o Enfermera) */}
           <Card>
