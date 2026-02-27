@@ -160,9 +160,12 @@ export default function CuidadosEnCasaDetalle() {
     );
   }
 
-  const planLabel = contract.plan_nombre
-    ? `${contract.plan_nombre} ${contract.plan_monto_mensual ? `S/. ${Number(contract.plan_monto_mensual).toLocaleString("es-PE")}` : ""}`
-    : `S/. ${Number(contract.plan_monto_mensual).toLocaleString("es-PE")}`;
+  const montoOriginal = Number(contract.plan_monto_mensual) || 0;
+  const montoFinalVal = contract.plan_monto_mensual_final != null
+    ? Number(contract.plan_monto_mensual_final)
+    : montoOriginal;
+  const descuentoVal = Number(contract.descuento) || 0;
+  const aplicaDescuento = descuentoVal > 0 && montoFinalVal < montoOriginal;
 
   return (
     <div className="p-6 space-y-6">
@@ -206,7 +209,20 @@ export default function CuidadosEnCasaDetalle() {
             </div>
             <div>
               <span className="text-gray-500 block">PLAN MENSUAL</span>
-              <span className="font-medium">{planLabel}</span>
+              <div className="font-medium space-y-0.5">
+                {contract.plan_nombre && <span className="block">{contract.plan_nombre}</span>}
+                {aplicaDescuento ? (
+                  <span className="inline-flex items-baseline gap-2 flex-wrap">
+                    <span className="line-through text-gray-500">
+                      S/. {montoOriginal.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                    </span>
+                    <span>S/. {montoFinalVal.toLocaleString("es-PE", { minimumFractionDigits: 2 })}</span>
+                    <span className="text-gray-500 text-xs font-normal">(descuento S/. {descuentoVal.toLocaleString("es-PE", { minimumFractionDigits: 2 })})</span>
+                  </span>
+                ) : (
+                  <span>S/. {montoOriginal.toLocaleString("es-PE", { minimumFractionDigits: 2 })}</span>
+                )}
+              </div>
             </div>
             <div>
               <span className="text-gray-500 block">ESTADO</span>

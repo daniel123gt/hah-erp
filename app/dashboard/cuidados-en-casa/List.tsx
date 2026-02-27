@@ -194,13 +194,21 @@ export default function CuidadosEnCasaList() {
                     <TableHead>Familiar encargado</TableHead>
                     <TableHead>Fecha inicio</TableHead>
                     <TableHead>Plan</TableHead>
+                    <TableHead className="whitespace-nowrap">Descuento</TableHead>
                     <TableHead>Monto mensual</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead className="text-right whitespace-nowrap sticky right-0 bg-muted shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10 min-w-[100px]">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((contract) => (
+                  {filtered.map((contract) => {
+                    const descuento = Number(contract.descuento) || 0;
+                    const montoOriginal = Number(contract.plan_monto_mensual) || 0;
+                    const montoFinal = contract.plan_monto_mensual_final != null
+                      ? Number(contract.plan_monto_mensual_final)
+                      : montoOriginal;
+                    const aplicaDescuento = descuento > 0 && montoFinal < montoOriginal;
+                    return (
                     <TableRow key={contract.id}>
                       <TableCell className="font-medium">
                         {getPatientName(contract)}
@@ -213,7 +221,21 @@ export default function CuidadosEnCasaList() {
                       </TableCell>
                       <TableCell>{contract.plan_nombre ?? "-"}</TableCell>
                       <TableCell>
-                        S/ {Number(contract.plan_monto_mensual).toLocaleString("es-PE")}
+                        {aplicaDescuento ? `S/ ${descuento.toLocaleString("es-PE")}` : "—"}
+                      </TableCell>
+                      <TableCell>
+                        {aplicaDescuento ? (
+                          <span className="inline-flex items-baseline gap-2 flex-wrap">
+                            <span className="line-through text-gray-500">
+                              S/ {montoOriginal.toLocaleString("es-PE")}
+                            </span>
+                            <span className="font-medium">
+                              S/ {montoFinal.toLocaleString("es-PE")}
+                            </span>
+                          </span>
+                        ) : (
+                          `S/ ${montoOriginal.toLocaleString("es-PE")}`
+                        )}
                       </TableCell>
                       <TableCell>
                         <span
@@ -235,7 +257,8 @@ export default function CuidadosEnCasaList() {
                         </Button>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  );
+                  })}
                 </TableBody>
               </Table>
             </div>
