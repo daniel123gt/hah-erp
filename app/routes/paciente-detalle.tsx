@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
-import { FileText } from "lucide-react";
+import { FileText, Loader2 } from "lucide-react";
 import patientsService, { type Patient } from "~/services/patientsService";
 import { patientHistoryService, type PatientHistory } from "~/services/patientHistoryService";
 import { nursingHistoryService, type NursingHistory } from "~/services/nursingHistoryService";
@@ -36,6 +36,7 @@ export default function PacienteDetalleRoute() {
   const [medicalPrescriptions, setMedicalPrescriptions] = useState<MedicalPrescription[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadingPdfKey, setLoadingPdfKey] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -579,11 +580,13 @@ export default function PacienteDetalleRoute() {
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                disabled={loadingPdfKey === `rest-${rest.id}`}
                                 onClick={async () => {
+                                  const key = `rest-${rest.id}`;
+                                  if (loadingPdfKey) return;
+                                  setLoadingPdfKey(key);
                                   try {
-                                    // Intentar obtener URL firmada si es necesario
                                     if (rest.document_url?.includes('storage')) {
-                                      // Extraer bucket y path del URL
                                       const urlParts = rest.document_url.split('/');
                                       const bucketIndex = urlParts.indexOf('object') + 2;
                                       if (bucketIndex > 1) {
@@ -599,15 +602,20 @@ export default function PacienteDetalleRoute() {
                                     }
                                   } catch (error) {
                                     console.error('Error al abrir documento:', error);
-                                    // Si falla, intentar abrir directamente
                                     if (rest.document_url) {
                                       window.open(rest.document_url, '_blank');
                                     }
+                                  } finally {
+                                    setLoadingPdfKey(null);
                                   }
                                 }}
                                 className="flex items-center gap-2"
                               >
-                                <FileText className="w-4 h-4" />
+                                {loadingPdfKey === `rest-${rest.id}` ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <FileText className="w-4 h-4" />
+                                )}
                                 Ver PDF
                               </Button>
                             ) : (
@@ -653,11 +661,13 @@ export default function PacienteDetalleRoute() {
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                disabled={loadingPdfKey === `prescription-${prescription.id}`}
                                 onClick={async () => {
+                                  const key = `prescription-${prescription.id}`;
+                                  if (loadingPdfKey) return;
+                                  setLoadingPdfKey(key);
                                   try {
-                                    // Intentar obtener URL firmada si es necesario
                                     if (prescription.document_url?.includes('storage')) {
-                                      // Extraer bucket y path del URL
                                       const urlParts = prescription.document_url.split('/');
                                       const bucketIndex = urlParts.indexOf('object') + 2;
                                       if (bucketIndex > 1) {
@@ -673,15 +683,20 @@ export default function PacienteDetalleRoute() {
                                     }
                                   } catch (error) {
                                     console.error('Error al abrir documento:', error);
-                                    // Si falla, intentar abrir directamente
                                     if (prescription.document_url) {
                                       window.open(prescription.document_url, '_blank');
                                     }
+                                  } finally {
+                                    setLoadingPdfKey(null);
                                   }
                                 }}
                                 className="flex items-center gap-2"
                               >
-                                <FileText className="w-4 h-4" />
+                                {loadingPdfKey === `prescription-${prescription.id}` ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <FileText className="w-4 h-4" />
+                                )}
                                 Ver PDF
                               </Button>
                             ) : (

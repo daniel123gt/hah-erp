@@ -1,4 +1,5 @@
 import supabase from "~/utils/supabase";
+import { normalizeSearchText } from "~/lib/utils";
 import { procedureService } from "~/services/procedureService";
 
 const TOMA_DE_MUESTRA_NAME = "toma de muestra";
@@ -207,9 +208,11 @@ export const labOrderService = {
     page?: number;
     limit?: number;
     status?: string;
+    search?: string;
   } = {}): Promise<{ data: LabExamOrder[]; total: number }> {
     try {
-      const { page = 1, limit = 50, status } = options;
+      const { page = 1, limit = 50, status, search } = options;
+      const searchTrim = search?.trim() ?? '';
       const from = (page - 1) * limit;
       const to = from + limit - 1;
 
@@ -223,6 +226,47 @@ export const labOrderService = {
 
       if (status) {
         query = query.eq('status', status);
+      }
+
+      if (searchTrim) {
+        // Búsqueda insensible a acentos vía RPC (unaccent en PostgreSQL).
+        const normalized = normalizeSearchText(searchTrim);
+        const { data: ordersRpc, error: rpcError } = await supabase.rpc('search_lab_exam_orders', {
+          p_search: normalized,
+          p_status: status || null,
+          p_limit: limit,
+          p_offset: from,
+        });
+        if (rpcError) throw rpcError;
+        const { data: totalRpc, error: countError } = await supabase.rpc('search_lab_exam_orders_count', {
+          p_search: normalized,
+          p_status: status || null,
+        });
+        if (countError) throw countError;
+        const orders = ordersRpc ?? [];
+        const totalMerged = Number(totalRpc ?? 0);
+        const ordersWithItems = await Promise.all(
+          orders.map(async (order: any) => {
+            const { data: items } = await supabase
+              .from('lab_exam_order_items')
+              .select('*')
+              .eq('order_id', order.id);
+            return {
+              ...order,
+              items: (items || []).map((item: any) => ({
+                exam_id: item.exam_id,
+                exam_code: item.exam_code,
+                exam_name: item.exam_name,
+                price: item.price,
+                status: item.status,
+                result_pdf_url: item.result_pdf_url || undefined,
+                result_date: item.result_date || undefined,
+                result_notes: item.result_notes || undefined,
+              })),
+            } as LabExamOrder;
+          })
+        );
+        return { data: ordersWithItems, total: totalMerged };
       }
 
       const { data: orders, error, count } = await query;

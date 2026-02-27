@@ -23,7 +23,8 @@ import {
   Plus,
   X,
   Clock,
-  GraduationCap
+  GraduationCap,
+  Loader2
 } from "lucide-react";
 import { staffService } from "~/services/staffService";
 import { OFFICIAL_DEPARTMENTS, OFFICIAL_POSITIONS } from "~/dashboard/personal/categories";
@@ -377,7 +378,14 @@ export function AddStaffModal({ onStaffAdded }: AddStaffModalProps) {
               className="bg-primary-blue hover:bg-primary-blue/90"
               disabled={isLoading}
             >
-              {isLoading ? "Agregando..." : "Agregar Empleado"}
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Agregando...
+                </>
+              ) : (
+                "Agregar Empleado"
+              )}
             </Button>
           </div>
         </form>

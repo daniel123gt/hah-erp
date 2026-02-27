@@ -89,6 +89,7 @@ export default function LaboratorioReportes() {
   const [tomaMuestraProcedure, setTomaMuestraProcedure] = useState<{ base_price_soles: number; total_cost_soles: number } | null>(null);
   type ChartTabId = 'distribucion' | 'evolucion' | 'examenes' | 'ordenes';
   const [chartTab, setChartTab] = useState<ChartTabId>('distribucion');
+  const [exportingCSV, setExportingCSV] = useState(false);
 
   /** Reporte de BD filtrado por estado (Resumen y Órdenes detalladas usan esto) */
   const filteredReport = useMemo(() => {
@@ -237,9 +238,12 @@ export default function LaboratorioReportes() {
   }, [reportType, startDate, endDate, statusFilter]);
 
   const handleExportCSV = () => {
-    let csvContent = '';
-    
-    if (reportType === 'summary') {
+    if (exportingCSV) return;
+    setExportingCSV(true);
+    try {
+      let csvContent = '';
+
+      if (reportType === 'summary') {
       if (filteredReport?.rows?.length) {
         csvContent = 'ID, Fecha, Médico, Estado, Exámenes, Total (S/.), Costo (S/.), Utilidad (S/.)\n';
         filteredReport.rows.forEach(row => {
@@ -272,8 +276,12 @@ export default function LaboratorioReportes() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
+    URL.revokeObjectURL(url);
+
     toast.success('Reporte exportado exitosamente');
+    } finally {
+      setExportingCSV(false);
+    }
   };
 
   return (
@@ -457,10 +465,14 @@ export default function LaboratorioReportes() {
         <div className="flex justify-end">
           <Button
             onClick={handleExportCSV}
-            disabled={isLoading || (reportType === 'summary' ? (filteredReport?.rows?.length ?? orders.length) === 0 : examStats.length === 0)}
+            disabled={exportingCSV || isLoading || (reportType === 'summary' ? (filteredReport?.rows?.length ?? orders.length) === 0 : examStats.length === 0)}
           >
-            <Download className="w-4 h-4 mr-2" />
-            Exportar CSV
+            {exportingCSV ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4 mr-2" />
+            )}
+            {exportingCSV ? 'Exportando...' : 'Exportar CSV'}
           </Button>
         </div>
       )}

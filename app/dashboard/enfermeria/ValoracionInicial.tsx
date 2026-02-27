@@ -6,8 +6,9 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Search, UserPlus } from "lucide-react";
+import { ArrowLeft, Save, Search, UserPlus, Loader2 } from "lucide-react";
 import { Combobox } from "~/components/ui/combobox";
+import { CreatePatientSubmodal } from "~/components/ui/create-patient-submodal";
 import patientsService, { type Patient } from "~/services/patientsService";
 import nursingInitialAssessmentService from "~/services/nursingInitialAssessmentService";
 import { staffService } from "~/services/staffService";
@@ -24,7 +25,7 @@ export default function ValoracionInicial() {
   const [searchResults, setSearchResults] = useState<Patient[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [showNewPatientForm, setShowNewPatientForm] = useState(false);
+  const [addPatientModalOpen, setAddPatientModalOpen] = useState(false);
 
   // Datos del formulario de valoración (según documento)
   const [formData, setFormData] = useState({
@@ -65,14 +66,6 @@ export default function ValoracionInicial() {
     // Acciones de enfermería
     nursing_actions: "",
     pending_actions: "",
-  });
-
-  // Datos para nuevo paciente
-  const [newPatientData, setNewPatientData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    address: "",
   });
 
   useEffect(() => {
@@ -136,34 +129,6 @@ export default function ValoracionInicial() {
     setPatient(selectedPatient);
     setSearchResults([]);
     setSearchTerm("");
-    setShowNewPatientForm(false);
-  };
-
-  const handleCreateNewPatient = async () => {
-    if (!newPatientData.name.trim()) {
-      toast.error("El nombre es requerido");
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      const newPatient = await patientsService.createPatient({
-        name: newPatientData.name,
-        email: newPatientData.email || undefined,
-        phone: newPatientData.phone || undefined,
-        address: newPatientData.address || undefined,
-      });
-      
-      setPatient(newPatient);
-      setShowNewPatientForm(false);
-      setNewPatientData({ name: "", email: "", phone: "", address: "" });
-      toast.success("Paciente creado exitosamente");
-    } catch (error) {
-      console.error("Error al crear paciente:", error);
-      toast.error("Error al crear el paciente");
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -250,63 +215,25 @@ export default function ValoracionInicial() {
                   className="flex-1"
                 />
                 <Button onClick={handleSearch} disabled={isSearching}>
-                  <Search className="w-4 h-4 mr-2" />
+                  {isSearching ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
                   Buscar
                 </Button>
-                <Button variant="outline" onClick={() => setShowNewPatientForm(!showNewPatientForm)}>
+                <Button variant="outline" onClick={() => setAddPatientModalOpen(true)}>
                   <UserPlus className="w-4 h-4 mr-2" />
-                  Nuevo Paciente
+                  Agregar paciente
                 </Button>
               </div>
 
-              {/* Formulario de Nuevo Paciente */}
-              {showNewPatientForm && (
-                <Card className="bg-blue-50 border-blue-200">
-                  <CardHeader>
-                    <CardTitle className="text-lg">Crear Nuevo Paciente</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>Nombre *</Label>
-                        <Input
-                          value={newPatientData.name}
-                          onChange={(e) => setNewPatientData({ ...newPatientData, name: e.target.value })}
-                          placeholder="Nombre completo"
-                        />
-                      </div>
-                      <div>
-                        <Label>Email</Label>
-                        <Input
-                          type="email"
-                          value={newPatientData.email}
-                          onChange={(e) => setNewPatientData({ ...newPatientData, email: e.target.value })}
-                          placeholder="email@ejemplo.com"
-                        />
-                      </div>
-                      <div>
-                        <Label>Teléfono</Label>
-                        <Input
-                          value={newPatientData.phone}
-                          onChange={(e) => setNewPatientData({ ...newPatientData, phone: e.target.value })}
-                          placeholder="Teléfono"
-                        />
-                      </div>
-                      <div>
-                        <Label>Dirección</Label>
-                        <Input
-                          value={newPatientData.address}
-                          onChange={(e) => setNewPatientData({ ...newPatientData, address: e.target.value })}
-                          placeholder="Dirección"
-                        />
-                      </div>
-                    </div>
-                    <Button onClick={handleCreateNewPatient} disabled={isLoading}>
-                      Crear Paciente
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
+              <CreatePatientSubmodal
+                open={addPatientModalOpen}
+                onOpenChange={setAddPatientModalOpen}
+                onCreated={(newPatient) => {
+                  setPatient(newPatient);
+                  setSearchResults([]);
+                  setSearchTerm("");
+                }}
+                description="Se seleccionará automáticamente para la valoración inicial."
+              />
 
               {/* Resultados de búsqueda */}
               {searchResults.length > 0 && (
@@ -702,7 +629,7 @@ export default function ValoracionInicial() {
               Cancelar
             </Button>
             <Button type="submit" disabled={isLoading}>
-              <Save className="w-4 h-4 mr-2" />
+              {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
               {isLoading ? "Guardando..." : "Guardar Valoración"}
             </Button>
           </div>

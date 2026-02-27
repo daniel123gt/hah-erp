@@ -30,7 +30,8 @@ import {
   AlertTriangle,
   Edit,
   Plus,
-  X
+  X,
+  Loader2
 } from "lucide-react";
 import { patientsService } from "~/services/patientsService";
 import { toast } from "sonner";
@@ -65,7 +66,7 @@ export function EditPatientModal({ patient, onPatientUpdated }: EditPatientModal
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    name: patient.name,
+    name: (patient.name || "").toUpperCase(),
     dni: patient.dni || "",
     email: patient.email,
     phone: patient.phone,
@@ -207,7 +208,7 @@ export function EditPatientModal({ patient, onPatientUpdated }: EditPatientModal
     if (!newOpen) {
       // Reset form when closing
       setFormData({
-        name: patient.name,
+        name: (patient.name || "").toUpperCase(),
         dni: patient.dni || "",
         email: patient.email,
         phone: patient.phone,
@@ -262,8 +263,8 @@ export function EditPatientModal({ patient, onPatientUpdated }: EditPatientModal
                   <Input
                     id="edit-name"
                     value={formData.name}
-                    onChange={(e) => handleInputChange("name", e.target.value)}
-                    placeholder="Ej: María González"
+                    onChange={(e) => handleInputChange("name", e.target.value.toUpperCase())}
+                    placeholder="Ej: MARÍA GONZÁLEZ"
                     required
                   />
                 </div>
@@ -528,7 +529,14 @@ export function EditPatientModal({ patient, onPatientUpdated }: EditPatientModal
               className="bg-primary-blue hover:bg-primary-blue/90"
               disabled={isLoading}
             >
-              {isLoading ? "Guardando..." : "Guardar Cambios"}
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                "Guardar Cambios"
+              )}
             </Button>
           </div>
         </form>

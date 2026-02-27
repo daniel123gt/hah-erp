@@ -24,19 +24,25 @@ export default function OrdenesLaboratorio() {
   const [patients, setPatients] = useState<Record<string, Patient>>({});
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalOrders, setTotalOrders] = useState(0);
   const limit = 20;
 
-  // Volver a página 1 cuando cambien filtros o búsqueda (evita error si los resultados caben en una sola página)
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchTerm), 400);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
+
+  // Volver a página 1 cuando cambien filtros o búsqueda
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, statusFilter]);
+  }, [debouncedSearch, statusFilter]);
 
   useEffect(() => {
     loadOrders();
-  }, [currentPage, statusFilter]);
+  }, [currentPage, statusFilter, debouncedSearch]);
 
   const loadOrders = async () => {
     try {
@@ -45,6 +51,7 @@ export default function OrdenesLaboratorio() {
         page: currentPage,
         limit,
         status: statusFilter !== "all" ? statusFilter : undefined,
+        search: debouncedSearch.trim() || undefined,
       });
 
       setOrders(result.data);
@@ -104,17 +111,6 @@ export default function OrdenesLaboratorio() {
         return "outline";
     }
   };
-
-  const filteredOrders = orders.filter(order => {
-    if (!searchTerm) return true;
-    const patient = patients[order.patient_id];
-    const search = searchTerm.toLowerCase();
-    return (
-      patient?.name.toLowerCase().includes(search) ||
-      order.id.toLowerCase().includes(search) ||
-      order.physician_name?.toLowerCase().includes(search)
-    );
-  });
 
   const totalPages = Math.ceil(totalOrders / limit);
 
@@ -180,7 +176,7 @@ export default function OrdenesLaboratorio() {
               <Loader2 className="w-8 h-8 animate-spin text-primary-blue" />
               <span className="ml-2 text-gray-600">Cargando órdenes...</span>
             </div>
-          ) : filteredOrders.length === 0 ? (
+          ) : orders.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <Calendar className="w-12 h-12 mx-auto mb-2 text-gray-300" />
               <p>No se encontraron órdenes</p>
@@ -207,7 +203,7 @@ export default function OrdenesLaboratorio() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredOrders.map((order) => {
+                    {orders.map((order) => {
                       const patient = patients[order.patient_id];
                       return (
                         <TableRow key={order.id}>

@@ -8,6 +8,7 @@ import { ArrowLeft, Search, Eye, Plus, Loader2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import nursingInitialAssessmentService, { type NursingInitialAssessment } from "~/services/nursingInitialAssessmentService";
 import patientsService, { type Patient } from "~/services/patientsService";
+import { normalizeSearchText } from "~/lib/utils";
 
 export default function VerValoraciones() {
   const navigate = useNavigate();
@@ -55,13 +56,16 @@ export default function VerValoraciones() {
   };
 
   const filteredAssessments = assessments.filter(assessment => {
-    if (!searchTerm) return true;
+    if (!searchTerm.trim()) return true;
     const patient = patients[assessment.patient_id];
-    const search = searchTerm.toLowerCase();
+    const search = normalizeSearchText(searchTerm);
+    const patientName = normalizeSearchText(patient?.name ?? "");
+    const nurseName = normalizeSearchText(assessment.nurse_name ?? "");
+    const diagnosis = normalizeSearchText(assessment.medical_diagnosis ?? "");
     return (
-      patient?.name.toLowerCase().includes(search) ||
-      assessment.nurse_name.toLowerCase().includes(search) ||
-      assessment.medical_diagnosis?.toLowerCase().includes(search)
+      patientName.includes(search) ||
+      nurseName.includes(search) ||
+      diagnosis.includes(search)
     );
   });
 

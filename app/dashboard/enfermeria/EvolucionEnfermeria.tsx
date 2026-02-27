@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Combobox } from "~/components/ui/combobox";
 import { PainScaleSelector } from "~/components/ui/pain-scale-selector";
 import { toast } from "sonner";
-import { ArrowLeft, Search, Loader2, Plus, Trash2, Save } from "lucide-react";
+import { ArrowLeft, Search, Loader2, Plus, Trash2, Save, UserPlus } from "lucide-react";
+import { CreatePatientSubmodal } from "~/components/ui/create-patient-submodal";
 import patientsService from "~/services/patientsService";
 import { staffService } from "~/services/staffService";
 import { getDepartmentForCategory } from "~/dashboard/personal/categories";
@@ -28,6 +29,7 @@ export default function EvolucionEnfermeria() {
   const [isSearching, setIsSearching] = useState(false);
   const [patientResults, setPatientResults] = useState<any[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<any | null>(null);
+  const [addPatientModalOpen, setAddPatientModalOpen] = useState(false);
   const [currentEvolution, setCurrentEvolution] = useState<NursingEvolution | null>(null);
   const [isLoadingEvolution, setIsLoadingEvolution] = useState(false);
 
@@ -48,6 +50,7 @@ export default function EvolucionEnfermeria() {
   const [records, setRecords] = useState<Omit<NursingEvolutionRecord, 'id' | 'evolution_id' | 'created_at' | 'updated_at'>[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSavingRecord, setIsSavingRecord] = useState(false);
+  const [deletingRecordId, setDeletingRecordId] = useState<string | null>(null);
 
   // Nuevo registro
   const getInitialTime = () => {
@@ -253,13 +256,12 @@ export default function EvolucionEnfermeria() {
   };
 
   const handleDeleteRecord = async (recordId: string) => {
-    if (!currentEvolution) return;
-
+    if (!currentEvolution || deletingRecordId) return;
+    setDeletingRecordId(recordId);
     try {
       await nursingEvolutionsService.deleteRecord(recordId);
       toast.success("Registro eliminado exitosamente");
 
-      // Recargar la evolución
       const updated = await nursingEvolutionsService.getById(currentEvolution.id);
       setCurrentEvolution(updated);
       setRecords(updated.records?.map(r => ({
@@ -273,6 +275,8 @@ export default function EvolucionEnfermeria() {
       })) || []);
     } catch (e: any) {
       toast.error(e?.message || "Error al eliminar el registro");
+    } finally {
+      setDeletingRecordId(null);
     }
   };
 
@@ -305,7 +309,20 @@ export default function EvolucionEnfermeria() {
                   {isSearching ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
                   Buscar
                 </Button>
+                <Button variant="outline" onClick={() => setAddPatientModalOpen(true)}>
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Agregar paciente
+                </Button>
               </div>
+
+              <CreatePatientSubmodal
+                open={addPatientModalOpen}
+                onOpenChange={setAddPatientModalOpen}
+                onCreated={(newPatient) => {
+                  handleSelectPatient(newPatient);
+                }}
+                description="Se seleccionará automáticamente para la evolución de enfermería."
+              />
 
               {patientResults.length > 0 && (
                 <div className="space-y-2">
@@ -597,10 +614,15 @@ export default function EvolucionEnfermeria() {
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                disabled={deletingRecordId === record.id}
                                 onClick={() => handleDeleteRecord(record.id)}
                                 className="text-red-600 hover:text-red-700 hover:bg-red-50"
                               >
-                                <Trash2 className="w-4 h-4" />
+                                {deletingRecordId === record.id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-4 h-4" />
+                                )}
                               </Button>
                             </TableCell>
                           </TableRow>

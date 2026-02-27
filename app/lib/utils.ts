@@ -6,6 +6,15 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * Normaliza texto para búsqueda: quita acentos (NFD) y pasa a minúsculas.
+ * Así "José" coincide con "jose" y "MARÍA" con "maria".
+ */
+export function normalizeSearchText(text: string): string {
+  if (text == null || typeof text !== "string") return "";
+  return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+/**
  * Formatea una fecha ISO o YYYY-MM-DD como fecha local (evita desfase de un día por UTC).
  * Para más helpers (toNoonUtc, getTodayLocal, etc.) usar ~/lib/dateUtils.
  */

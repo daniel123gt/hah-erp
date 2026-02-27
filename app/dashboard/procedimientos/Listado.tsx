@@ -56,6 +56,7 @@ export default function ListadoProcedimientos() {
   const [page, setPage] = useState(1);
   const limit = 10;
   const [editRecord, setEditRecord] = useState<ProcedureRecordWithDetails | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const loadRecords = useCallback(async () => {
     try {
@@ -99,12 +100,16 @@ export default function ListadoProcedimientos() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("¿Eliminar este registro de procedimiento?")) return;
+    if (deletingId) return;
+    setDeletingId(id);
     try {
       await procedureService.deleteRecord(id);
       toast.success("Registro eliminado");
       loadRecords();
     } catch (e) {
       toast.error("Error al eliminar");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -244,10 +249,15 @@ export default function ListadoProcedimientos() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDelete(r.id)}
+                            disabled={deletingId === r.id}
                             title="Eliminar"
                             className="text-red-600 hover:text-red-700"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            {deletingId === r.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
                           </Button>
                         </div>
                       </TableCell>

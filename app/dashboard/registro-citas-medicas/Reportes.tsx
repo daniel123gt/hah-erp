@@ -80,6 +80,7 @@ export default function ReportesRegistroCitasMedicas() {
 
   type ChartTabId = "distribucion" | "evolucion" | "tipo_cita" | "registros";
   const [chartTab, setChartTab] = useState<ChartTabId>("distribucion");
+  const [exportingCSV, setExportingCSV] = useState(false);
 
   const chartDataByDate = useMemo(() => {
     if (!rows.length) return [];
@@ -123,29 +124,36 @@ export default function ReportesRegistroCitasMedicas() {
   const CHART_COLORS = ["#2563eb", "#16a34a", "#0891b2", "#dc2626", "#ea580c", "#7c3aed", "#db2777", "#64748b"];
 
   const handleExportCSV = () => {
-    const headers = "Fecha,Paciente,Tipo cita,Médico,Ingreso (S/.),Costo (S/.),Utilidad (S/.)\n";
-    const csvRows = rows.map((r) =>
-      [
-        formatDateOnly(r.fecha, "es-PE"),
-        `"${(r.patient_name ?? "").replace(/"/g, '""')}"`,
-        `"${(r.appointment_type ?? "").replace(/"/g, '""')}"`,
-        `"${(r.doctor_name ?? "").replace(/"/g, '""')}"`,
-        r.ingreso.toFixed(2),
-        r.costo.toFixed(2),
-        r.utility.toFixed(2),
-      ].join(",")
-    );
-    const csvContent = headers + csvRows.join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `reporte-citas-medicas-${startDate}-${endDate}.csv`;
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(link.href);
-    toast.success("Reporte exportado");
+    if (exportingCSV) return;
+    setExportingCSV(true);
+    try {
+      const headers = "Fecha,Paciente,Tipo cita,Médico,Ingreso (S/.),Costo (S/.),Utilidad (S/.)\n";
+      const csvRows = rows.map((r) =>
+        [
+          formatDateOnly(r.fecha, "es-PE"),
+          `"${(r.patient_name ?? "").replace(/"/g, '""')}"`,
+          `"${(r.appointment_type ?? "").replace(/"/g, '""')}"`,
+          `"${(r.doctor_name ?? "").replace(/"/g, '""')}"`,
+          r.ingreso.toFixed(2),
+          r.costo.toFixed(2),
+          r.utility.toFixed(2),
+        ].join(",")
+      );
+      const csvContent = headers + csvRows.join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.href = url;
+      link.download = `reporte-citas-medicas-${startDate}-${endDate}.csv`;
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success("Reporte exportado");
+    } finally {
+      setExportingCSV(false);
+    }
   };
 
   return (
@@ -265,9 +273,13 @@ export default function ReportesRegistroCitasMedicas() {
 
       {!loading && rows.length > 0 && (
         <div className="flex justify-end">
-          <Button onClick={handleExportCSV}>
-            <Download className="w-4 h-4 mr-2" />
-            Exportar CSV
+          <Button onClick={handleExportCSV} disabled={exportingCSV}>
+            {exportingCSV ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4 mr-2" />
+            )}
+            {exportingCSV ? "Exportando..." : "Exportar CSV"}
           </Button>
         </div>
       )}

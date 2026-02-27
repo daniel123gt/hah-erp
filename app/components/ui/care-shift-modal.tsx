@@ -457,12 +457,12 @@ export function CareShiftModal({
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
               Cancelar
             </Button>
             <Button type="submit" disabled={loading}>
               {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {shift ? "Guardar cambios" : "Registrar turno"}
+              {loading ? "Guardando..." : shift ? "Guardar cambios" : "Registrar turno"}
             </Button>
           </div>
         </form>

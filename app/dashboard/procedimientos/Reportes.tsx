@@ -97,6 +97,7 @@ export default function ProcedimientosReportes() {
   const [loading, setLoading] = useState(true);
   type ChartTabId = "distribucion" | "evolucion" | "procedimientos" | "registros";
   const [chartTab, setChartTab] = useState<ChartTabId>("distribucion");
+  const [exportingCSV, setExportingCSV] = useState(false);
 
   const reportRows = dbReport?.rows ?? [];
 
@@ -181,38 +182,45 @@ export default function ProcedimientosReportes() {
   const displayRecordsCount = totals?.total_records ?? records.length;
 
   const handleExportCSV = () => {
-    const headers = "Fecha,Paciente,Procedimiento,Distrito,Ingreso (S/.),Costo (S/.),Utilidad (S/.)\n";
-    let rows: string[];
-    if (dbReport?.rows?.length) {
-      rows = dbReport.rows.map((r) => {
-        const fecha = formatDateOnly(r.fecha, "es-PE");
-        return `"${fecha}","${r.patient_name ?? ""}","${r.procedure_name ?? ""}","${r.district ?? ""}",${r.ingreso.toFixed(2)},${r.costo.toFixed(2)},${r.utility.toFixed(2)}`;
-      });
-    } else {
-      rows = records.map((r) => {
-        const ing = totalIngreso(r);
-        const proc = r.procedure_catalog as ProcedureCatalogItem | null;
-        const costo = proc ? Number(proc.total_cost_soles ?? 0) : 0;
-        const materialExtra = Number(r.gastos_material ?? 0);
-        const combustible = Number(r.combustible ?? 0);
-        const util = ing - costo - materialExtra - combustible;
-        const displayName = (r.patient as { name?: string } | null)?.name ?? r.patient_name ?? "-";
-        const procName = proc?.name ?? r.procedure_name ?? "-";
-        const fecha = formatDateOnly(r.fecha, "es-PE");
-        return `"${fecha}","${displayName}","${procName}","${r.district ?? ""}",${ing.toFixed(2)},${costo.toFixed(2)},${util.toFixed(2)}`;
-      });
+    if (exportingCSV) return;
+    setExportingCSV(true);
+    try {
+      const headers = "Fecha,Paciente,Procedimiento,Distrito,Ingreso (S/.),Costo (S/.),Utilidad (S/.)\n";
+      let rows: string[];
+      if (dbReport?.rows?.length) {
+        rows = dbReport.rows.map((r) => {
+          const fecha = formatDateOnly(r.fecha, "es-PE");
+          return `"${fecha}","${r.patient_name ?? ""}","${r.procedure_name ?? ""}","${r.district ?? ""}",${r.ingreso.toFixed(2)},${r.costo.toFixed(2)},${r.utility.toFixed(2)}`;
+        });
+      } else {
+        rows = records.map((r) => {
+          const ing = totalIngreso(r);
+          const proc = r.procedure_catalog as ProcedureCatalogItem | null;
+          const costo = proc ? Number(proc.total_cost_soles ?? 0) : 0;
+          const materialExtra = Number(r.gastos_material ?? 0);
+          const combustible = Number(r.combustible ?? 0);
+          const util = ing - costo - materialExtra - combustible;
+          const displayName = (r.patient as { name?: string } | null)?.name ?? r.patient_name ?? "-";
+          const procName = proc?.name ?? r.procedure_name ?? "-";
+          const fecha = formatDateOnly(r.fecha, "es-PE");
+          return `"${fecha}","${displayName}","${procName}","${r.district ?? ""}",${ing.toFixed(2)},${costo.toFixed(2)},${util.toFixed(2)}`;
+        });
+      }
+      const csvContent = headers + rows.join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.href = url;
+      link.download = `reporte-procedimientos-${startDate}-${endDate}.csv`;
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success("Reporte exportado exitosamente");
+    } finally {
+      setExportingCSV(false);
     }
-    const csvContent = headers + rows.join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `reporte-procedimientos-${startDate}-${endDate}.csv`;
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(link.href);
-    toast.success("Reporte exportado exitosamente");
   };
 
   return (
@@ -362,9 +370,13 @@ export default function ProcedimientosReportes() {
       {/* Botón Exportar CSV */}
       {!loading && (dbReport?.rows?.length ?? records.length) > 0 && (
         <div className="flex justify-end">
-          <Button onClick={handleExportCSV}>
-            <Download className="w-4 h-4 mr-2" />
-            Exportar CSV
+          <Button onClick={handleExportCSV} disabled={exportingCSV}>
+            {exportingCSV ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4 mr-2" />
+            )}
+            {exportingCSV ? "Exportando..." : "Exportar CSV"}
           </Button>
         </div>
       )}

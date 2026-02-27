@@ -19,7 +19,8 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { Combobox } from "~/components/ui/combobox";
-import { Plus, User, FileText, Calendar, Search, UserPlus, Loader2, X, Copy, KeyRound, ExternalLink, Home, MapPin, MapPinned } from "lucide-react";
+import { CreatePatientSubmodal } from "~/components/ui/create-patient-submodal";
+import { Plus, User, FileText, Calendar, Search, UserPlus, Loader2, Copy, KeyRound, ExternalLink, Home, MapPin, MapPinned } from "lucide-react";
 import { toast } from "sonner";
 import patientsService, { type Patient } from "~/services/patientsService";
 import { staffService, type Staff } from "~/services/staffService";
@@ -58,23 +59,13 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const [showNewPatientForm, setShowNewPatientForm] = useState(false);
+  const [addPatientModalOpen, setAddPatientModalOpen] = useState(false);
   
   // Estados para paciente
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<Patient[]>([]);
   
-  // Estados para formulario de nuevo paciente
-  const [newPatientData, setNewPatientData] = useState({
-    name: "",
-    dni: "",
-    email: "",
-    phone: "",
-    gender: "",
-    address: "",
-    district: "",
-  });
   const [districts, setDistricts] = useState<Array<{ name: string; zone: string }>>([]);
   const [doctors, setDoctors] = useState<Staff[]>([]);
 
@@ -116,19 +107,10 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
       setSelectedPatient(null);
       setSearchTerm("");
       setSearchResults([]);
-      setShowNewPatientForm(false);
+      setAddPatientModalOpen(false);
       setDniParaOrden("");
       setAddressParaOrden("");
       setDistrictParaOrden("");
-      setNewPatientData({
-        name: "",
-        dni: "",
-        email: "",
-        phone: "",
-        gender: "",
-        address: "",
-        district: "",
-      });
       setFormData({
         fechaOrden: getTodayLocal(),
         fechaTomaMuestra: getTodayLocal(),
@@ -169,37 +151,6 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
     setSelectedPatient(patient);
     setSearchResults([]);
     setSearchTerm("");
-    setShowNewPatientForm(false);
-  };
-
-  const handleCreateNewPatient = async () => {
-    if (!newPatientData.name.trim()) {
-      toast.error("El nombre es requerido");
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      const newPatient = await patientsService.createPatient({
-        name: newPatientData.name,
-        dni: newPatientData.dni.trim() || undefined,
-        email: newPatientData.email || undefined,
-        phone: newPatientData.phone || undefined,
-        gender: (newPatientData.gender as 'M' | 'F') || undefined,
-        address: newPatientData.address || undefined,
-        district: newPatientData.district?.trim() || undefined,
-      });
-      
-      setSelectedPatient(newPatient);
-      setShowNewPatientForm(false);
-      setNewPatientData({ name: "", dni: "", email: "", phone: "", gender: "", address: "", district: "" });
-      toast.success("Paciente creado exitosamente");
-    } catch (error) {
-      console.error("Error al crear paciente:", error);
-      toast.error("Error al crear el paciente");
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -322,7 +273,6 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
         setSelectedPatient(null);
         setSearchTerm("");
         setSearchResults([]);
-        setShowNewPatientForm(false);
         setDniParaOrden("");
         setAddressParaOrden("");
         setDistrictParaOrden("");
@@ -512,111 +462,23 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setShowNewPatientForm(!showNewPatientForm)}
+                    onClick={() => setAddPatientModalOpen(true)}
                   >
                     <UserPlus className="w-4 h-4 mr-2" />
-                    Nuevo Paciente
+                    Agregar paciente
                   </Button>
                 </div>
 
-                {/* Formulario de Nuevo Paciente */}
-                {showNewPatientForm && (
-                  <Card className="bg-blue-50 border-blue-200">
-                    <CardContent className="pt-6">
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <h4 className="font-semibold">Crear Nuevo Paciente</h4>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setShowNewPatientForm(false)}
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <Label>Nombre *</Label>
-                            <Input
-                              value={newPatientData.name}
-                              onChange={(e) => setNewPatientData({ ...newPatientData, name: e.target.value })}
-                              placeholder="Nombre completo"
-                            />
-                          </div>
-                          <div>
-                            <Label>Nro. documento (para portal de resultados)</Label>
-                            <Input
-                              value={newPatientData.dni}
-                              onChange={(e) => setNewPatientData({ ...newPatientData, dni: e.target.value })}
-                              placeholder="Ej. 12345678"
-                              maxLength={20}
-                            />
-                          </div>
-                          <div>
-                            <Label>Teléfono</Label>
-                            <Input
-                              value={newPatientData.phone}
-                              onChange={(e) => setNewPatientData({ ...newPatientData, phone: e.target.value })}
-                              placeholder="Teléfono"
-                            />
-                          </div>
-                          <div>
-                            <Label>Género</Label>
-                            <Select
-                              value={newPatientData.gender}
-                              onValueChange={(value) => setNewPatientData({ ...newPatientData, gender: value })}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Seleccionar" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="M">Masculino</SelectItem>
-                                <SelectItem value="F">Femenino</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="md:col-span-2">
-                            <Label>Dirección</Label>
-                            <Input
-                              value={newPatientData.address}
-                              onChange={(e) => setNewPatientData({ ...newPatientData, address: e.target.value })}
-                              placeholder="Dirección"
-                            />
-                          </div>
-                          <div>
-                            <Label>Distrito</Label>
-                            <Combobox
-                              options={districts.map((d) => ({ value: d.name, label: d.zone ? `${d.name} (${d.zone})` : d.name }))}
-                              value={newPatientData.district || "__none__"}
-                              onValueChange={(value) => setNewPatientData({ ...newPatientData, district: value === "__none__" ? "" : value })}
-                              placeholder="Seleccionar distrito"
-                              emptyOption={{ value: "__none__", label: "Sin especificar" }}
-                            />
-                          </div>
-                        </div>
-                        <Button
-                          type="button"
-                          onClick={handleCreateNewPatient}
-                          disabled={isLoading}
-                          className="w-full"
-                        >
-                          {isLoading ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              Creando...
-                            </>
-                          ) : (
-                            <>
-                              <Plus className="w-4 h-4 mr-2" />
-                              Crear Paciente
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
+                <CreatePatientSubmodal
+                  open={addPatientModalOpen}
+                  onOpenChange={setAddPatientModalOpen}
+                  onCreated={(newPatient) => {
+                    setSelectedPatient(newPatient);
+                    setSearchResults([]);
+                    setSearchTerm("");
+                  }}
+                  description="Se seleccionará automáticamente para la orden de exámenes."
+                />
 
                 {/* Resultados de búsqueda */}
                 {searchResults.length > 0 && (

@@ -34,6 +34,7 @@ import { procedureService, recordToPaymentPayload, type PaymentMethodKey } from 
 import { appointmentsService, formatDateOnly } from "~/services/appointmentsService";
 import { patientsService, type Patient } from "~/services/patientsService";
 import { getTodayLocal } from "~/lib/dateUtils";
+import { normalizeSearchText } from "~/lib/utils";
 import type { Appointment } from "./MedicinaPage";
 
 export default function CitasProcedimientosPage() {
@@ -78,8 +79,8 @@ export default function CitasProcedimientosPage() {
 
   const filteredAppointments = appointments.filter((appointment) => {
     const matchesSearch =
-      appointment.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      appointment.doctorName.toLowerCase().includes(searchTerm.toLowerCase());
+      normalizeSearchText(appointment.patientName).includes(normalizeSearchText(searchTerm)) ||
+      normalizeSearchText(appointment.doctorName).includes(normalizeSearchText(searchTerm));
     const matchesDate = !filterDate || appointment.date === filterDate;
     const matchesStatus = filterStatus === "all" || appointment.status === filterStatus;
     const matchesType =
@@ -128,7 +129,7 @@ export default function CitasProcedimientosPage() {
   };
 
   const handleAppointmentAdded = (newAppointment: Appointment) => {
-    appointmentsService
+    return appointmentsService
       .create({
         variant: "procedimientos",
         patient_id: newAppointment.patient_id ?? null,
@@ -169,12 +170,13 @@ export default function CitasProcedimientosPage() {
       })
       .catch((err) => {
         toast.error(err?.message ?? "Error al crear la cita");
+        throw err;
       });
   };
 
   const handleAppointmentUpdated = (updatedAppointment: Appointment) => {
     const prevAppointment = appointments.find((a) => a.id === updatedAppointment.id);
-    appointmentsService
+    return appointmentsService
       .update({
         id: updatedAppointment.id,
         patient_id: updatedAppointment.patient_id ?? null,
@@ -212,6 +214,7 @@ export default function CitasProcedimientosPage() {
       })
       .catch((err) => {
         toast.error(err?.message ?? "Error al actualizar la cita");
+        throw err;
       });
   };
 

@@ -79,6 +79,7 @@ export default function CuidadosEnCasaReportes() {
   } | null>(null);
   const [periods, setPeriods] = useState<PeriodWithContract[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exportingCSV, setExportingCSV] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -146,31 +147,36 @@ export default function CuidadosEnCasaReportes() {
   const CHART_COLORS = ["#2563eb", "#16a34a", "#0891b2", "#dc2626", "#ea580c", "#7c3aed", "#db2777", "#64748b"];
 
   const handleExportCSV = () => {
-    const headers = "Fecha pago,Paciente,Quincena,F.Desde,F.Hasta,Monto total,Método pago\n";
-    let rows: string[];
-    if (dbReport?.rows?.length) {
-      rows = dbReport.rows.map((r) => {
-        const fechaPago = r.fecha_pago ? formatDateOnly(r.fecha_pago, "es-PE") : "";
-        return `"${fechaPago}","${r.patient_name ?? ""}","${r.turno ?? ""}","${r.f_desde ?? ""}","${r.f_hasta ?? ""}",${Number(r.monto_total ?? 0).toFixed(2)},"${r.metodo_pago ?? ""}"`;
-      });
-    } else {
-      rows = periods.map((p) => {
-        const patient = getPatientName(p);
-        const fechaPago = p.fecha_pago ? formatDateOnly(p.fecha_pago, "es-PE") : "";
-        return `"${fechaPago}","${patient}","${p.turno ?? ""}","${p.f_desde ?? ""}","${p.f_hasta ?? ""}",${Number(p.monto_total ?? 0).toFixed(2)},"${p.metodo_pago ?? ""}"`;
-      });
+    setExportingCSV(true);
+    try {
+      const headers = "Fecha pago,Paciente,Quincena,F.Desde,F.Hasta,Monto total,Método pago\n";
+      let rows: string[];
+      if (dbReport?.rows?.length) {
+        rows = dbReport.rows.map((r) => {
+          const fechaPago = r.fecha_pago ? formatDateOnly(r.fecha_pago, "es-PE") : "";
+          return `"${fechaPago}","${r.patient_name ?? ""}","${r.turno ?? ""}","${r.f_desde ?? ""}","${r.f_hasta ?? ""}",${Number(r.monto_total ?? 0).toFixed(2)},"${r.metodo_pago ?? ""}"`;
+        });
+      } else {
+        rows = periods.map((p) => {
+          const patient = getPatientName(p);
+          const fechaPago = p.fecha_pago ? formatDateOnly(p.fecha_pago, "es-PE") : "";
+          return `"${fechaPago}","${patient}","${p.turno ?? ""}","${p.f_desde ?? ""}","${p.f_hasta ?? ""}",${Number(p.monto_total ?? 0).toFixed(2)},"${p.metodo_pago ?? ""}"`;
+        });
+      }
+      const csvContent = headers + rows.join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `reporte-cuidados-en-casa-${startDate}-${endDate}.csv`;
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+      toast.success("Reporte exportado exitosamente");
+    } finally {
+      setExportingCSV(false);
     }
-    const csvContent = headers + rows.join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `reporte-cuidados-en-casa-${startDate}-${endDate}.csv`;
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(link.href);
-    toast.success("Reporte exportado exitosamente");
   };
 
   return (
@@ -279,9 +285,13 @@ export default function CuidadosEnCasaReportes() {
 
       {!loading && (dbReport?.rows?.length ?? periods.length) > 0 && (
         <div className="flex justify-end">
-          <Button onClick={handleExportCSV}>
-            <Download className="w-4 h-4 mr-2" />
-            Exportar CSV
+          <Button onClick={handleExportCSV} disabled={exportingCSV}>
+            {exportingCSV ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4 mr-2" />
+            )}
+            {exportingCSV ? "Exportando..." : "Exportar CSV"}
           </Button>
         </div>
       )}

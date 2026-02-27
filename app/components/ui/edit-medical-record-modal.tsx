@@ -10,6 +10,7 @@ import {
 import { Label } from "~/components/ui/label";
 import { medicalAppointmentRecordsService, type MedicalAppointmentRecord } from "~/services/medicalAppointmentRecordsService";
 import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 interface EditMedicalRecordModalProps {
   record: MedicalAppointmentRecord;
@@ -119,11 +120,18 @@ export function EditMedicalRecordModal({ record, onClose, onUpdated }: EditMedic
             />
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
               Cancelar
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "Guardando..." : "Guardar"}
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                "Guardar"
+              )}
             </Button>
           </div>
         </form>

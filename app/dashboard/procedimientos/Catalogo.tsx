@@ -15,6 +15,7 @@ import {
 } from "~/components/ui/dialog";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { normalizeSearchText } from "~/lib/utils";
 
 export default function CatalogoProcedimientos() {
   const navigate = useNavigate();
@@ -29,9 +30,9 @@ export default function CatalogoProcedimientos() {
 
   const filteredCatalog = useMemo(() => {
     const active = catalog.filter((item) => item.is_active !== false);
-    const term = searchTerm.trim().toLowerCase();
+    const term = normalizeSearchText(searchTerm.trim());
     if (!term) return active;
-    return active.filter((item) => item.name.toLowerCase().includes(term));
+    return active.filter((item) => normalizeSearchText(item.name).includes(term));
   }, [catalog, searchTerm]);
 
   const refreshCatalog = async () => {
@@ -264,7 +265,14 @@ export default function CatalogoProcedimientos() {
                   }
                 }}
               >
-                {deletingLoading ? "Eliminando..." : "Eliminar"}
+                {deletingLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Eliminando...
+                  </>
+                ) : (
+                  "Eliminar"
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -129,7 +129,7 @@ export const appointmentsService = {
   },
 
   async create(payload: CreateAppointmentData): Promise<Appointment> {
-    let patientName = payload.patientName?.trim() ?? "";
+    let patientName = (payload.patientName?.trim() ?? "").toUpperCase();
     let patientEmail = payload.patientEmail?.trim() ?? null;
     let patientPhone = payload.patientPhone?.trim() ?? null;
 
@@ -141,7 +141,7 @@ export const appointmentsService = {
         .eq("id", payload.patient_id)
         .maybeSingle();
       if (patient) {
-        if (!patientName) patientName = (patient.name ?? "").trim();
+        if (!patientName) patientName = (patient.name ?? "").trim().toUpperCase();
         if (!patientEmail) patientEmail = (patient.email ?? "").trim() || null;
         if (!patientPhone) patientPhone = (patient.phone ?? "").trim() || null;
       }
@@ -181,7 +181,7 @@ export const appointmentsService = {
     const { id, ...rest } = payload;
     const updatePayload: Record<string, unknown> = {};
     if (rest.patient_id !== undefined) updatePayload.patient_id = rest.patient_id;
-    if (rest.patientName !== undefined) updatePayload.patient_name = rest.patientName;
+    if (rest.patientName !== undefined) updatePayload.patient_name = (rest.patientName ?? "").trim().toUpperCase();
     if (rest.patientEmail !== undefined) updatePayload.patient_email = rest.patientEmail;
     if (rest.patientPhone !== undefined) updatePayload.patient_phone = rest.patientPhone;
     if (rest.doctorName !== undefined) updatePayload.doctor_name = rest.doctorName;

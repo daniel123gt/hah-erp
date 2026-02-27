@@ -24,7 +24,8 @@ import {
   Plus,
   X,
   Clock,
-  GraduationCap
+  GraduationCap,
+  Loader2
 } from "lucide-react";
 import { staffService } from "~/services/staffService";
 import { OFFICIAL_DEPARTMENTS, OFFICIAL_POSITIONS } from "~/dashboard/personal/categories";
@@ -379,7 +380,14 @@ export function EditStaffModal({ staff, onStaffUpdated }: EditStaffModalProps) {
               className="bg-primary-blue hover:bg-primary-blue/90"
               disabled={isLoading}
             >
-              {isLoading ? "Guardando..." : "Guardar Cambios"}
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                "Guardar Cambios"
+              )}
             </Button>
           </div>
         </form>

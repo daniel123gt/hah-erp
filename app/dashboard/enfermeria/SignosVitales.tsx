@@ -7,7 +7,8 @@ import { Label } from "~/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Combobox } from "~/components/ui/combobox";
 import { toast } from "sonner";
-import { ArrowLeft, Search, Loader2 } from "lucide-react";
+import { ArrowLeft, Search, Loader2, UserPlus } from "lucide-react";
+import { CreatePatientSubmodal } from "~/components/ui/create-patient-submodal";
 import patientsService from "~/services/patientsService";
 import nursingVitalSignsService, { type CreateNursingVitalSignEntry, type NursingVitalSignEntry } from "~/services/nursingVitalSignsService";
 import { staffService } from "~/services/staffService";
@@ -20,6 +21,7 @@ export default function SignosVitales() {
   const [isSearching, setIsSearching] = useState(false);
   const [patientResults, setPatientResults] = useState<any[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<any | null>(null);
+  const [addPatientModalOpen, setAddPatientModalOpen] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [recentEntries, setRecentEntries] = useState<NursingVitalSignEntry[]>([]);
@@ -147,7 +149,20 @@ export default function SignosVitales() {
                   {isSearching ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
                   Buscar
                 </Button>
+                <Button variant="outline" onClick={() => setAddPatientModalOpen(true)}>
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Agregar paciente
+                </Button>
               </div>
+
+              <CreatePatientSubmodal
+                open={addPatientModalOpen}
+                onOpenChange={setAddPatientModalOpen}
+                onCreated={(newPatient) => {
+                  handleSelectPatient(newPatient);
+                }}
+                description="Se seleccionará automáticamente para registrar signos vitales."
+              />
 
               {patientResults.length > 0 && (
                 <div className="space-y-2">

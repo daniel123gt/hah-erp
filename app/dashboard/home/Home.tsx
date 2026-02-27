@@ -60,6 +60,7 @@ export default function HomeDashboard() {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [exportingFormat, setExportingFormat] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -175,9 +176,10 @@ export default function HomeDashboard() {
   };
 
   const handleExportReport = (format: string) => {
+    if (exportingFormat) return;
+    setExportingFormat(format);
     toast.success(`Generando reporte en formato ${format.toUpperCase()}...`);
-    
-    // Generar datos del reporte
+
     const reportData = {
       fecha: new Date().toLocaleDateString('es-ES'),
       hora: new Date().toLocaleTimeString('es-ES'),
@@ -194,7 +196,6 @@ export default function HomeDashboard() {
       actividadReciente: recentActivity
     };
 
-    // Simular generación y descarga
     setTimeout(() => {
       try {
         if (format === 'pdf') {
@@ -206,12 +207,13 @@ export default function HomeDashboard() {
         } else if (format === 'json') {
           generateJSONReport(reportData);
         }
-        
         toast.success(`Reporte ${format.toUpperCase()} descargado exitosamente`);
         setIsReportModalOpen(false);
       } catch (error) {
         toast.error('Error al generar el reporte');
         console.error('Error:', error);
+      } finally {
+        setExportingFormat(null);
       }
     }, 1500);
   };
@@ -792,7 +794,13 @@ ${data.citasDelDia.map((cita: any) =>
       </Dialog>
 
       {/* Modal para Generar Reporte */}
-      <Dialog open={isReportModalOpen} onOpenChange={setIsReportModalOpen}>
+      <Dialog
+        open={isReportModalOpen}
+        onOpenChange={(open) => {
+          setIsReportModalOpen(open);
+          if (!open) setExportingFormat(null);
+        }}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Generar Reporte</DialogTitle>
@@ -802,39 +810,59 @@ ${data.citasDelDia.map((cita: any) =>
               Selecciona el formato en el que deseas generar el reporte del dashboard:
             </p>
             <div className="grid grid-cols-2 gap-3">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => handleExportReport("pdf")}
+                disabled={!!exportingFormat}
                 className="flex flex-col items-center p-4 h-auto"
               >
-                <FileText className="w-8 h-8 mb-2 text-red-600" />
+                {exportingFormat === "pdf" ? (
+                  <Loader2 className="w-8 h-8 mb-2 text-red-600 animate-spin" />
+                ) : (
+                  <FileText className="w-8 h-8 mb-2 text-red-600" />
+                )}
                 <span className="font-medium">PDF</span>
                 <span className="text-xs text-gray-500">Documento</span>
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => handleExportReport("excel")}
+                disabled={!!exportingFormat}
                 className="flex flex-col items-center p-4 h-auto"
               >
-                <FileText className="w-8 h-8 mb-2 text-green-600" />
+                {exportingFormat === "excel" ? (
+                  <Loader2 className="w-8 h-8 mb-2 text-green-600 animate-spin" />
+                ) : (
+                  <FileText className="w-8 h-8 mb-2 text-green-600" />
+                )}
                 <span className="font-medium">Excel</span>
                 <span className="text-xs text-gray-500">Hoja de cálculo</span>
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => handleExportReport("csv")}
+                disabled={!!exportingFormat}
                 className="flex flex-col items-center p-4 h-auto"
               >
-                <FileText className="w-8 h-8 mb-2 text-blue-600" />
+                {exportingFormat === "csv" ? (
+                  <Loader2 className="w-8 h-8 mb-2 text-blue-600 animate-spin" />
+                ) : (
+                  <FileText className="w-8 h-8 mb-2 text-blue-600" />
+                )}
                 <span className="font-medium">CSV</span>
                 <span className="text-xs text-gray-500">Datos</span>
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => handleExportReport("json")}
+                disabled={!!exportingFormat}
                 className="flex flex-col items-center p-4 h-auto"
               >
-                <FileText className="w-8 h-8 mb-2 text-purple-600" />
+                {exportingFormat === "json" ? (
+                  <Loader2 className="w-8 h-8 mb-2 text-purple-600 animate-spin" />
+                ) : (
+                  <FileText className="w-8 h-8 mb-2 text-purple-600" />
+                )}
                 <span className="font-medium">JSON</span>
                 <span className="text-xs text-gray-500">API</span>
               </Button>
