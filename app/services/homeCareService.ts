@@ -41,11 +41,20 @@ export interface HomeCareContractWithPatient extends HomeCareContract {
   patient?: { id: string; name: string; dni?: string; phone?: string } | null;
 }
 
+/** Categoría del plan: tecnicas | licenciadas | paliativos */
+export type HomeCarePlanCategoria = "tecnicas" | "licenciadas" | "paliativos";
+/** Tipo del plan: mensual | semana | especial */
+export type HomeCarePlanTipo = "mensual" | "semana" | "especial";
+
 export interface HomeCarePlan {
   id: string;
   name: string;
   turno: string | null;
   monto_mensual: number;
+  /** Categoría: tecnicas, licenciadas, paliativos */
+  categoria: HomeCarePlanCategoria;
+  /** Tipo: mensual, semana, especial */
+  tipo: HomeCarePlanTipo;
   is_active: boolean;
   created_at: string;
   updated_at: string;
