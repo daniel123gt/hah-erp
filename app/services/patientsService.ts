@@ -181,6 +181,20 @@ export const patientsService = {
     }
   },
 
+  /** Pacientes con el mismo nombre (normalizado: sin acentos, minúsculas; igual o uno contiene al otro). Para advertir al crear. */
+  async findPatientsWithSameName(normalizedName: string): Promise<Patient[]> {
+    const name = normalizedName?.trim() ? normalizeSearchText(normalizedName) : '';
+    if (!name) return [];
+    try {
+      const { data, error } = await supabase.rpc('find_patients_with_same_name', { p_normalized_name: name });
+      if (error) throw error;
+      return (data ?? []) as Patient[];
+    } catch (e) {
+      console.error('Error al buscar pacientes con el mismo nombre:', e);
+      return [];
+    }
+  },
+
   // Obtener un paciente por ID
   async getPatientById(id: string): Promise<Patient | null> {
     try {

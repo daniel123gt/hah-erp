@@ -7,10 +7,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Label } from "~/components/ui/label";
 import { medicalAppointmentRecordsService, type MedicalAppointmentRecord } from "~/services/medicalAppointmentRecordsService";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, User, DollarSign, FileText } from "lucide-react";
 
 interface EditMedicalRecordModalProps {
   record: MedicalAppointmentRecord;
@@ -59,66 +60,96 @@ export function EditMedicalRecordModal({ record, onClose, onUpdated }: EditMedic
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Editar registro - Cita médica</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <p className="text-sm text-gray-600">
-            {record.patient_name ?? "—"} · {record.appointment_type} · {record.fecha}
-          </p>
-          <div className="grid gap-2">
-            <Label>Ingreso (S/.)</Label>
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              value={ingreso}
-              onChange={(e) => setIngreso(e.target.value)}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label>Costo (S/.)</Label>
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              value={costo}
-              onChange={(e) => setCosto(e.target.value)}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label>Método de pago</Label>
-            <select
-              value={payment_method}
-              onChange={(e) => setPayment_method(e.target.value)}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            >
-              {PAYMENT_METHODS.map((opt) => (
-                <option key={opt.value || "none"} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="grid gap-2">
-            <Label>Número de operación</Label>
-            <Input
-              value={numero_operacion}
-              onChange={(e) => setNumero_operacion(e.target.value)}
-              placeholder="Ej. ref. transferencia, código Yape/Plin..."
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label>Notas</Label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              placeholder="Notas opcionales"
-            />
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <User className="w-5 h-5" />
+                Paciente y cita
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                {record.patient_name ?? "—"} · {record.appointment_type} · {record.fecha}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <DollarSign className="w-5 h-5" />
+                Ingreso y pago (S/.)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Ingreso (S/.)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={ingreso}
+                  onChange={(e) => setIngreso(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Costo (S/.)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={costo}
+                  onChange={(e) => setCosto(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Método de pago</Label>
+                <select
+                  value={payment_method}
+                  onChange={(e) => setPayment_method(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  {PAYMENT_METHODS.map((opt) => (
+                    <option key={opt.value || "none"} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid gap-2">
+                <Label>Número de operación / Referencia</Label>
+                <Input
+                  value={numero_operacion}
+                  onChange={(e) => setNumero_operacion(e.target.value)}
+                  placeholder="Ej. ref. transferencia, código Yape/Plin..."
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <FileText className="w-5 h-5" />
+                Notas
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                placeholder="Notas opcionales"
+              />
+            </CardContent>
+          </Card>
+
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
               Cancelar

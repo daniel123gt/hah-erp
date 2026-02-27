@@ -12,10 +12,10 @@ import {
   DialogTitle,
 } from "./dialog";
 import { Combobox } from "./combobox";
-import { Loader2, UserPlus } from "lucide-react";
+import { Loader2, UserPlus, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import type { CareShiftWithPatient, CreateCareShiftData } from "~/services/shiftCareService";
-import { patientsService } from "~/services/patientsService";
+import { patientsService, type Patient } from "~/services/patientsService";
 import { homeCareService, type HomeCarePlan } from "~/services/homeCareService";
 import { staffService } from "~/services/staffService";
 import { getDepartmentForCategory } from "~/dashboard/personal/categories";
@@ -117,6 +117,8 @@ export function CareShiftModal({
   const [nurseOptions, setNurseOptions] = useState<{ value: string; label: string }[]>([]);
   const [addPatientModalOpen, setAddPatientModalOpen] = useState(false);
   const [creatingPatient, setCreatingPatient] = useState(false);
+  const [duplicateWarningOpen, setDuplicateWarningOpen] = useState(false);
+  const [duplicatePatients, setDuplicatePatients] = useState<Patient[]>([]);
   const [turnoMode, setTurnoMode] = useState<"existente" | "personalizado">("existente");
   const [turnoPersonalizado, setTurnoPersonalizado] = useState("");
   const [newPatientData, setNewPatientData] = useState({
@@ -175,24 +177,49 @@ export function CareShiftModal({
     }
   }, [open]);
 
+  const doCreateNewPatient = async () => {
+    const name = newPatientData.name.trim();
+    const created = await patientsService.createPatient({
+      name,
+      dni: newPatientData.dni.trim() || undefined,
+      email: newPatientData.email.trim() || undefined,
+      phone: newPatientData.phone.trim() || undefined,
+      address: newPatientData.address.trim() || undefined,
+      district: newPatientData.district.trim() || undefined,
+    });
+    setPatientOptions((prev) => [{ value: created.id, label: created.name }, ...prev]);
+    setForm((f) => ({ ...f, patient_id: created.id }));
+    setAddPatientModalOpen(false);
+    setNewPatientData({ name: "", dni: "", email: "", phone: "", address: "", district: "" });
+    setDuplicateWarningOpen(false);
+    setDuplicatePatients([]);
+    toast.success("Paciente creado y seleccionado.");
+  };
+
   const handleCreateNewPatient = async () => {
     const name = newPatientData.name.trim();
     if (!name) return;
     setCreatingPatient(true);
     try {
-      const created = await patientsService.createPatient({
-        name,
-        dni: newPatientData.dni.trim() || undefined,
-        email: newPatientData.email.trim() || undefined,
-        phone: newPatientData.phone.trim() || undefined,
-        address: newPatientData.address.trim() || undefined,
-        district: newPatientData.district.trim() || undefined,
-      });
-      setPatientOptions((prev) => [{ value: created.id, label: created.name }, ...prev]);
-      setForm((f) => ({ ...f, patient_id: created.id }));
-      setAddPatientModalOpen(false);
-      setNewPatientData({ name: "", dni: "", email: "", phone: "", address: "", district: "" });
-      toast.success("Paciente creado y seleccionado.");
+      const sameName = await patientsService.findPatientsWithSameName(name);
+      if (sameName.length > 0) {
+        setDuplicatePatients(sameName);
+        setDuplicateWarningOpen(true);
+        setCreatingPatient(false);
+        return;
+      }
+      await doCreateNewPatient();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Error al crear el paciente.");
+    } finally {
+      setCreatingPatient(false);
+    }
+  };
+
+  const handleConfirmDuplicateAndCreate = async () => {
+    setCreatingPatient(true);
+    try {
+      await doCreateNewPatient();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Error al crear el paciente.");
     } finally {
@@ -554,6 +581,57 @@ export function CareShiftModal({
               Crear paciente
             </Button>
           </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+
+    {/* Modal advertencia: ya hay paciente(s) con ese nombre */}
+    <Dialog open={duplicateWarningOpen} onOpenChange={setDuplicateWarningOpen}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-amber-600">
+            <AlertTriangle className="w-5 h-5" />
+            Ya hay paciente(s) con ese nombre
+          </DialogTitle>
+          <DialogDescription>
+            Se encontraron pacientes registrados con el mismo nombre (o muy similar). Revisa la lista y confirma si deseas agregar al nuevo paciente.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2 max-h-48 overflow-y-auto rounded-md border bg-muted/30 p-3">
+          {duplicatePatients.map((p) => (
+            <div key={p.id} className="text-sm font-medium">
+              {p.name}
+              {p.dni ? ` · DNI ${p.dni}` : ""}
+            </div>
+          ))}
+        </div>
+        <p className="text-sm text-muted-foreground">
+          ¿Estás seguro que deseas agregar el nuevo paciente?
+        </p>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => { setDuplicateWarningOpen(false); setDuplicatePatients([]); }}
+            disabled={creatingPatient}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            className="bg-primary-blue hover:bg-primary-blue/90"
+            onClick={handleConfirmDuplicateAndCreate}
+            disabled={creatingPatient}
+          >
+            {creatingPatient ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Agregando...
+              </>
+            ) : (
+              "Sí, agregar"
+            )}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
