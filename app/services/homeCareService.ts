@@ -9,6 +9,10 @@ export interface HomeCareContract {
   fecha_inicio: string;
   plan_nombre: string | null;
   plan_monto_mensual: number;
+  /** Descuento negociado en soles (ej. 50). Por defecto 0. */
+  descuento?: number | null;
+  /** Monto mensual final a usar para periodos (ej. plan 5250 - descuento 50 = 5200). */
+  plan_monto_mensual_final?: number | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -122,7 +126,7 @@ export const homeCareService = {
     return (data ?? []) as HomeCarePeriod[];
   },
 
-  /** Crea un contrato de cuidado en casa para un paciente. Si se pasa plan_id, se usan nombre y monto del plan. */
+  /** Crea un contrato de cuidado en casa para un paciente. Si se pasa plan_id, se usan nombre y monto del plan. plan_monto_mensual_final es el monto usado para periodos (por defecto plan_monto_mensual - descuento). */
   async createContract(data: {
     patient_id: string;
     plan_id?: string | null;
@@ -131,6 +135,8 @@ export const homeCareService = {
     fecha_inicio: string;
     plan_nombre?: string | null;
     plan_monto_mensual: number;
+    descuento?: number | null;
+    plan_monto_mensual_final?: number | null;
   }): Promise<HomeCareContract> {
     let planNombre = data.plan_nombre ?? null;
     let planMonto = data.plan_monto_mensual;
@@ -147,6 +153,11 @@ export const homeCareService = {
       }
     }
 
+    const descuento = Number(data.descuento) || 0;
+    const finalAmount = data.plan_monto_mensual_final != null
+      ? Number(data.plan_monto_mensual_final)
+      : Math.max(0, planMonto - descuento);
+
     const { data: contract, error } = await supabase
       .from("home_care_contracts")
       .insert([
@@ -158,6 +169,8 @@ export const homeCareService = {
           fecha_inicio: data.fecha_inicio,
           plan_nombre: planNombre,
           plan_monto_mensual: planMonto,
+          descuento,
+          plan_monto_mensual_final: finalAmount,
           is_active: true,
         },
       ])
@@ -178,6 +191,8 @@ export const homeCareService = {
       fecha_inicio: string;
       plan_nombre: string | null;
       plan_monto_mensual: number;
+      descuento: number | null;
+      plan_monto_mensual_final: number | null;
       is_active: boolean;
     }>
   ): Promise<HomeCareContract> {
@@ -188,6 +203,8 @@ export const homeCareService = {
     if (data.fecha_inicio !== undefined) payload.fecha_inicio = data.fecha_inicio;
     if (data.plan_nombre !== undefined) payload.plan_nombre = data.plan_nombre;
     if (data.plan_monto_mensual !== undefined) payload.plan_monto_mensual = data.plan_monto_mensual;
+    if (data.descuento !== undefined) payload.descuento = data.descuento;
+    if (data.plan_monto_mensual_final !== undefined) payload.plan_monto_mensual_final = data.plan_monto_mensual_final;
     if (data.is_active !== undefined) payload.is_active = data.is_active;
     const { data: contract, error } = await supabase
       .from("home_care_contracts")

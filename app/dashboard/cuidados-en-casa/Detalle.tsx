@@ -78,7 +78,8 @@ export default function CuidadosEnCasaDetalle() {
     }
   };
 
-  const montoQuincena = contract ? contract.plan_monto_mensual / 2 : 0;
+  const planMontoFinal = contract ? (contract.plan_monto_mensual_final ?? contract.plan_monto_mensual) : 0;
+  const montoQuincena = planMontoFinal / 2;
 
   const handleSaveContract = async (data: ContractFormData) => {
     if (!contract) return;
@@ -89,6 +90,8 @@ export default function CuidadosEnCasaDetalle() {
       plan_id: data.plan_id || null,
       plan_nombre: data.plan_nombre || null,
       plan_monto_mensual: parseFloat(data.plan_monto_mensual) || 0,
+      descuento: parseFloat(data.descuento) || 0,
+      plan_monto_mensual_final: parseFloat(data.plan_monto_mensual_final) || 0,
       is_active: data.is_active,
     });
     toast.success("Contrato actualizado.");
@@ -356,7 +359,7 @@ export default function CuidadosEnCasaDetalle() {
         onOpenChange={setPeriodModalOpen}
         mode={periodModalMode}
         contractId={contract.id}
-        planMontoMensual={contract.plan_monto_mensual}
+        planMontoMensual={planMontoFinal}
         period={periodModalMode === "edit" ? editingPeriod : null}
         onSaved={loadData}
         onSave={handleSavePeriod}
