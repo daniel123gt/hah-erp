@@ -17,6 +17,7 @@ import { AddAppointmentModal } from "~/components/ui/add-appointment-modal";
 import { ViewAppointmentModal } from "~/components/ui/view-appointment-modal";
 import { EditAppointmentModal } from "~/components/ui/edit-appointment-modal";
 import { formatDateOnly } from "~/services/appointmentsService";
+import { normalizeSearchText } from "~/lib/utils";
 import { parseDateOnlyAsLocal, getTodayLocal } from "~/lib/dateUtils";
 import { 
   Search, 
@@ -132,8 +133,9 @@ export default function CitasPage() {
   const [appointments, setAppointments] = useState<Appointment[]>(mockAppointments);
 
   const filteredAppointments = appointments.filter(appointment => {
-    const matchesSearch = appointment.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         appointment.doctorName.toLowerCase().includes(searchTerm.toLowerCase());
+    const search = normalizeSearchText(searchTerm);
+    const matchesSearch = normalizeSearchText(appointment.patientName).includes(search) ||
+                         normalizeSearchText(appointment.doctorName).includes(search);
     
     const matchesDate = !filterDate || appointment.date === filterDate;
     const matchesStatus = filterStatus === "all" || appointment.status === filterStatus;

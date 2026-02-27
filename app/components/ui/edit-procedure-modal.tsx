@@ -11,9 +11,10 @@ import {
 } from "~/components/ui/dialog";
 import { Combobox } from "~/components/ui/combobox";
 import { procedureService, type ProcedureRecordWithDetails, type ProcedureCatalogItem, PAYMENT_METHOD_OPTIONS, type PaymentMethodKey, getPaymentFromRecord, recordToPaymentPayload } from "~/services/procedureService";
-import { patientsService } from "~/services/patientsService";
+import { patientsService, type Patient } from "~/services/patientsService";
+import { CreatePatientSubmodal } from "~/components/ui/create-patient-submodal";
 import { toast } from "sonner";
-import { User, FileText, DollarSign } from "lucide-react";
+import { User, FileText, DollarSign, Loader2, UserPlus } from "lucide-react";
 
 interface EditProcedureModalProps {
   record: ProcedureRecordWithDetails;
@@ -39,6 +40,7 @@ export function EditProcedureModal({ record, onClose, onUpdated }: EditProcedure
     costo_adicional_servicio: record.costo_adicional_servicio ?? 0,
     observacion: record.observacion ?? "",
   });
+  const [addPatientModalOpen, setAddPatientModalOpen] = useState(false);
   const [patients, setPatients] = useState<Array<{ id: string; name: string }>>([]);
   const [catalog, setCatalog] = useState<ProcedureCatalogItem[]>([]);
   const [districts, setDistricts] = useState<Array<{ name: string }>>([]);
@@ -82,19 +84,8 @@ export function EditProcedureModal({ record, onClose, onUpdated }: EditProcedure
     e.preventDefault();
     setLoading(true);
     try {
-      let patientId: string | null = form.patient_id || null;
-      let patientName: string | null = form.patient_name?.trim() || null;
-
-      // Si no hay paciente seleccionado pero sí nombre, crear nuevo paciente
-      let createdNewPatient = false;
-      if (!patientId && form.patient_name?.trim()) {
-        const newPatient = await patientsService.createPatient({
-          name: form.patient_name.trim(),
-        });
-        patientId = newPatient.id;
-        patientName = null;
-        createdNewPatient = true;
-      }
+      const patientId: string | null = form.patient_id || null;
+      const patientName: string | null = form.patient_name?.trim() || null;
 
       const payment = recordToPaymentPayload(form.paymentMethod, form.paymentAmount);
       await procedureService.updateRecord({
@@ -113,7 +104,7 @@ export function EditProcedureModal({ record, onClose, onUpdated }: EditProcedure
         costo_adicional_servicio: form.costo_adicional_servicio,
         observacion: form.observacion || null,
       });
-      toast.success(createdNewPatient ? "Paciente creado y procedimiento actualizado" : "Procedimiento actualizado");
+      toast.success("Procedimiento actualizado");
       onClose();
       onUpdated();
     } catch (err) {
@@ -131,6 +122,7 @@ export function EditProcedureModal({ record, onClose, onUpdated }: EditProcedure
     form.costo_adicional_servicio;
 
   return (
+    <>
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -153,33 +145,36 @@ export function EditProcedureModal({ record, onClose, onUpdated }: EditProcedure
               <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Paciente</label>
-                  <select
-                    value={form.patient_id}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setForm((f) => ({
-                        ...f,
-                        patient_id: v,
-                        patient_name: v ? patients.find((p) => p.id === v)?.name ?? f.patient_name : f.patient_name,
-                      }));
-                    }}
-                    className="w-full border rounded-md px-3 py-2"
-                  >
-                    <option value="">Sin asignar / Otro</option>
-                    {patients.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Si no está en la lista, nombre para crear nuevo paciente</label>
-                  <Input
-                    value={form.patient_name}
-                    onChange={(e) => setForm((f) => ({ ...f, patient_name: e.target.value }))}
-                    placeholder="Solo si dará de alta al paciente"
-                  />
+                  <div className="flex gap-2">
+                    <select
+                      value={form.patient_id}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setForm((f) => ({
+                          ...f,
+                          patient_id: v,
+                          patient_name: v ? patients.find((p) => p.id === v)?.name ?? "" : "",
+                        }));
+                      }}
+                      className="flex-1 border rounded-md px-3 py-2"
+                    >
+                      <option value="">Sin asignar / Otro</option>
+                      {patients.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setAddPatientModalOpen(true)}
+                      className="shrink-0"
+                    >
+                      <UserPlus className="w-4 h-4 mr-1" />
+                      Agregar paciente
+                    </Button>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Fecha *</label>
@@ -339,7 +334,14 @@ export function EditProcedureModal({ record, onClose, onUpdated }: EditProcedure
                   Cancelar
                 </Button>
                 <Button type="submit" disabled={loading}>
-                  {loading ? "Guardando..." : "Guardar"}
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Guardando...
+                    </>
+                  ) : (
+                    "Guardar"
+                  )}
                 </Button>
               </div>
             </div>
@@ -347,5 +349,19 @@ export function EditProcedureModal({ record, onClose, onUpdated }: EditProcedure
         )}
       </DialogContent>
     </Dialog>
+    <CreatePatientSubmodal
+      open={addPatientModalOpen}
+      onOpenChange={setAddPatientModalOpen}
+      onCreated={(newPatient: Patient) => {
+        setPatients((prev) => [{ id: newPatient.id, name: newPatient.name ?? "" }, ...prev]);
+        setForm((f) => ({
+          ...f,
+          patient_id: newPatient.id,
+          patient_name: newPatient.name?.trim() ?? "",
+        }));
+      }}
+      description="Se seleccionará automáticamente para el procedimiento."
+    />
+    </>
   );
 }

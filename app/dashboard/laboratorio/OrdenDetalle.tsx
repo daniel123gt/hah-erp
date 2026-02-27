@@ -518,6 +518,9 @@ export default function OrdenDetalle() {
                       disabled={updatingPayment || (paymentReferenceInput.trim() || null) === (order.payment_reference ?? null)}
                       className="w-full sm:w-auto"
                     >
+                      {updatingPayment ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : null}
                       Guardar nro referencia
                     </Button>
                   </div>

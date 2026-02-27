@@ -34,7 +34,8 @@ import {
   Mail, 
   MapPin, 
   FileText,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from "lucide-react";
 
 interface Appointment {
@@ -63,7 +64,7 @@ interface Appointment {
 
 interface EditAppointmentModalProps {
   appointment: Appointment;
-  onAppointmentUpdated: (appointment: Appointment) => void;
+  onAppointmentUpdated: (appointment: Appointment) => void | Promise<void>;
   variant?: "medicina" | "procedimientos";
 }
 
@@ -73,6 +74,7 @@ export function EditAppointmentModal({
   variant = "medicina",
 }: EditAppointmentModalProps) {
   const [procedureProfessionalKind, setProcedureProfessionalKind] = useState<"enfermera" | "medico">("enfermera");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const professionalLabel = variant === "procedimientos"
     ? (procedureProfessionalKind === "enfermera" ? "Enfermera" : "Médico")
     : "Médico";
@@ -205,8 +207,16 @@ export function EditAppointmentModal({
         return;
       }
     }
-    onAppointmentUpdated(formData);
-    setIsOpen(false);
+    setIsSubmitting(true);
+    try {
+      const result = onAppointmentUpdated(formData);
+      if (result && typeof (result as Promise<void>).then === "function") {
+        await (result as Promise<void>);
+      }
+      setIsOpen(false);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const getTypeBadge = (type: string, procedureName?: string) => {
@@ -646,14 +656,23 @@ export function EditAppointmentModal({
               type="button"
               variant="outline"
               onClick={() => setIsOpen(false)}
+              disabled={isSubmitting}
             >
               Cancelar
             </Button>
             <Button
               type="submit"
               className="bg-primary-blue hover:bg-primary-blue/90"
+              disabled={isSubmitting}
             >
-              Guardar Cambios
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                "Guardar Cambios"
+              )}
             </Button>
           </div>
         </form>

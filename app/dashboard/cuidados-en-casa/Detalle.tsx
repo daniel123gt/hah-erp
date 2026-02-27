@@ -48,6 +48,7 @@ export default function CuidadosEnCasaDetalle() {
   const [editingPeriod, setEditingPeriod] = useState<HomeCarePeriod | null>(null);
   const [contractModalOpen, setContractModalOpen] = useState(false);
   const [plans, setPlans] = useState<Awaited<ReturnType<typeof homeCareService.getPlans>>>([]);
+  const [deletingPeriodId, setDeletingPeriodId] = useState<string | null>(null);
 
   useEffect(() => {
     if (patientId) loadData();
@@ -96,12 +97,15 @@ export default function CuidadosEnCasaDetalle() {
   const handleDeletePeriod = async (p: HomeCarePeriod) => {
     if (!window.confirm(`¿Eliminar el periodo ${p.item} (${formatDate(p.f_desde)} - ${formatDate(p.f_hasta)})?`)) return;
     try {
+      setDeletingPeriodId(p.id);
       await homeCareService.deletePeriod(p.id);
       toast.success("Periodo eliminado.");
       loadData();
     } catch (error) {
       console.error("Error al eliminar periodo:", error);
       toast.error("No se pudo eliminar el periodo");
+    } finally {
+      setDeletingPeriodId(null);
     }
   };
 
@@ -326,9 +330,14 @@ export default function CuidadosEnCasaDetalle() {
                             size="sm"
                             className="text-destructive hover:text-destructive"
                             onClick={() => handleDeletePeriod(p)}
+                            disabled={deletingPeriodId === p.id}
                             title="Eliminar periodo"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            {deletingPeriodId === p.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-4 h-4" />
+                            )}
                           </Button>
                         </div>
                       </TableCell>

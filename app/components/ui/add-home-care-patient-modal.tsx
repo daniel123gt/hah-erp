@@ -12,35 +12,28 @@ import {
 } from "./dialog";
 import { Label } from "./label";
 import { Combobox } from "./combobox";
-import { User, Calendar, DollarSign, Plus, Loader2, UserPlus } from "lucide-react";
+import { User, DollarSign, Plus, Loader2, UserPlus } from "lucide-react";
+import { CreatePatientSubmodal } from "~/components/ui/create-patient-submodal";
 import homeCareService, {
   type HomeCareContractWithPatient,
   type HomeCarePlan,
 } from "~/services/homeCareService";
-import { patientsService } from "~/services/patientsService";
+import { patientsService, type Patient } from "~/services/patientsService";
 import { toast } from "sonner";
 
 interface AddHomeCarePatientModalProps {
   onAdded: (patientId: string) => void;
 }
 
-type PatientMode = "existing" | "new";
-
 export function AddHomeCarePatientModal({ onAdded }: AddHomeCarePatientModalProps) {
   const [open, setOpen] = useState(false);
+  const [addPatientModalOpen, setAddPatientModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [patientMode, setPatientMode] = useState<PatientMode>("existing");
   const [patients, setPatients] = useState<Array<{ id: string; name: string; dni?: string }>>([]);
   const [plans, setPlans] = useState<HomeCarePlan[]>([]);
   const [activeContractPatientIds, setActiveContractPatientIds] = useState<Set<string>>(new Set());
 
   const [patientId, setPatientId] = useState("");
-  const [newPatient, setNewPatient] = useState({
-    name: "",
-    nroDocumento: "",
-    phone: "",
-    familiar_encargado: "",
-  });
 
   const [contract, setContract] = useState({
     familiar_encargado: "",
@@ -78,47 +71,13 @@ export function AddHomeCarePatientModal({ onAdded }: AddHomeCarePatientModalProp
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!patientId.trim()) {
+      toast.error("Selecciona un paciente.");
+      return;
+    }
     setLoading(true);
     try {
-      let finalPatientId = patientId;
-      if (patientMode === "new") {
-        if (!newPatient.name.trim()) {
-          toast.error("El nombre del paciente es obligatorio.");
-          setLoading(false);
-          return;
-        }
-        if (newPatient.nroDocumento?.trim()) {
-          const taken = await patientsService.isDniTaken(newPatient.nroDocumento.trim());
-          if (taken) {
-            toast.error("Este número de documento ya está registrado.");
-            setLoading(false);
-            return;
-          }
-        }
-        const familiarEncargado =
-          patientMode === "new"
-            ? newPatient.familiar_encargado.trim()
-            : contract.familiar_encargado.trim();
-        const created = await patientsService.createPatient({
-          name: newPatient.name.trim(),
-          dni: newPatient.nroDocumento.trim() || undefined,
-          phone: newPatient.phone.trim() || undefined,
-          emergency_contact_name: familiarEncargado || undefined,
-          status: "Activo",
-        });
-        finalPatientId = created.id;
-      } else {
-        if (!finalPatientId) {
-          toast.error("Selecciona un paciente.");
-          setLoading(false);
-          return;
-        }
-      }
-
-      const familiarEncargado =
-        patientMode === "new"
-          ? newPatient.familiar_encargado.trim()
-          : contract.familiar_encargado.trim();
+      const familiarEncargado = contract.familiar_encargado.trim();
       const selectedPlan = contract.plan_id
         ? plans.find((p) => p.id === contract.plan_id)
         : null;
@@ -129,7 +88,7 @@ export function AddHomeCarePatientModal({ onAdded }: AddHomeCarePatientModalProp
       }
 
       await homeCareService.createContract({
-        patient_id: finalPatientId,
+        patient_id: patientId,
         plan_id: contract.plan_id || null,
         familiar_encargado: familiarEncargado || null,
         hora_inicio: contract.hora_inicio.trim() || "8:00 AM",
@@ -141,7 +100,7 @@ export function AddHomeCarePatientModal({ onAdded }: AddHomeCarePatientModalProp
       toast.success("Paciente agregado al servicio de cuidados en casa.");
       setOpen(false);
       resetForm();
-      onAdded(finalPatientId);
+      onAdded(patientId);
     } catch (err: any) {
       console.error(err);
       toast.error(err?.message || "Error al guardar.");
@@ -151,12 +110,10 @@ export function AddHomeCarePatientModal({ onAdded }: AddHomeCarePatientModalProp
   };
 
   const resetForm = () => {
-    setPatientMode("existing");
     setPatientId("");
-    setNewPatient({ name: "", nroDocumento: "", phone: "", familiar_encargado: "" });
     setContract({
       familiar_encargado: "",
-      hora_inicio: "8:00 AM",
+      hora_inicio: "08:00",
       fecha_inicio: new Date().toISOString().split("T")[0],
       plan_id: "",
     });
@@ -165,6 +122,7 @@ export function AddHomeCarePatientModal({ onAdded }: AddHomeCarePatientModalProp
   const availablePatients = patients;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button className="bg-primary-blue hover:bg-primary-blue/90">
@@ -192,34 +150,12 @@ export function AddHomeCarePatientModal({ onAdded }: AddHomeCarePatientModalProp
                 Paciente
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="patientMode"
-                    checked={patientMode === "existing"}
-                    onChange={() => setPatientMode("existing")}
-                    className="text-primary-blue"
-                  />
-                  <span>Seleccionar paciente existente</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="patientMode"
-                    checked={patientMode === "new"}
-                    onChange={() => setPatientMode("new")}
-                    className="text-primary-blue"
-                  />
-                  <span>Crear paciente nuevo</span>
-                </label>
-              </div>
-
-              {patientMode === "existing" ? (
-                <div className="space-y-2">
-                  <Label>Paciente *</Label>
+            <CardContent className="space-y-3">
+              <div className="space-y-2">
+                <Label>Paciente *</Label>
+                <div className="flex gap-2">
                   <Combobox
+                    className="flex-1"
                     options={availablePatients.map((p) => ({
                       value: p.id,
                       label: p.dni ? `${p.name} (${p.dni})` : p.name,
@@ -233,49 +169,17 @@ export function AddHomeCarePatientModal({ onAdded }: AddHomeCarePatientModalProp
                     }
                     disabled={availablePatients.length === 0}
                   />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setAddPatientModalOpen(true)}
+                    className="shrink-0"
+                  >
+                    <UserPlus className="w-4 h-4 mr-1" />
+                    Agregar paciente
+                  </Button>
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="new_name">Nombre completo *</Label>
-                    <Input
-                      id="new_name"
-                      value={newPatient.name}
-                      onChange={(e) => setNewPatient((p) => ({ ...p, name: e.target.value }))}
-                      placeholder="Ej: Juan Pérez"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="new_nro_doc">Nro. documento</Label>
-                    <Input
-                      id="new_nro_doc"
-                      value={newPatient.nroDocumento}
-                      onChange={(e) => setNewPatient((p) => ({ ...p, nroDocumento: e.target.value }))}
-                      placeholder="DNI, CE o pasaporte"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="new_phone">Teléfono</Label>
-                    <Input
-                      id="new_phone"
-                      value={newPatient.phone}
-                      onChange={(e) => setNewPatient((p) => ({ ...p, phone: e.target.value }))}
-                      placeholder="Ej: 999 888 777"
-                    />
-                  </div>
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="new_familiar">Familiar encargado</Label>
-                    <Input
-                      id="new_familiar"
-                      value={newPatient.familiar_encargado}
-                      onChange={(e) =>
-                        setNewPatient((p) => ({ ...p, familiar_encargado: e.target.value }))
-                      }
-                      placeholder="Nombre del familiar responsable"
-                    />
-                  </div>
-                </div>
-              )}
+              </div>
             </CardContent>
           </Card>
 
@@ -288,17 +192,15 @@ export function AddHomeCarePatientModal({ onAdded }: AddHomeCarePatientModalProp
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {patientMode === "existing" && (
-                <div className="space-y-2">
-                  <Label htmlFor="familiar_encargado">Familiar encargado</Label>
-                  <Input
-                    id="familiar_encargado"
-                    value={contract.familiar_encargado}
-                    onChange={(e) => setContract((c) => ({ ...c, familiar_encargado: e.target.value }))}
-                    placeholder="Ej: María García"
-                  />
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="familiar_encargado">Familiar encargado</Label>
+                <Input
+                  id="familiar_encargado"
+                  value={contract.familiar_encargado}
+                  onChange={(e) => setContract((c) => ({ ...c, familiar_encargado: e.target.value }))}
+                  placeholder="Ej: María García"
+                />
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label htmlFor="hora_inicio">Hora de inicio</Label>
@@ -361,5 +263,18 @@ export function AddHomeCarePatientModal({ onAdded }: AddHomeCarePatientModalProp
         </form>
       </DialogContent>
     </Dialog>
+    <CreatePatientSubmodal
+      open={addPatientModalOpen}
+      onOpenChange={setAddPatientModalOpen}
+      onCreated={(newPatient: Patient) => {
+        setPatients((prev) => [
+          { id: newPatient.id, name: newPatient.name ?? "", dni: newPatient.dni },
+          ...prev,
+        ]);
+        setPatientId(newPatient.id);
+      }}
+      description="Se seleccionará automáticamente para el contrato de cuidados en casa."
+    />
+    </>
   );
 }

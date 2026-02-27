@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Plus, Loader2, Search, Pencil, Trash2, Clock, Calendar, DollarSign } from "lucide-react";
 import shiftCareService, { type CareShiftWithPatient, type CareShiftFilters } from "~/services/shiftCareService";
 import { CareShiftModal } from "~/components/ui/care-shift-modal";
-import { formatDateOnly } from "~/lib/utils";
+import { formatDateOnly, normalizeSearchText } from "~/lib/utils";
 
 function getPatientName(shift: CareShiftWithPatient): string {
   const p = shift.patient;
@@ -25,6 +25,7 @@ export default function CuidadosPorTurnosList() {
   const [fechaHasta, setFechaHasta] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingShift, setEditingShift] = useState<CareShiftWithPatient | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [statsToday, setStatsToday] = useState({ count: 0, revenue: 0 });
   const [statsMonth, setStatsMonth] = useState({ count: 0, revenue: 0 });
 
@@ -74,11 +75,11 @@ export default function CuidadosPorTurnosList() {
 
   const filteredShifts = shifts.filter((s) => {
     if (!searchTerm.trim()) return true;
-    const term = searchTerm.toLowerCase();
-    const patient = getPatientName(s).toLowerCase();
-    const familiar = (s.familiar_responsable ?? "").toLowerCase();
-    const enfermera = (s.enfermera ?? "").toLowerCase();
-    const distrito = (s.distrito ?? "").toLowerCase();
+    const term = normalizeSearchText(searchTerm);
+    const patient = normalizeSearchText(getPatientName(s));
+    const familiar = normalizeSearchText(s.familiar_responsable ?? "");
+    const enfermera = normalizeSearchText(s.enfermera ?? "");
+    const distrito = normalizeSearchText(s.distrito ?? "");
     return (
       patient.includes(term) ||
       familiar.includes(term) ||
@@ -90,12 +91,15 @@ export default function CuidadosPorTurnosList() {
   const handleDelete = async (id: string) => {
     if (!window.confirm("¿Eliminar este registro de turno?")) return;
     try {
+      setDeletingId(id);
       await shiftCareService.deleteShift(id);
       toast.success("Turno eliminado");
       loadShifts();
     } catch (error) {
       console.error(error);
       toast.error("No se pudo eliminar el turno");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -282,9 +286,14 @@ export default function CuidadosPorTurnosList() {
                             variant="outline"
                             size="sm"
                             onClick={() => handleDelete(shift.id)}
+                            disabled={deletingId === shift.id}
                             className="text-red-600 hover:text-red-700"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            {deletingId === shift.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-4 h-4" />
+                            )}
                           </Button>
                         </div>
                       </TableCell>

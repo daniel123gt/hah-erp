@@ -29,7 +29,8 @@ import {
   Droplets,
   AlertTriangle,
   Plus,
-  X
+  X,
+  Loader2
 } from "lucide-react";
 import { patientsService } from "~/services/patientsService";
 import { toast } from "sonner";
@@ -263,8 +264,8 @@ export function AddPatientModal({ onPatientAdded }: AddPatientModalProps) {
                   <Input
                     id="name"
                     value={formData.name}
-                    onChange={(e) => handleInputChange("name", e.target.value)}
-                    placeholder="Ej: María González"
+                    onChange={(e) => handleInputChange("name", e.target.value.toUpperCase())}
+                    placeholder="Ej: MARÍA GONZÁLEZ"
                     required
                   />
                 </div>
@@ -529,7 +530,14 @@ export function AddPatientModal({ onPatientAdded }: AddPatientModalProps) {
               className="bg-primary-blue hover:bg-primary-blue/90"
               disabled={isLoading}
             >
-              {isLoading ? "Agregando..." : "Agregar Paciente"}
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Agregando...
+                </>
+              ) : (
+                "Agregar Paciente"
+              )}
             </Button>
           </div>
         </form>

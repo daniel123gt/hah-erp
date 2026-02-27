@@ -20,6 +20,7 @@ import {
   TrendingUp,
   AlertCircle,
   Building2,
+  Loader2,
 } from "lucide-react";
 import type { InventoryItem } from "~/services/inventoryService";
 
@@ -65,6 +66,7 @@ const suppliers = [
 
 export function EditInventoryModal({ item, onInventoryUpdated }: EditInventoryModalProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<InventoryItem>(item);
 
   useEffect(() => {
@@ -84,16 +86,22 @@ export function EditInventoryModal({ item, onInventoryUpdated }: EditInventoryMo
     return "in_stock";
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     const updatedItem: InventoryItem = {
       ...formData,
       status: calculateStatus(formData.currentStock, formData.minStock)
     };
-
-    onInventoryUpdated(updatedItem);
-    setIsOpen(false);
+    setLoading(true);
+    try {
+      const result = onInventoryUpdated(updatedItem);
+      if (result && typeof (result as Promise<unknown>).then === "function") {
+        await result;
+      }
+      setIsOpen(false);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -427,14 +435,23 @@ export function EditInventoryModal({ item, onInventoryUpdated }: EditInventoryMo
               type="button"
               variant="outline"
               onClick={() => setIsOpen(false)}
+              disabled={loading}
             >
               Cancelar
             </Button>
             <Button
               type="submit"
               className="bg-primary-blue hover:bg-primary-blue/90"
+              disabled={loading}
             >
-              Guardar Cambios
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                "Guardar Cambios"
+              )}
             </Button>
           </div>
         </form>

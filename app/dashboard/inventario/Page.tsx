@@ -16,6 +16,7 @@ import { ViewInventoryModal } from "~/components/ui/view-inventory-modal";
 import { EditInventoryModal } from "~/components/ui/edit-inventory-modal";
 import { TablePagination } from "~/components/ui/table-pagination";
 import { inventoryService, type InventoryItem } from "~/services/inventoryService";
+import { normalizeSearchText } from "~/lib/utils";
 import { toast } from "sonner";
 import {
   Search,
@@ -53,10 +54,11 @@ export default function InventarioPage() {
   }, []);
 
   const filteredInventory = inventory.filter((item) => {
+    const search = normalizeSearchText(searchTerm);
     const matchesSearch =
-      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.id.toLowerCase().includes(searchTerm.toLowerCase());
+      normalizeSearchText(item.name).includes(search) ||
+      normalizeSearchText(item.description ?? "").includes(search) ||
+      normalizeSearchText(item.id).includes(search);
     const matchesCategory =
       filterCategory === "all" || item.category === filterCategory;
     const matchesStatus =
@@ -83,31 +85,29 @@ export default function InventarioPage() {
     setPage(1);
   }, [searchTerm, filterCategory, filterStatus]);
 
-  const handleInventoryAdded = (newItem: InventoryItem) => {
+  const handleInventoryAdded = async (newItem: InventoryItem) => {
     const { id: _id, ...rest } = newItem;
-    inventoryService
-      .create(rest)
-      .then((created) => {
-        setInventory((prev) => [created, ...prev]);
-        toast.success("Producto agregado al inventario");
-      })
-      .catch((err) => {
-        toast.error(err?.message ?? "Error al agregar el producto");
-      });
+    try {
+      const created = await inventoryService.create(rest);
+      setInventory((prev) => [created, ...prev]);
+      toast.success("Producto agregado al inventario");
+    } catch (err: unknown) {
+      toast.error((err as { message?: string })?.message ?? "Error al agregar el producto");
+      throw err;
+    }
   };
 
-  const handleInventoryUpdated = (updatedItem: InventoryItem) => {
-    inventoryService
-      .update(updatedItem)
-      .then((updated) => {
-        setInventory((prev) =>
-          prev.map((item) => (item.id === updated.id ? updated : item))
-        );
-        toast.success("Producto actualizado");
-      })
-      .catch((err) => {
-        toast.error(err?.message ?? "Error al actualizar el producto");
-      });
+  const handleInventoryUpdated = async (updatedItem: InventoryItem) => {
+    try {
+      const updated = await inventoryService.update(updatedItem);
+      setInventory((prev) =>
+        prev.map((item) => (item.id === updated.id ? updated : item))
+      );
+      toast.success("Producto actualizado");
+    } catch (err: unknown) {
+      toast.error((err as { message?: string })?.message ?? "Error al actualizar el producto");
+      throw err;
+    }
   };
 
   const getStatusBadge = (status: string) => {

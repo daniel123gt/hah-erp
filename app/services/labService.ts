@@ -1,4 +1,5 @@
 import supabase from "~/utils/supabase";
+import { normalizeSearchText } from "~/lib/utils";
 
 // Tipos para los datos de exámenes de laboratorio
 export interface LaboratoryExam {
@@ -52,9 +53,12 @@ export async function getExams(options: {
       .order(sortBy, { ascending: sortOrder === 'asc' })
       .range(from, to);
 
-    // Aplicar filtro de búsqueda si existe
+    // Aplicar filtro de búsqueda (normalizado: sin acentos, minúsculas)
     if (search) {
-      query = query.or(`nombre.ilike.%${search}%,codigo.ilike.%${search}%`);
+      const term = normalizeSearchText(search);
+      if (term) {
+        query = query.or(`nombre.ilike.%${term}%,codigo.ilike.%${term}%`);
+      }
     }
 
     // Aplicar filtro de categoría

@@ -1,4 +1,5 @@
 import supabase from "~/utils/supabase";
+import { normalizeSearchText } from "~/lib/utils";
 
 export interface ProcedureCatalogItem {
   id: string;
@@ -377,9 +378,12 @@ export const procedureService = {
     if (fromDate) query = query.gte("fecha", fromDate);
     if (toDate) query = query.lte("fecha", toDate);
     if (search.trim()) {
-      query = query.or(
-        `patient_name.ilike.%${search}%,procedure_name.ilike.%${search}%,district.ilike.%${search}%,numero_operacion.ilike.%${search}%`
-      );
+      const term = normalizeSearchText(search);
+      if (term) {
+        query = query.or(
+          `patient_name.ilike.%${term}%,procedure_name.ilike.%${term}%,district.ilike.%${term}%,numero_operacion.ilike.%${term}%`
+        );
+      }
     }
     if (paymentStatus === "pendiente") {
       query = query
@@ -451,13 +455,14 @@ export const procedureService = {
     const utilidad =
       ing - totalCostSoles - gastosMaterial - combustible - Number(data.costo_adicional_servicio || 0);
 
+    const patientName = data.patient_name != null && data.patient_name !== "" ? String(data.patient_name).trim().toUpperCase() : null;
     const { data: row, error } = await supabase
       .from("procedure_records")
       .insert([
         {
           fecha: data.fecha,
           patient_id: data.patient_id ?? null,
-          patient_name: data.patient_name ?? null,
+          patient_name: patientName,
           quantity: data.quantity ?? 1,
           procedure_catalog_id: data.procedure_catalog_id ?? null,
           procedure_name: data.procedure_name ?? null,
@@ -503,13 +508,13 @@ export const procedureService = {
       ing - totalCostSoles - gastosMaterial - combustible - Number(data.costo_adicional_servicio || 0);
 
     const { id, ...rest } = data;
+    const updatePayload: Record<string, unknown> = { ...rest, utilidad, updated_at: new Date().toISOString() };
+    if (rest.patient_name != null && rest.patient_name !== "") {
+      updatePayload.patient_name = String(rest.patient_name).trim().toUpperCase();
+    }
     const { data: row, error } = await supabase
       .from("procedure_records")
-      .update({
-        ...rest,
-        utilidad,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq("id", id)
       .select()
       .single();

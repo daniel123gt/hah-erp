@@ -12,11 +12,12 @@ import {
 import { Label } from "~/components/ui/label";
 import { Combobox } from "~/components/ui/combobox";
 import { medicalAppointmentRecordsService } from "~/services/medicalAppointmentRecordsService";
-import { patientsService } from "~/services/patientsService";
+import { patientsService, type Patient } from "~/services/patientsService";
+import { CreatePatientSubmodal } from "~/components/ui/create-patient-submodal";
 import { staffService } from "~/services/staffService";
 import { getDepartmentForCategory } from "~/dashboard/personal/categories";
 import { toast } from "sonner";
-import { Plus, User, Stethoscope, DollarSign, FileText } from "lucide-react";
+import { Plus, User, Stethoscope, DollarSign, FileText, Loader2, UserPlus } from "lucide-react";
 
 const APPOINTMENT_TYPES = [
   { value: "consulta", label: "Consulta" },
@@ -45,6 +46,7 @@ interface AddMedicalRecordModalProps {
 
 export function AddMedicalRecordModal({ onCreated }: AddMedicalRecordModalProps) {
   const [open, setOpen] = useState(false);
+  const [addPatientModalOpen, setAddPatientModalOpen] = useState(false);
   const [form, setForm] = useState({
     fecha: getTodayLocal(),
     patient_id: "" as string | null,
@@ -102,20 +104,10 @@ export function AddMedicalRecordModal({ onCreated }: AddMedicalRecordModalProps)
     e.preventDefault();
     setLoading(true);
     try {
-      let patientId: string | null = form.patient_id || null;
+      const patientId: string | null = form.patient_id || null;
       let patientName: string | null = form.patient_name?.trim() || null;
       if (form.patient_id) {
         patientName = patients.find((p) => p.id === form.patient_id)?.name ?? patientName;
-      }
-      let createdNewPatient = false;
-      if (!patientId && form.patient_name?.trim()) {
-        const newPatient = await patientsService.createPatient({
-          name: form.patient_name.trim(),
-        });
-        patientId = newPatient.id;
-        patientName = null;
-        setPatients((prev) => [{ id: newPatient.id, name: newPatient.name }, ...prev]);
-        createdNewPatient = true;
       }
 
       await medicalAppointmentRecordsService.create({
@@ -130,7 +122,7 @@ export function AddMedicalRecordModal({ onCreated }: AddMedicalRecordModalProps)
         numero_operacion: form.numero_operacion?.trim() || null,
         notes: form.notes.trim() || null,
       });
-      toast.success(createdNewPatient ? "Paciente creado y registro de cita médica guardado" : "Registro de cita médica creado");
+      toast.success("Registro de cita médica creado");
       resetForm();
       setOpen(false);
       onCreated();
@@ -142,6 +134,7 @@ export function AddMedicalRecordModal({ onCreated }: AddMedicalRecordModalProps)
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>
@@ -175,27 +168,31 @@ export function AddMedicalRecordModal({ onCreated }: AddMedicalRecordModalProps)
                   <User className="w-4 h-4" />
                   Paciente
                 </Label>
-                <Combobox
-                  options={patients.map((p) => ({ value: p.id, label: p.name }))}
-                  value={form.patient_id ?? ""}
-                  onValueChange={(value) =>
-                    setForm((f) => ({
-                      ...f,
-                      patient_id: value || null,
-                      patient_name: value ? patients.find((p) => p.id === value)?.name ?? f.patient_name : f.patient_name,
-                    }))
-                  }
-                  placeholder="Buscar paciente..."
-                  emptyOption={{ value: "", label: "Sin asignar / Otro" }}
-                />
-              </div>
-              <div>
-                <Label>Nombre (si no está en la lista, se creará el paciente)</Label>
-                <Input
-                  value={form.patient_name}
-                  onChange={(e) => setForm((f) => ({ ...f, patient_name: e.target.value }))}
-                  placeholder="Ej. Juan Pérez — se dará de alta si no existe"
-                />
+                <div className="flex gap-2 mt-1">
+                  <Combobox
+                    options={patients.map((p) => ({ value: p.id, label: p.name }))}
+                    value={form.patient_id ?? ""}
+                    onValueChange={(value) =>
+                      setForm((f) => ({
+                        ...f,
+                        patient_id: value || null,
+                        patient_name: value ? patients.find((p) => p.id === value)?.name ?? "" : "",
+                      }))
+                    }
+                    placeholder="Buscar paciente..."
+                    emptyOption={{ value: "", label: "Sin asignar / Otro" }}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setAddPatientModalOpen(true)}
+                    className="shrink-0"
+                  >
+                    <UserPlus className="w-4 h-4 mr-1" />
+                    Agregar paciente
+                  </Button>
+                </div>
               </div>
               <div>
                 <Label className="flex items-center gap-1">
@@ -287,16 +284,37 @@ export function AddMedicalRecordModal({ onCreated }: AddMedicalRecordModalProps)
               </div>
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={loading}>
                 Cancelar
               </Button>
               <Button type="submit" disabled={loading}>
-                {loading ? "Guardando..." : "Guardar"}
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Guardando...
+                  </>
+                ) : (
+                  "Guardar"
+                )}
               </Button>
             </div>
           </form>
         )}
       </DialogContent>
     </Dialog>
+    <CreatePatientSubmodal
+      open={addPatientModalOpen}
+      onOpenChange={setAddPatientModalOpen}
+      onCreated={(newPatient: Patient) => {
+        setPatients((prev) => [{ id: newPatient.id, name: newPatient.name ?? "" }, ...prev]);
+        setForm((f) => ({
+          ...f,
+          patient_id: newPatient.id,
+          patient_name: newPatient.name?.trim() ?? "",
+        }));
+      }}
+      description="Se seleccionará automáticamente para el registro de cita médica."
+    />
+    </>
   );
 }

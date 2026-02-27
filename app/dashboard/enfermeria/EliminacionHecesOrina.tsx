@@ -7,7 +7,8 @@ import { Label } from "~/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Combobox } from "~/components/ui/combobox";
 import { toast } from "sonner";
-import { ArrowLeft, Search, Loader2, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Search, Loader2, Save, Trash2, UserPlus } from "lucide-react";
+import { CreatePatientSubmodal } from "~/components/ui/create-patient-submodal";
 import patientsService from "~/services/patientsService";
 import { staffService } from "~/services/staffService";
 import { getDepartmentForCategory } from "~/dashboard/personal/categories";
@@ -25,11 +26,13 @@ export default function EliminacionHecesOrina() {
   const [isSearching, setIsSearching] = useState(false);
   const [patientResults, setPatientResults] = useState<any[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<any | null>(null);
+  const [addPatientModalOpen, setAddPatientModalOpen] = useState(false);
   const [currentRecord, setCurrentRecord] = useState<EliminationRecord | null>(null);
   const [isLoadingRecord, setIsLoadingRecord] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [historyRecords, setHistoryRecords] = useState<EliminationRecord[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [form, setForm] = useState<CreateEliminationRecordData>({
     patient_id: "",
@@ -250,7 +253,20 @@ export default function EliminacionHecesOrina() {
                   {isSearching ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
                   Buscar
                 </Button>
+                <Button variant="outline" onClick={() => setAddPatientModalOpen(true)}>
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Agregar paciente
+                </Button>
               </div>
+
+              <CreatePatientSubmodal
+                open={addPatientModalOpen}
+                onOpenChange={setAddPatientModalOpen}
+                onCreated={(newPatient) => {
+                  handleSelectPatient(newPatient);
+                }}
+                description="Se seleccionará automáticamente para el registro de eliminación heces/orina."
+              />
 
               {patientResults.length > 0 && (
                 <div className="space-y-2">
@@ -545,8 +561,11 @@ export default function EliminacionHecesOrina() {
                           <Button
                             variant="ghost"
                             size="sm"
+                            disabled={deletingId === record.id}
                             onClick={async () => {
                               if (!confirm("¿Eliminar este registro?")) return;
+                              if (deletingId) return;
+                              setDeletingId(record.id);
                               try {
                                 await eliminationRecordsService.delete(record.id);
                                 toast.success("Registro eliminado");
@@ -556,11 +575,17 @@ export default function EliminacionHecesOrina() {
                                 }
                               } catch (e: any) {
                                 toast.error(e?.message || "Error al eliminar");
+                              } finally {
+                                setDeletingId(null);
                               }
                             }}
                             className="text-red-600 hover:text-red-700 hover:bg-red-50"
                           >
-                            <Trash2 className="w-4 h-4 mr-1" />
+                            {deletingId === record.id ? (
+                              <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-4 h-4 mr-1" />
+                            )}
                             Eliminar
                           </Button>
                         </TableCell>

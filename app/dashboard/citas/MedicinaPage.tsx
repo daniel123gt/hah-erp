@@ -5,6 +5,7 @@ import { appointmentsService, formatDateOnly } from "~/services/appointmentsServ
 import { patientsService, type Patient } from "~/services/patientsService";
 import { medicalAppointmentRecordsService } from "~/services/medicalAppointmentRecordsService";
 import { getTodayLocal } from "~/lib/dateUtils";
+import { normalizeSearchText } from "~/lib/utils";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -106,8 +107,8 @@ export default function CitasMedicinaPage() {
 
   const filteredAppointments = appointments.filter((appointment) => {
     const matchesSearch =
-      appointment.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      appointment.doctorName.toLowerCase().includes(searchTerm.toLowerCase());
+      normalizeSearchText(appointment.patientName).includes(normalizeSearchText(searchTerm)) ||
+      normalizeSearchText(appointment.doctorName).includes(normalizeSearchText(searchTerm));
     const matchesDate = !filterDate || appointment.date === filterDate;
     const matchesStatus = filterStatus === "all" || appointment.status === filterStatus;
     const matchesType = filterType === "all" || appointment.type === filterType;
@@ -115,7 +116,7 @@ export default function CitasMedicinaPage() {
   });
 
   const handleAppointmentAdded = (newAppointment: Appointment) => {
-    appointmentsService
+    return appointmentsService
       .create({
         variant: "medicina",
         patient_id: newAppointment.patient_id ?? null,
@@ -167,12 +168,13 @@ export default function CitasMedicinaPage() {
       })
       .catch((err) => {
         toast.error(err?.message ?? "Error al crear la cita");
+        throw err;
       });
   };
 
   const handleAppointmentUpdated = (updatedAppointment: Appointment) => {
     const prevAppointment = appointments.find((a) => a.id === updatedAppointment.id);
-    appointmentsService
+    return appointmentsService
       .update({
         id: updatedAppointment.id,
         patient_id: updatedAppointment.patient_id ?? null,
@@ -231,6 +233,7 @@ export default function CitasMedicinaPage() {
       })
       .catch((err) => {
         toast.error(err?.message ?? "Error al actualizar la cita");
+        throw err;
       });
   };
 

@@ -1,4 +1,5 @@
 import supabase from "~/utils/supabase";
+import { normalizeSearchText } from "~/lib/utils";
 
 /** Valores equivalentes en BD: oficial + legacy (para que sigan apareciendo empleados ya guardados) */
 const DEPARTMENT_EQUIVALENTS: Record<string, string[]> = {
@@ -100,9 +101,12 @@ export const staffService = {
         .order(sortBy, { ascending: sortOrder === 'asc' })
         .range(from, to);
 
-             // Aplicar filtro de búsqueda si existe
+             // Aplicar filtro de búsqueda (normalizado: sin acentos, minúsculas)
              if (search) {
-               query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`);
+               const term = normalizeSearchText(search);
+               if (term) {
+                 query = query.or(`name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`);
+               }
              }
 
       // Aplicar filtro de estado

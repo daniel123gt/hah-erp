@@ -1,5 +1,6 @@
 import supabase from "~/utils/supabase";
 import { toLocalDateString } from "~/lib/dateUtils";
+import { normalizeSearchText } from "~/lib/utils";
 
 export interface MedicalAppointmentRecord {
   id: string;
@@ -84,9 +85,12 @@ export const medicalAppointmentRecordsService = {
     if (fromDate) query = query.gte("fecha", fromDate);
     if (toDate) query = query.lte("fecha", toDate);
     if (search.trim()) {
-      query = query.or(
-        `patient_name.ilike.%${search}%,doctor_name.ilike.%${search}%,appointment_type.ilike.%${search}%`
-      );
+      const term = normalizeSearchText(search);
+      if (term) {
+        query = query.or(
+          `patient_name.ilike.%${term}%,doctor_name.ilike.%${term}%,appointment_type.ilike.%${term}%`
+        );
+      }
     }
 
     const { data, error, count } = await query;
@@ -109,13 +113,14 @@ export const medicalAppointmentRecordsService = {
   },
 
   async create(data: CreateMedicalRecordData): Promise<MedicalAppointmentRecord> {
+    const patientName = data.patient_name != null && data.patient_name !== "" ? String(data.patient_name).trim().toUpperCase() : null;
     const { data: row, error } = await supabase
       .from("medical_appointment_records")
       .insert({
         appointment_id: data.appointment_id ?? null,
         fecha: data.fecha,
         patient_id: data.patient_id ?? null,
-        patient_name: data.patient_name ?? null,
+        patient_name: patientName,
         appointment_type: data.appointment_type || "consulta",
         doctor_name: data.doctor_name ?? null,
         ingreso: Number(data.ingreso ?? 0),
@@ -150,7 +155,7 @@ export const medicalAppointmentRecordsService = {
       appointment_id: appointment.id,
       fecha,
       patient_id: appointment.patient_id ?? null,
-      patient_name: appointment.patientName ?? null,
+      patient_name: appointment.patientName != null && appointment.patientName !== "" ? String(appointment.patientName).trim().toUpperCase() : null,
       appointment_type: appointment.type || "consulta",
       doctor_name: appointment.doctorName ?? null,
       ingreso,
@@ -163,12 +168,13 @@ export const medicalAppointmentRecordsService = {
 
   async update(data: UpdateMedicalRecordData): Promise<MedicalAppointmentRecord> {
     const { id, ...rest } = data;
+    const updatePayload: Record<string, unknown> = { ...rest, updated_at: new Date().toISOString() };
+    if (rest.patient_name != null && rest.patient_name !== "") {
+      updatePayload.patient_name = String(rest.patient_name).trim().toUpperCase();
+    }
     const { data: row, error } = await supabase
       .from("medical_appointment_records")
-      .update({
-        ...rest,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq("id", id)
       .select()
       .single();

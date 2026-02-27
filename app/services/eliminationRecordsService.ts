@@ -88,10 +88,12 @@ const eliminationRecordsService = {
   async create(data: CreateEliminationRecordData): Promise<EliminationRecord> {
     try {
       const recordDateYmd = String(data.record_date ?? '').trim().slice(0, 10);
+      const patientName = (data.patient_name ?? '').trim().toUpperCase();
       const { data: record, error } = await supabase
         .from('elimination_records')
         .insert([{
           ...data,
+          patient_name: patientName,
           record_date: recordDateYmd
         }])
         .select()
@@ -159,6 +161,9 @@ const eliminationRecordsService = {
   async update(id: string, data: Partial<CreateEliminationRecordData>): Promise<EliminationRecord> {
     try {
       const updateData: any = { ...data };
+      if (updateData.patient_name != null && updateData.patient_name !== '') {
+        updateData.patient_name = String(updateData.patient_name).trim().toUpperCase();
+      }
       if (updateData.record_date) {
         updateData.record_date = String(updateData.record_date).trim().slice(0, 10);
       }

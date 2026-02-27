@@ -24,7 +24,7 @@ import {
 } from "~/components/ui/command";
 import { procedureService, type ProcedureCatalogItem, type ProcedureCatalogMaterial } from "~/services/procedureService";
 import { toast } from "sonner";
-import { DollarSign, Plus, Trash2, ChevronDown } from "lucide-react";
+import { DollarSign, Plus, Trash2, ChevronDown, Loader2 } from "lucide-react";
 
 export interface ProcedureCatalogFormMaterial {
   material_name: string;
@@ -272,7 +272,14 @@ export function EditProcedureCatalogModal({
                 Cancelar
               </Button>
               <Button type="submit" disabled={saving}>
-                {saving ? "Guardando..." : "Guardar"}
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Guardando...
+                  </>
+                ) : (
+                  "Guardar"
+                )}
               </Button>
             </div>
           </div>

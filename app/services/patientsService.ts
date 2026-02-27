@@ -1,4 +1,5 @@
 import supabase from "~/utils/supabase";
+import { normalizeSearchText } from "~/lib/utils";
 
 // Tipos para los datos de pacientes
 export interface Patient {
@@ -78,16 +79,50 @@ export const patientsService = {
       const from = (page - 1) * limit;
       const to = from + limit - 1;
 
+      const term = search ? normalizeSearchText(search) : '';
+      const useSearchRpc = term.length > 0;
+
+      if (useSearchRpc) {
+        // Búsqueda insensible a acentos vía RPC (unaccent en PostgreSQL).
+        const [rpcRes, countRes] = await Promise.all([
+          supabase.rpc('search_patients', {
+            p_search: term,
+            p_status: status && status !== 'all' ? status : null,
+            p_gender: gender && gender !== 'all' ? gender : null,
+            p_blood_type: bloodType && bloodType !== 'all' ? bloodType : null,
+            p_district: district && district !== 'all' ? district : null,
+            p_sort_by: sortBy,
+            p_sort_order: sortOrder,
+            p_limit: limit,
+            p_offset: from,
+          }),
+          supabase.rpc('search_patients_count', {
+            p_search: term,
+            p_status: status && status !== 'all' ? status : null,
+            p_gender: gender && gender !== 'all' ? gender : null,
+            p_blood_type: bloodType && bloodType !== 'all' ? bloodType : null,
+            p_district: district && district !== 'all' ? district : null,
+          }),
+        ]);
+        if (rpcRes.error) throw rpcRes.error;
+        if (countRes.error) throw countRes.error;
+        const total = Number(countRes.data ?? 0);
+        return {
+          data: (rpcRes.data ?? []) as Patient[],
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+          hasNextPage: page < Math.ceil(total / limit),
+          hasPrevPage: page > 1,
+        };
+      }
+
       let query = supabase
         .from('patients')
         .select('*', { count: 'exact' })
         .order(sortBy, { ascending: sortOrder === 'asc' })
         .range(from, to);
-
-             // Aplicar filtro de búsqueda si existe (nombre, nro. documento, email, teléfono)
-             if (search) {
-               query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%,dni.ilike.%${search}%`);
-             }
 
       // Aplicar filtro de estado
       if (status && status !== 'all') {
@@ -173,12 +208,16 @@ export const patientsService = {
     }
   },
 
-  // Crear un nuevo paciente
+  // Crear un nuevo paciente (el nombre se guarda en mayúsculas por BD y por front)
   async createPatient(patientData: CreatePatientData) {
     try {
+      const payload = {
+        ...patientData,
+        name: patientData.name ? patientData.name.trim().toUpperCase() : patientData.name,
+      };
       const { data, error } = await supabase
         .from('patients')
-        .insert([patientData])
+        .insert([payload])
         .select()
         .single();
 
@@ -190,17 +229,20 @@ export const patientsService = {
     }
   },
 
-  // Actualizar un paciente existente
+  // Actualizar un paciente existente (el nombre se guarda en mayúsculas por BD y por front)
   async updatePatient(patientData: UpdatePatientData) {
     try {
       const { id, ...updateData } = patientData;
-      
+      const payload = {
+        ...updateData,
+        ...(updateData.name != null && String(updateData.name).trim() !== ""
+          ? { name: String(updateData.name).trim().toUpperCase() }
+          : {}),
+        updated_at: new Date().toISOString(),
+      };
       const { data, error } = await supabase
         .from('patients')
-        .update({
-          ...updateData,
-          updated_at: new Date().toISOString()
-        })
+        .update(payload)
         .eq('id', id)
         .select()
         .single();

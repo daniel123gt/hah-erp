@@ -60,10 +60,12 @@ export interface CreateEvolutionRecordData {
 const nursingEvolutionsService = {
   async create(data: CreateNursingEvolutionData): Promise<NursingEvolution> {
     try {
+      const patientName = (data.patient_name ?? '').trim().toUpperCase();
       const { data: evolution, error } = await supabase
         .from('nursing_evolutions')
         .insert([{
           ...data,
+          patient_name: patientName,
           evolution_date: new Date(data.evolution_date).toISOString().split('T')[0]
         }])
         .select()
@@ -141,7 +143,9 @@ const nursingEvolutionsService = {
     try {
       const { id, ...updateData } = data;
       const updatePayload: any = { ...updateData };
-      
+      if (updatePayload.patient_name != null && updatePayload.patient_name !== '') {
+        updatePayload.patient_name = String(updatePayload.patient_name).trim().toUpperCase();
+      }
       if (updatePayload.evolution_date) {
         updatePayload.evolution_date = new Date(updatePayload.evolution_date).toISOString().split('T')[0];
       }

@@ -20,6 +20,7 @@ import {
   TrendingUp,
   AlertCircle,
   Building2,
+  Loader2,
 } from "lucide-react";
 import type { InventoryItem } from "~/services/inventoryService";
 
@@ -64,6 +65,7 @@ const suppliers = [
 
 export function AddInventoryModal({ onInventoryAdded }: AddInventoryModalProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     category: "",
@@ -92,31 +94,37 @@ export function AddInventoryModal({ onInventoryAdded }: AddInventoryModalProps) 
     return "in_stock";
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     const newItem: InventoryItem = {
       id: `INV${Date.now()}`,
       ...formData,
       status: calculateStatus(formData.currentStock, formData.minStock)
     };
-
-    onInventoryAdded(newItem);
-    setIsOpen(false);
-    setFormData({
-      name: "",
-      category: "",
-      description: "",
-      currentStock: 0,
-      minStock: 0,
-      maxStock: 0,
-      unit: "",
-      price: 0,
-      supplier: "",
-      lastRestocked: new Date().toISOString().split('T')[0],
-      expiryDate: "",
-      status: "in_stock"
-    });
+    setLoading(true);
+    try {
+      const result = onInventoryAdded(newItem);
+      if (result && typeof (result as Promise<unknown>).then === "function") {
+        await result;
+      }
+      setIsOpen(false);
+      setFormData({
+        name: "",
+        category: "",
+        description: "",
+        currentStock: 0,
+        minStock: 0,
+        maxStock: 0,
+        unit: "",
+        price: 0,
+        supplier: "",
+        lastRestocked: new Date().toISOString().split("T")[0],
+        expiryDate: "",
+        status: "in_stock"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -450,14 +458,23 @@ export function AddInventoryModal({ onInventoryAdded }: AddInventoryModalProps) 
               type="button"
               variant="outline"
               onClick={() => setIsOpen(false)}
+              disabled={loading}
             >
               Cancelar
             </Button>
             <Button
               type="submit"
               className="bg-primary-blue hover:bg-primary-blue/90"
+              disabled={loading}
             >
-              Agregar Producto
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                "Agregar Producto"
+              )}
             </Button>
           </div>
         </form>
