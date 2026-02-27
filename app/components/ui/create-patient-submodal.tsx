@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import { UserPlus, Loader2 } from "lucide-react";
+import { UserPlus, Loader2, AlertTriangle } from "lucide-react";
 import { patientsService, type Patient } from "~/services/patientsService";
 import { toast } from "sonner";
 
@@ -51,6 +51,8 @@ export function CreatePatientSubmodal({
   const [form, setForm] = useState(emptyForm);
   const [districts, setDistricts] = useState<Array<{ name: string; zone?: string }>>([]);
   const [saving, setSaving] = useState(false);
+  const [duplicateWarningOpen, setDuplicateWarningOpen] = useState(false);
+  const [duplicatePatients, setDuplicatePatients] = useState<Patient[]>([]);
 
   useEffect(() => {
     if (open) {
@@ -58,6 +60,25 @@ export function CreatePatientSubmodal({
       patientsService.getDistricts().then(setDistricts).catch(() => setDistricts([]));
     }
   }, [open]);
+
+  const doCreatePatient = async () => {
+    const patient = await patientsService.createPatient({
+      name: form.name.trim().toUpperCase(),
+      dni: form.dni.trim() || undefined,
+      email: form.email.trim() || undefined,
+      phone: form.phone.trim() || undefined,
+      gender: (form.gender as "M" | "F") || undefined,
+      address: form.address.trim() || undefined,
+      district: form.district.trim() || undefined,
+      status: "Activo",
+    });
+    onCreated(patient);
+    setForm(emptyForm);
+    setDuplicateWarningOpen(false);
+    setDuplicatePatients([]);
+    onOpenChange(false);
+    toast.success("Paciente creado correctamente.");
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,20 +88,26 @@ export function CreatePatientSubmodal({
     }
     setSaving(true);
     try {
-      const patient = await patientsService.createPatient({
-        name: form.name.trim().toUpperCase(),
-        dni: form.dni.trim() || undefined,
-        email: form.email.trim() || undefined,
-        phone: form.phone.trim() || undefined,
-        gender: (form.gender as "M" | "F") || undefined,
-        address: form.address.trim() || undefined,
-        district: form.district.trim() || undefined,
-        status: "Activo",
-      });
-      onCreated(patient);
-      setForm(emptyForm);
-      onOpenChange(false);
-      toast.success("Paciente creado correctamente.");
+      const sameName = await patientsService.findPatientsWithSameName(form.name.trim());
+      if (sameName.length > 0) {
+        setDuplicatePatients(sameName);
+        setDuplicateWarningOpen(true);
+        setSaving(false);
+        return;
+      }
+      await doCreatePatient();
+    } catch (err) {
+      console.error(err);
+      toast.error("Error al crear el paciente.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleConfirmDuplicateAndCreate = async () => {
+    setSaving(true);
+    try {
+      await doCreatePatient();
     } catch (err) {
       console.error(err);
       toast.error("Error al crear el paciente.");
@@ -184,6 +211,56 @@ export function CreatePatientSubmodal({
           </div>
         </form>
       </DialogContent>
+
+      <Dialog open={duplicateWarningOpen} onOpenChange={setDuplicateWarningOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-600">
+              <AlertTriangle className="w-5 h-5" />
+              Ya hay paciente(s) con ese nombre
+            </DialogTitle>
+            <DialogDescription>
+              Se encontraron pacientes registrados con el mismo nombre (o muy similar). Revisa la lista y confirma si deseas agregar al nuevo paciente.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 max-h-48 overflow-y-auto rounded-md border bg-muted/30 p-3">
+            {duplicatePatients.map((p) => (
+              <div key={p.id} className="text-sm font-medium">
+                {p.name}
+                {p.dni ? ` · DNI ${p.dni}` : ""}
+              </div>
+            ))}
+          </div>
+          <p className="text-sm text-muted-foreground">
+            ¿Estás seguro que deseas agregar el nuevo paciente?
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setDuplicateWarningOpen(false); setDuplicatePatients([]); }}
+              disabled={saving}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              className="bg-primary-blue hover:bg-primary-blue/90"
+              onClick={handleConfirmDuplicateAndCreate}
+              disabled={saving}
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Agregando...
+                </>
+              ) : (
+                "Sí, agregar"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

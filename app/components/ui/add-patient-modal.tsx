@@ -32,7 +32,7 @@ import {
   X,
   Loader2
 } from "lucide-react";
-import { patientsService } from "~/services/patientsService";
+import { patientsService, type Patient as ServicePatient, type CreatePatientData } from "~/services/patientsService";
 import { toast } from "sonner";
 
 interface Patient {
@@ -84,6 +84,8 @@ export function AddPatientModal({ onPatientAdded }: AddPatientModalProps) {
   const [newAllergy, setNewAllergy] = useState("");
   const [newMedication, setNewMedication] = useState("");
   const [districts, setDistricts] = useState<Array<{ name: string; zone: string }>>([]);
+  const [duplicateWarningOpen, setDuplicateWarningOpen] = useState(false);
+  const [duplicatePatients, setDuplicatePatients] = useState<ServicePatient[]>([]);
 
   useEffect(() => {
     if (open) {
@@ -140,88 +142,96 @@ export function AddPatientModal({ onPatientAdded }: AddPatientModalProps) {
     return `P${count.toString().padStart(3, '0')}`;
   };
 
+  const buildCreatePayload = (): CreatePatientData => ({
+    name: formData.name,
+    dni: formData.dni.trim() || undefined,
+    email: formData.email,
+    phone: formData.phone,
+    age: parseInt(formData.age),
+    gender: (formData.gender === 'Masculino' ? 'M' : 'F') as 'M' | 'F',
+    address: formData.address,
+    district: formData.district || undefined,
+    last_visit: new Date().toISOString().split('T')[0],
+    status: formData.status === 'active' ? 'Activo' : formData.status === 'inactive' ? 'Inactivo' : 'Pendiente',
+    blood_type: formData.bloodType || undefined,
+    allergies: formData.allergies.length > 0 ? formData.allergies : undefined,
+    emergency_contact_name: formData.emergencyContactName || undefined,
+    emergency_contact_phone: formData.emergencyContactPhone || undefined,
+    primary_physician: formData.primaryPhysician || undefined,
+    current_medications: formData.currentMedications.length > 0 ? formData.currentMedications : undefined,
+    primary_diagnosis: formData.primaryDiagnosis || undefined
+  });
+
+  const doCreatePatient = async () => {
+    const createdPatient = await patientsService.createPatient(buildCreatePayload());
+    const modalPatient: Patient = {
+      id: createdPatient.id,
+      name: createdPatient.name,
+      dni: createdPatient.dni,
+      email: createdPatient.email || '',
+      phone: createdPatient.phone || '',
+      age: createdPatient.age || 0,
+      gender: createdPatient.gender === 'M' ? 'Masculino' : 'Femenino',
+      address: createdPatient.address || '',
+      district: createdPatient.district,
+      lastVisit: createdPatient.last_visit || new Date().toISOString().split('T')[0],
+      status: createdPatient.status === 'Activo' ? 'active' : createdPatient.status === 'Inactivo' ? 'inactive' : 'pending',
+      bloodType: createdPatient.blood_type,
+      allergies: createdPatient.allergies,
+      emergencyContactName: createdPatient.emergency_contact_name,
+      emergencyContactPhone: createdPatient.emergency_contact_phone,
+      primaryPhysician: createdPatient.primary_physician,
+      currentMedications: createdPatient.current_medications,
+      primaryDiagnosis: createdPatient.primary_diagnosis
+    };
+    onPatientAdded(modalPatient);
+    toast.success("Paciente creado exitosamente");
+    setFormData({
+      name: "", dni: "", email: "", phone: "", age: "", gender: "", address: "", district: "",
+      bloodType: "", allergies: [], emergencyContactName: "", emergencyContactPhone: "",
+      primaryPhysician: "", currentMedications: [], primaryDiagnosis: "", status: "active"
+    });
+    setDuplicateWarningOpen(false);
+    setDuplicatePatients([]);
+    setOpen(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-             const dni = formData.dni.trim();
-             if (dni) {
-               const taken = await patientsService.isDniTaken(dni);
-               if (taken) {
-                 toast.error("Este número de documento ya está registrado para otro paciente.");
-                 setIsLoading(false);
-                 return;
-               }
-             }
-             // Crear paciente usando el servicio de Supabase
-             const createdPatient = await patientsService.createPatient({
-               name: formData.name,
-               dni: formData.dni.trim() || undefined,
-               email: formData.email,
-               phone: formData.phone,
-               age: parseInt(formData.age),
-               gender: formData.gender === 'Masculino' ? 'M' : 'F',
-               address: formData.address,
-               district: formData.district || undefined,
-               last_visit: new Date().toISOString().split('T')[0],
-               status: formData.status === 'active' ? 'Activo' : formData.status === 'inactive' ? 'Inactivo' : 'Pendiente',
-               blood_type: formData.bloodType || undefined,
-               allergies: formData.allergies.length > 0 ? formData.allergies : undefined,
-               emergency_contact_name: formData.emergencyContactName || undefined,
-               emergency_contact_phone: formData.emergencyContactPhone || undefined,
-               primary_physician: formData.primaryPhysician || undefined,
-               current_medications: formData.currentMedications.length > 0 ? formData.currentMedications : undefined,
-               primary_diagnosis: formData.primaryDiagnosis || undefined
-             });
+      const dni = formData.dni.trim();
+      if (dni) {
+        const taken = await patientsService.isDniTaken(dni);
+        if (taken) {
+          toast.error("Este número de documento ya está registrado para otro paciente.");
+          setIsLoading(false);
+          return;
+        }
+      }
 
-             // Convertir a formato del modal para el callback
-             const modalPatient: Patient = {
-               id: createdPatient.id,
-               name: createdPatient.name,
-               dni: createdPatient.dni,
-               email: createdPatient.email || '',
-               phone: createdPatient.phone || '',
-               age: createdPatient.age || 0,
-               gender: createdPatient.gender === 'M' ? 'Masculino' : 'Femenino',
-               address: createdPatient.address || '',
-               district: createdPatient.district,
-               lastVisit: createdPatient.last_visit || new Date().toISOString().split('T')[0],
-               status: createdPatient.status === 'Activo' ? 'active' : createdPatient.status === 'Inactivo' ? 'inactive' : 'pending',
-               bloodType: createdPatient.blood_type,
-               allergies: createdPatient.allergies,
-               emergencyContactName: createdPatient.emergency_contact_name,
-               emergencyContactPhone: createdPatient.emergency_contact_phone,
-               primaryPhysician: createdPatient.primary_physician,
-               currentMedications: createdPatient.current_medications,
-               primaryDiagnosis: createdPatient.primary_diagnosis
-             };
+      const sameName = await patientsService.findPatientsWithSameName(formData.name);
+      if (sameName.length > 0) {
+        setDuplicatePatients(sameName);
+        setDuplicateWarningOpen(true);
+        setIsLoading(false);
+        return;
+      }
 
-      onPatientAdded(modalPatient);
-      
-      toast.success("Paciente creado exitosamente");
-      
-             // Reset form
-             setFormData({
-               name: "",
-               dni: "",
-               email: "",
-               phone: "",
-               age: "",
-               gender: "",
-               address: "",
-               district: "",
-               bloodType: "",
-               allergies: [],
-               emergencyContactName: "",
-               emergencyContactPhone: "",
-               primaryPhysician: "",
-               currentMedications: [],
-               primaryDiagnosis: "",
-               status: "active"
-             });
-      
-      setOpen(false);
+      await doCreatePatient();
+    } catch (error) {
+      console.error("Error al agregar paciente:", error);
+      toast.error("Error al crear el paciente. Inténtalo de nuevo.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleConfirmDuplicateAndCreate = async () => {
+    setIsLoading(true);
+    try {
+      await doCreatePatient();
     } catch (error) {
       console.error("Error al agregar paciente:", error);
       toast.error("Error al crear el paciente. Inténtalo de nuevo.");
@@ -542,6 +552,56 @@ export function AddPatientModal({ onPatientAdded }: AddPatientModalProps) {
           </div>
         </form>
       </DialogContent>
+
+      <Dialog open={duplicateWarningOpen} onOpenChange={setDuplicateWarningOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-600">
+              <AlertTriangle className="w-5 h-5" />
+              Ya hay paciente(s) con ese nombre
+            </DialogTitle>
+            <DialogDescription>
+              Se encontraron pacientes registrados con el mismo nombre (o muy similar). Revisa la lista y confirma si deseas agregar al nuevo paciente.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 max-h-48 overflow-y-auto rounded-md border bg-muted/30 p-3">
+            {duplicatePatients.map((p) => (
+              <div key={p.id} className="text-sm font-medium">
+                {p.name}
+                {p.dni ? ` · DNI ${p.dni}` : ""}
+              </div>
+            ))}
+          </div>
+          <p className="text-sm text-muted-foreground">
+            ¿Estás seguro que deseas agregar el nuevo paciente?
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setDuplicateWarningOpen(false); setDuplicatePatients([]); }}
+              disabled={isLoading}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              className="bg-primary-blue hover:bg-primary-blue/90"
+              onClick={handleConfirmDuplicateAndCreate}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Agregando...
+                </>
+              ) : (
+                "Sí, agregar"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

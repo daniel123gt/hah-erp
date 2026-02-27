@@ -9,6 +9,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "~/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Label } from "~/components/ui/label";
 import { Combobox } from "~/components/ui/combobox";
 import { medicalAppointmentRecordsService } from "~/services/medicalAppointmentRecordsService";
@@ -142,7 +143,7 @@ export function AddMedicalRecordModal({ onCreated }: AddMedicalRecordModalProps)
           Nuevo registro
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Agregar registro de cita médica</DialogTitle>
           <DialogDescription>
@@ -153,81 +154,92 @@ export function AddMedicalRecordModal({ onCreated }: AddMedicalRecordModalProps)
           <p className="text-sm text-gray-500">Cargando pacientes...</p>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 gap-4">
-              <div>
-                <Label>Fecha *</Label>
-                <Input
-                  type="date"
-                  value={form.fecha}
-                  onChange={(e) => setForm((f) => ({ ...f, fecha: e.target.value }))}
-                  required
-                />
-              </div>
-              <div>
-                <Label className="flex items-center gap-1">
-                  <User className="w-4 h-4" />
-                  Paciente
-                </Label>
-                <div className="flex gap-2 mt-1">
-                  <Combobox
-                    options={patients.map((p) => ({ value: p.id, label: p.name }))}
-                    value={form.patient_id ?? ""}
-                    onValueChange={(value) =>
-                      setForm((f) => ({
-                        ...f,
-                        patient_id: value || null,
-                        patient_name: value ? patients.find((p) => p.id === value)?.name ?? "" : "",
-                      }))
-                    }
-                    placeholder="Buscar paciente..."
-                    emptyOption={{ value: "", label: "Sin asignar / Otro" }}
-                    className="flex-1"
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <User className="w-5 h-5" />
+                  Paciente y cita
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Fecha *</Label>
+                  <Input
+                    type="date"
+                    value={form.fecha}
+                    onChange={(e) => setForm((f) => ({ ...f, fecha: e.target.value }))}
+                    required
                   />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setAddPatientModalOpen(true)}
-                    className="shrink-0"
-                  >
-                    <UserPlus className="w-4 h-4 mr-1" />
-                    Agregar paciente
-                  </Button>
                 </div>
-              </div>
-              <div>
-                <Label className="flex items-center gap-1">
-                  <Stethoscope className="w-4 h-4" />
-                  Tipo de cita *
-                </Label>
-                <select
-                  value={form.appointment_type}
-                  onChange={(e) => setForm((f) => ({ ...f, appointment_type: e.target.value }))}
-                  className="w-full border rounded-md px-3 py-2"
-                >
-                  {APPOINTMENT_TYPES.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <Label>Médico</Label>
-                <Combobox
-                  options={doctors.map((d) => ({ value: d.name, label: d.name }))}
-                  value={form.doctor_name}
-                  onValueChange={(value) => setForm((f) => ({ ...f, doctor_name: value }))}
-                  placeholder={loadingData ? "Cargando..." : "Buscar médico"}
-                  disabled={loadingData}
-                  emptyOption={{ value: "", label: "Seleccionar..." }}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <Label>Paciente</Label>
+                  <div className="flex gap-2 mt-1">
+                    <Combobox
+                      options={patients.map((p) => ({ value: p.id, label: p.name }))}
+                      value={form.patient_id ?? ""}
+                      onValueChange={(value) =>
+                        setForm((f) => ({
+                          ...f,
+                          patient_id: value || null,
+                          patient_name: value ? patients.find((p) => p.id === value)?.name ?? "" : "",
+                        }))
+                      }
+                      placeholder="Buscar paciente..."
+                      emptyOption={{ value: "", label: "Sin asignar / Otro" }}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setAddPatientModalOpen(true)}
+                      className="shrink-0"
+                    >
+                      <UserPlus className="w-4 h-4 mr-1" />
+                      Agregar paciente
+                    </Button>
+                  </div>
+                </div>
                 <div>
                   <Label className="flex items-center gap-1">
-                    <DollarSign className="w-4 h-4" />
-                    Ingreso (S/.)
+                    <Stethoscope className="w-4 h-4" />
+                    Tipo de cita *
                   </Label>
+                  <select
+                    value={form.appointment_type}
+                    onChange={(e) => setForm((f) => ({ ...f, appointment_type: e.target.value }))}
+                    className="w-full border rounded-md px-3 py-2"
+                  >
+                    {APPOINTMENT_TYPES.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <Label>Médico</Label>
+                  <Combobox
+                    options={doctors.map((d) => ({ value: d.name, label: d.name }))}
+                    value={form.doctor_name}
+                    onValueChange={(value) => setForm((f) => ({ ...f, doctor_name: value }))}
+                    placeholder={loadingData ? "Cargando..." : "Buscar médico"}
+                    disabled={loadingData}
+                    emptyOption={{ value: "", label: "Seleccionar..." }}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <DollarSign className="w-5 h-5" />
+                  Ingreso y pago (S/.)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Ingreso (S/.)</Label>
                   <Input
                     type="number"
                     step="0.01"
@@ -246,43 +258,48 @@ export function AddMedicalRecordModal({ onCreated }: AddMedicalRecordModalProps)
                     onChange={(e) => setForm((f) => ({ ...f, costo: Number(e.target.value) || 0 }))}
                   />
                 </div>
-              </div>
-              <div>
-                <Label>Método de pago</Label>
-                <select
-                  value={form.payment_method}
-                  onChange={(e) => setForm((f) => ({ ...f, payment_method: e.target.value }))}
-                  className="w-full border rounded-md px-3 py-2"
-                >
-                  {PAYMENT_METHODS.map((opt) => (
-                    <option key={opt.value || "none"} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <Label>Número de operación</Label>
-                <Input
-                  value={form.numero_operacion}
-                  onChange={(e) => setForm((f) => ({ ...f, numero_operacion: e.target.value }))}
-                  placeholder="Ej. ref. transferencia, código Yape/Plin..."
-                  className="w-full"
-                />
-              </div>
-              <div>
-                <Label className="flex items-center gap-1">
-                  <FileText className="w-4 h-4" />
+                <div>
+                  <Label>Método de pago</Label>
+                  <select
+                    value={form.payment_method}
+                    onChange={(e) => setForm((f) => ({ ...f, payment_method: e.target.value }))}
+                    className="w-full border rounded-md px-3 py-2"
+                  >
+                    {PAYMENT_METHODS.map((opt) => (
+                      <option key={opt.value || "none"} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <Label>Número de operación / Referencia</Label>
+                  <Input
+                    value={form.numero_operacion}
+                    onChange={(e) => setForm((f) => ({ ...f, numero_operacion: e.target.value }))}
+                    placeholder="Ej. ref. transferencia, código Yape/Plin..."
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <FileText className="w-5 h-5" />
                   Notas
-                </Label>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
                 <textarea
                   value={form.notes}
                   onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
                   className="w-full border rounded-md px-3 py-2 min-h-[80px]"
                   placeholder="Observaciones opcionales"
                 />
-              </div>
-            </div>
+              </CardContent>
+            </Card>
+
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={loading}>
                 Cancelar
