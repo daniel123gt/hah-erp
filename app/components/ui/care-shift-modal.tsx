@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "./button";
 import { Input } from "./input";
 import { Label } from "./label";
@@ -12,13 +12,51 @@ import {
   DialogTitle,
 } from "./dialog";
 import { Combobox } from "./combobox";
-import { Loader2, UserPlus, AlertTriangle } from "lucide-react";
+import { Badge } from "./badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "./popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "./command";
+import { Loader2, UserPlus, AlertTriangle, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "~/lib/utils";
 import type { CareShiftWithPatient, CreateCareShiftData } from "~/services/shiftCareService";
 import { patientsService, type Patient } from "~/services/patientsService";
-import { homeCareService, type HomeCarePlan } from "~/services/homeCareService";
+import { homeCareService, type HomeCarePlan, type HomeCarePlanCategoria } from "~/services/homeCareService";
 import { staffService } from "~/services/staffService";
 import { getDepartmentForCategory } from "~/dashboard/personal/categories";
+
+const CATEGORIA_OPTIONS: { value: "todos" | HomeCarePlanCategoria; label: string }[] = [
+  { value: "todos", label: "Todos" },
+  { value: "tecnicas", label: "Técnicas" },
+  { value: "licenciadas", label: "Licenciadas" },
+  { value: "paliativos", label: "Paliativos" },
+];
+
+function planCategoriaColor(categoria: string | undefined): string {
+  switch (categoria) {
+    case "tecnicas": return "bg-green-100 text-green-800 border-green-200";
+    case "licenciadas": return "bg-blue-100 text-blue-800 border-blue-200";
+    case "paliativos": return "bg-purple-100 text-purple-800 border-purple-200";
+    default: return "bg-gray-100 text-gray-800 border-gray-200";
+  }
+}
 
 const FORMA_PAGO_OPTIONS = ["TRANSFERENCIA", "YAPE", "PLIN", "EFECTIVO", "OTRO"];
 
@@ -113,7 +151,7 @@ export function CareShiftModal({
   const [loading, setLoading] = useState(false);
   const [patientOptions, setPatientOptions] = useState<{ value: string; label: string }[]>([]);
   const [districtOptions, setDistrictOptions] = useState<{ value: string; label: string }[]>([]);
-  const [planOptions, setPlanOptions] = useState<{ value: string; label: string; monto: number }[]>([]);
+  const [plans, setPlans] = useState<HomeCarePlan[]>([]);
   const [nurseOptions, setNurseOptions] = useState<{ value: string; label: string }[]>([]);
   const [addPatientModalOpen, setAddPatientModalOpen] = useState(false);
   const [creatingPatient, setCreatingPatient] = useState(false);
@@ -121,6 +159,18 @@ export function CareShiftModal({
   const [duplicatePatients, setDuplicatePatients] = useState<Patient[]>([]);
   const [turnoMode, setTurnoMode] = useState<"existente" | "personalizado">("existente");
   const [turnoPersonalizado, setTurnoPersonalizado] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<"todos" | HomeCarePlanCategoria>("todos");
+  const [planComboboxOpen, setPlanComboboxOpen] = useState(false);
+
+  /** Solo planes especial y semana (para turnos eventuales) */
+  const shiftPlans = useMemo(
+    () => plans.filter((p) => (p.tipo ?? "mensual") === "especial" || (p.tipo ?? "mensual") === "semana"),
+    [plans]
+  );
+  const filteredPlans = useMemo(() => {
+    if (categoryFilter === "todos") return shiftPlans;
+    return shiftPlans.filter((p) => (p.categoria ?? "tecnicas") === categoryFilter);
+  }, [shiftPlans, categoryFilter]);
   const [newPatientData, setNewPatientData] = useState({
     name: "",
     dni: "",
@@ -138,11 +188,11 @@ export function CareShiftModal({
 
   useEffect(() => {
     if (!open || !form.turno) return;
-    if (planOptions.length > 0 && !planOptions.some((o) => o.value === form.turno)) {
+    if (shiftPlans.length > 0 && !shiftPlans.some((p) => p.name === form.turno)) {
       setTurnoMode("personalizado");
       setTurnoPersonalizado(form.turno);
     }
-  }, [open, form.turno, planOptions]);
+  }, [open, form.turno, shiftPlans]);
 
   useEffect(() => {
     if (open) {
@@ -157,14 +207,8 @@ export function CareShiftModal({
           }))
         );
       });
-      homeCareService.getPlans().then((plans: HomeCarePlan[]) => {
-        setPlanOptions(
-          plans.map((p) => ({
-            value: p.name,
-            label: `${p.name} — S/ ${Number(p.monto_mensual).toLocaleString("es-PE")}`,
-            monto: Number(p.monto_mensual),
-          }))
-        );
+      homeCareService.getPlans().then((data: HomeCarePlan[]) => {
+        setPlans(data);
       });
       const dept = getDepartmentForCategory("enfermeria");
       if (dept) {
@@ -345,8 +389,8 @@ export function CareShiftModal({
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
+          <div className="space-y-4">
+            <div className="space-y-2 w-full">
               <Label>Turno (duración)</Label>
               <div className="flex gap-4 items-center">
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -371,22 +415,105 @@ export function CareShiftModal({
                 </label>
               </div>
               {turnoMode === "existente" ? (
-                <Combobox
-                  options={planOptions.map((o) => ({ value: o.value, label: o.label }))}
-                  value={form.turno}
-                  onValueChange={(v) => {
-                    const opt = planOptions.find((o) => o.value === v);
-                    setForm((f) => ({
-                      ...f,
-                      turno: v,
-                      monto_a_pagar: opt ? String(opt.monto) : f.monto_a_pagar,
-                    }));
-                  }}
-                  placeholder="Seleccionar turno"
-                  emptyOption={{ value: "", label: "Seleccionar turno" }}
-                />
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground font-normal">Categoría</Label>
+                  <Select
+                    value={categoryFilter}
+                    onValueChange={(v) => setCategoryFilter(v as "todos" | HomeCarePlanCategoria)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Filtrar por categoría" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CATEGORIA_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Label className="text-muted-foreground font-normal">Turno</Label>
+                  <Popover open={planComboboxOpen} onOpenChange={setPlanComboboxOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={planComboboxOpen}
+                        disabled={filteredPlans.length === 0}
+                        className={cn(
+                          "w-full justify-between font-normal h-10 px-3 py-2 text-sm",
+                          !form.turno && "text-muted-foreground"
+                        )}
+                      >
+                        <span className="flex items-center gap-2 truncate">
+                          {form.turno
+                            ? (() => {
+                                const plan = shiftPlans.find((p) => p.name === form.turno);
+                                if (!plan) return form.turno;
+                                return (
+                                  <>
+                                    <Badge
+                                      variant="outline"
+                                      className={cn("shrink-0 text-xs", planCategoriaColor(plan.categoria))}
+                                    >
+                                      {plan.categoria === "tecnicas" ? "Técnicas" : plan.categoria === "licenciadas" ? "Licenciadas" : "Paliativos"}
+                                    </Badge>
+                                    {plan.name} — S/ {Number(plan.monto_mensual).toLocaleString("es-PE")}
+                                  </>
+                                );
+                              })()
+                            : "Buscar turno..."}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start" side="bottom" sideOffset={4}>
+                      <Command shouldFilter={true}>
+                        <CommandInput placeholder="Buscar turno..." />
+                        <CommandList>
+                          <CommandEmpty>Sin resultados.</CommandEmpty>
+                          <CommandGroup>
+                            {filteredPlans.map((plan) => (
+                              <CommandItem
+                                key={plan.id}
+                                value={`${plan.name} ${plan.categoria ?? ""} ${plan.monto_mensual}`}
+                                onSelect={() => {
+                                  setForm((f) => ({
+                                    ...f,
+                                    turno: plan.name,
+                                    monto_a_pagar: String(plan.monto_mensual),
+                                  }));
+                                  setPlanComboboxOpen(false);
+                                }}
+                              >
+                                <span className="flex items-center gap-2 w-full">
+                                  <Badge
+                                    variant="outline"
+                                    className={cn("shrink-0 text-xs", planCategoriaColor(plan.categoria))}
+                                  >
+                                    {plan.categoria === "tecnicas" ? "Técnicas" : plan.categoria === "licenciadas" ? "Licenciadas" : "Paliativos"}
+                                  </Badge>
+                                  <span className="truncate">
+                                    {plan.name} — S/ {Number(plan.monto_mensual).toLocaleString("es-PE")}
+                                  </span>
+                                </span>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  {shiftPlans.length === 0 && (
+                    <p className="text-xs text-muted-foreground">No hay planes de tipo semana/especial. Agrega planes en la BD.</p>
+                  )}
+                  {shiftPlans.length > 0 && filteredPlans.length === 0 && (
+                    <p className="text-xs text-muted-foreground">No hay planes en esta categoría.</p>
+                  )}
+                </div>
               ) : (
-                <div className="space-y-1">
+                <div className="space-y-1 w-full">
                   <Input
                     value={turnoPersonalizado}
                     onChange={(e) => setTurnoPersonalizado(e.target.value)}
@@ -397,7 +524,7 @@ export function CareShiftModal({
                 </div>
               )}
             </div>
-            <div>
+            <div className="w-full">
               <Label htmlFor="care-shift-monto">Monto a pagar (S/.) *</Label>
               <Input
                 id="care-shift-monto"
@@ -407,6 +534,7 @@ export function CareShiftModal({
                 value={form.monto_a_pagar}
                 onChange={(e) => setForm((f) => ({ ...f, monto_a_pagar: e.target.value }))}
                 required
+                className="w-full"
               />
             </div>
           </div>

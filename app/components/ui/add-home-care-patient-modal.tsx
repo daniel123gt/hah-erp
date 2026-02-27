@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "./button";
 import { Input } from "./input";
 import { Card, CardContent, CardHeader, CardTitle } from "./card";
@@ -12,14 +12,53 @@ import {
 } from "./dialog";
 import { Label } from "./label";
 import { Combobox } from "./combobox";
-import { User, DollarSign, Plus, Loader2, UserPlus } from "lucide-react";
+import { Badge } from "./badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "./popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "./command";
+import { User, DollarSign, Plus, Loader2, UserPlus, ChevronsUpDown } from "lucide-react";
 import { CreatePatientSubmodal } from "~/components/ui/create-patient-submodal";
 import homeCareService, {
   type HomeCareContractWithPatient,
   type HomeCarePlan,
+  type HomeCarePlanCategoria,
 } from "~/services/homeCareService";
 import { patientsService, type Patient } from "~/services/patientsService";
 import { toast } from "sonner";
+import { cn } from "~/lib/utils";
+
+const CATEGORIA_OPTIONS: { value: "todos" | HomeCarePlanCategoria; label: string }[] = [
+  { value: "todos", label: "Todos" },
+  { value: "tecnicas", label: "Técnicas" },
+  { value: "licenciadas", label: "Licenciadas" },
+  { value: "paliativos", label: "Paliativos" },
+];
+
+function planCategoriaColor(categoria: string | undefined): string {
+  switch (categoria) {
+    case "tecnicas": return "bg-green-100 text-green-800 border-green-200";
+    case "licenciadas": return "bg-blue-100 text-blue-800 border-blue-200";
+    case "paliativos": return "bg-purple-100 text-purple-800 border-purple-200";
+    default: return "bg-gray-100 text-gray-800 border-gray-200";
+  }
+}
 
 interface AddHomeCarePatientModalProps {
   onAdded: (patientId: string) => void;
@@ -41,6 +80,19 @@ export function AddHomeCarePatientModal({ onAdded }: AddHomeCarePatientModalProp
     fecha_inicio: new Date().toISOString().split("T")[0],
     plan_id: "",
   });
+  const [categoryFilter, setCategoryFilter] = useState<"todos" | HomeCarePlanCategoria>("todos");
+  const [planComboboxOpen, setPlanComboboxOpen] = useState(false);
+
+  /** Solo planes mensuales (para este modal) */
+  const monthlyPlans = useMemo(
+    () => plans.filter((p) => (p.tipo ?? "mensual") === "mensual"),
+    [plans]
+  );
+  /** Planes mensuales filtrados por categoría */
+  const filteredPlans = useMemo(() => {
+    if (categoryFilter === "todos") return monthlyPlans;
+    return monthlyPlans.filter((p) => (p.categoria ?? "tecnicas") === categoryFilter);
+  }, [monthlyPlans, categoryFilter]);
 
   useEffect(() => {
     if (open) {
@@ -79,7 +131,7 @@ export function AddHomeCarePatientModal({ onAdded }: AddHomeCarePatientModalProp
     try {
       const familiarEncargado = contract.familiar_encargado.trim();
       const selectedPlan = contract.plan_id
-        ? plans.find((p) => p.id === contract.plan_id)
+        ? monthlyPlans.find((p) => p.id === contract.plan_id)
         : null;
       if (!selectedPlan) {
         toast.error("Selecciona un plan.");
@@ -111,6 +163,7 @@ export function AddHomeCarePatientModal({ onAdded }: AddHomeCarePatientModalProp
 
   const resetForm = () => {
     setPatientId("");
+    setCategoryFilter("todos");
     setContract({
       familiar_encargado: "",
       hora_inicio: "08:00",
@@ -223,26 +276,99 @@ export function AddHomeCarePatientModal({ onAdded }: AddHomeCarePatientModalProp
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="plan_id">Plan *</Label>
-                <select
-                  id="plan_id"
-                  value={contract.plan_id}
-                  onChange={(e) => setContract((c) => ({ ...c, plan_id: e.target.value }))}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
+                <Label>Categoría</Label>
+                <Select
+                  value={categoryFilter}
+                  onValueChange={(v) => setCategoryFilter(v as "todos" | HomeCarePlanCategoria)}
                 >
-                  <option value="">Selecciona un plan</option>
-                  {plans.map((plan) => (
-                    <option key={plan.id} value={plan.id}>
-                      {plan.name} — S/ {Number(plan.monto_mensual).toLocaleString("es-PE")}/mes
-                    </option>
-                  ))}
-                  {plans.length === 0 && (
-                    <option value="" disabled>
-                      No hay planes cargados. Ejecuta el seed de planes en la BD.
-                    </option>
-                  )}
-                </select>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Filtrar por categoría" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIA_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="plan_id">Plan *</Label>
+                <Popover open={planComboboxOpen} onOpenChange={setPlanComboboxOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      id="plan_id"
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={planComboboxOpen}
+                      disabled={filteredPlans.length === 0}
+                      className={cn(
+                        "w-full justify-between font-normal h-10 px-3 py-2 text-sm",
+                        !contract.plan_id && "text-muted-foreground"
+                      )}
+                    >
+                      <span className="flex items-center gap-2 truncate">
+                        {contract.plan_id
+                          ? (() => {
+                              const plan = plans.find((p) => p.id === contract.plan_id);
+                              if (!plan) return "Selecciona un plan";
+                              return (
+                                <>
+                                  <Badge
+                                    variant="outline"
+                                    className={cn("shrink-0 text-xs", planCategoriaColor(plan.categoria))}
+                                  >
+                                    {plan.categoria === "tecnicas" ? "Técnicas" : plan.categoria === "licenciadas" ? "Licenciadas" : "Paliativos"}
+                                  </Badge>
+                                  {plan.name} — S/ {Number(plan.monto_mensual).toLocaleString("es-PE")}/mes
+                                </>
+                              );
+                            })()
+                          : "Buscar plan..."}
+                      </span>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start" side="bottom" sideOffset={4}>
+                    <Command shouldFilter={true}>
+                      <CommandInput placeholder="Buscar plan..." />
+                      <CommandList>
+                        <CommandEmpty>Sin resultados.</CommandEmpty>
+                        <CommandGroup>
+                          {filteredPlans.map((plan) => (
+                            <CommandItem
+                              key={plan.id}
+                              value={`${plan.name} ${plan.categoria ?? ""} ${plan.monto_mensual}`}
+                              onSelect={() => {
+                                setContract((c) => ({ ...c, plan_id: plan.id }));
+                                setPlanComboboxOpen(false);
+                              }}
+                            >
+                              <span className="flex items-center gap-2 w-full">
+                                <Badge
+                                  variant="outline"
+                                  className={cn("shrink-0 text-xs", planCategoriaColor(plan.categoria))}
+                                >
+                                  {plan.categoria === "tecnicas" ? "Técnicas" : plan.categoria === "licenciadas" ? "Licenciadas" : "Paliativos"}
+                                </Badge>
+                                <span className="truncate">
+                                  {plan.name} — S/ {Number(plan.monto_mensual).toLocaleString("es-PE")}/mes
+                                </span>
+                              </span>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                {filteredPlans.length === 0 && monthlyPlans.length === 0 && (
+                  <p className="text-xs text-muted-foreground">No hay planes mensuales. Ejecuta el seed de planes en la BD.</p>
+                )}
+                {monthlyPlans.length > 0 && filteredPlans.length === 0 && (
+                  <p className="text-xs text-muted-foreground">No hay planes en esta categoría.</p>
+                )}
               </div>
             </CardContent>
           </Card>
