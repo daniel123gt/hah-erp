@@ -79,6 +79,7 @@ export function AddHomeCarePatientModal({ onAdded }: AddHomeCarePatientModalProp
     hora_inicio: "08:00",
     fecha_inicio: new Date().toISOString().split("T")[0],
     plan_id: "",
+    descuento: "",
   });
   const [categoryFilter, setCategoryFilter] = useState<"todos" | HomeCarePlanCategoria>("todos");
   const [planComboboxOpen, setPlanComboboxOpen] = useState(false);
@@ -139,6 +140,9 @@ export function AddHomeCarePatientModal({ onAdded }: AddHomeCarePatientModalProp
         return;
       }
 
+      const descuento = Number(contract.descuento) || 0;
+      const planMontoFinal = Math.max(0, selectedPlan.monto_mensual - descuento);
+
       await homeCareService.createContract({
         patient_id: patientId,
         plan_id: contract.plan_id || null,
@@ -147,6 +151,8 @@ export function AddHomeCarePatientModal({ onAdded }: AddHomeCarePatientModalProp
         fecha_inicio: contract.fecha_inicio,
         plan_nombre: selectedPlan.name,
         plan_monto_mensual: selectedPlan.monto_mensual,
+        descuento,
+        plan_monto_mensual_final: planMontoFinal,
       });
 
       toast.success("Paciente agregado al servicio de cuidados en casa.");
@@ -169,8 +175,13 @@ export function AddHomeCarePatientModal({ onAdded }: AddHomeCarePatientModalProp
       hora_inicio: "08:00",
       fecha_inicio: new Date().toISOString().split("T")[0],
       plan_id: "",
+      descuento: "",
     });
   };
+
+  const selectedPlan = contract.plan_id ? monthlyPlans.find((p) => p.id === contract.plan_id) : null;
+  const descuentoNum = Number(contract.descuento) || 0;
+  const montoFinal = selectedPlan ? Math.max(0, selectedPlan.monto_mensual - descuentoNum) : null;
 
   const availablePatients = patients;
 
@@ -370,6 +381,30 @@ export function AddHomeCarePatientModal({ onAdded }: AddHomeCarePatientModalProp
                   <p className="text-xs text-muted-foreground">No hay planes en esta categoría.</p>
                 )}
               </div>
+              {selectedPlan && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="descuento">Descuento (S/.)</Label>
+                    <Input
+                      id="descuento"
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={contract.descuento}
+                      onChange={(e) => setContract((c) => ({ ...c, descuento: e.target.value }))}
+                      placeholder="Ej: 50"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Monto del plan: S/ {selectedPlan.monto_mensual.toLocaleString("es-PE")}. Si aplica descuento, el monto final se usará para los periodos.
+                    </p>
+                  </div>
+                  {montoFinal != null && (
+                    <p className="text-sm font-medium text-primary-blue">
+                      Monto final a facturar: S/ {montoFinal.toLocaleString("es-PE")}/mes
+                    </p>
+                  )}
+                </>
+              )}
             </CardContent>
           </Card>
 

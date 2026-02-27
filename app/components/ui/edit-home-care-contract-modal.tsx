@@ -20,6 +20,8 @@ export type ContractFormData = {
   plan_id: string;
   plan_nombre: string;
   plan_monto_mensual: string;
+  descuento: string;
+  plan_monto_mensual_final: string;
   is_active: boolean;
 };
 
@@ -47,6 +49,8 @@ export function EditHomeCareContractModal({
     plan_id: "",
     plan_nombre: "",
     plan_monto_mensual: "",
+    descuento: "",
+    plan_monto_mensual_final: "",
     is_active: true,
   });
   const [saving, setSaving] = useState(false);
@@ -54,7 +58,6 @@ export function EditHomeCareContractModal({
   useEffect(() => {
     if (open && contract) {
       const rawPlanId = contract.plan_id != null ? String(contract.plan_id) : "";
-      // Si no hay plan_id pero sí plan_nombre, buscar el plan por nombre para preseleccionar
       const plan =
         plans.find((p) => p.id === rawPlanId) ??
         (contract.plan_nombre && plans.length > 0
@@ -65,13 +68,18 @@ export function EditHomeCareContractModal({
             )
           : null);
       const planId = plan ? plan.id : rawPlanId;
+      const baseMonto = contract.plan_monto_mensual ?? plan?.monto_mensual ?? 0;
+      const finalMonto = contract.plan_monto_mensual_final ?? contract.plan_monto_mensual ?? baseMonto;
+      const descuento = (contract.descuento ?? 0) as number;
       setForm({
         familiar_encargado: contract.familiar_encargado ?? "",
         hora_inicio: toTimeInputValue(contract.hora_inicio) || "08:00",
         fecha_inicio: contract.fecha_inicio ? contract.fecha_inicio.toString().slice(0, 10) : "",
         plan_id: planId,
         plan_nombre: contract.plan_nombre ?? plan?.name ?? "",
-        plan_monto_mensual: String(contract.plan_monto_mensual ?? plan?.monto_mensual ?? ""),
+        plan_monto_mensual: String(baseMonto),
+        descuento: String(descuento),
+        plan_monto_mensual_final: String(finalMonto),
         is_active: contract.is_active ?? true,
       });
     }
@@ -79,11 +87,14 @@ export function EditHomeCareContractModal({
 
   const handlePlanChange = (planId: string) => {
     const plan = plans.find((p) => p.id === planId);
+    const baseMonto = plan != null ? plan.monto_mensual : 0;
+    const descuentoNum = parseFloat(form.descuento) || 0;
     setForm((prev) => ({
       ...prev,
       plan_id: planId,
       plan_nombre: plan?.name ?? prev.plan_nombre,
       plan_monto_mensual: plan != null ? String(plan.monto_mensual) : prev.plan_monto_mensual,
+      plan_monto_mensual_final: String(Math.max(0, baseMonto - descuentoNum)),
     }));
   };
 
@@ -158,13 +169,43 @@ export function EditHomeCareContractModal({
             </select>
           </div>
           <div className="space-y-2">
-            <Label>Monto mensual (S/)</Label>
+            <Label>Monto base del plan (S/)</Label>
             <Input
               type="number"
               min="0"
               step="0.01"
               value={form.plan_monto_mensual}
-              onChange={(e) => setForm((p) => ({ ...p, plan_monto_mensual: e.target.value }))}
+              readOnly
+              className="bg-muted"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Descuento (S/.)</Label>
+            <Input
+              type="number"
+              min="0"
+              step="1"
+              value={form.descuento}
+              onChange={(e) => {
+                const desc = e.target.value;
+                const base = parseFloat(form.plan_monto_mensual) || 0;
+                setForm((p) => ({
+                  ...p,
+                  descuento: desc,
+                  plan_monto_mensual_final: String(Math.max(0, base - (parseFloat(desc) || 0))),
+                }));
+              }}
+              placeholder="0"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Monto final mensual (S/) – se usa para periodos</Label>
+            <Input
+              type="number"
+              min="0"
+              step="0.01"
+              value={form.plan_monto_mensual_final}
+              onChange={(e) => setForm((p) => ({ ...p, plan_monto_mensual_final: e.target.value }))}
               required
             />
           </div>
