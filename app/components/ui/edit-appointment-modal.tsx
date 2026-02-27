@@ -480,8 +480,8 @@ export function EditAppointmentModal({
                       type="number"
                       step="0.01"
                       min="0"
-                      value={formData.procedure_ingreso ?? procedureCatalog.find((p) => p.id === formData.procedure_catalog_id)?.base_price_soles ?? ""}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, procedure_ingreso: e.target.value ? Number(e.target.value) : undefined }))}
+                      value={formData.procedure_ingreso != null ? formData.procedure_ingreso : ""}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, procedure_ingreso: e.target.value !== "" ? Number(e.target.value) : undefined }))}
                       disabled={formData.status !== "completed"}
                       className={formData.status !== "completed" ? "bg-muted" : ""}
                     />
@@ -490,8 +490,8 @@ export function EditAppointmentModal({
                       type="number"
                       step="0.01"
                       min="0"
-                      value={formData.appointment_ingreso ?? ""}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, appointment_ingreso: e.target.value ? Number(e.target.value) : undefined }))}
+                      value={formData.appointment_ingreso != null ? formData.appointment_ingreso : ""}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, appointment_ingreso: e.target.value !== "" ? Number(e.target.value) : undefined }))}
                       disabled={formData.status !== "completed"}
                       className={formData.status !== "completed" ? "bg-muted" : ""}
                     />
