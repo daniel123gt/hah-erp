@@ -67,8 +67,8 @@ interface Appointment {
 
 interface AddAppointmentModalProps {
   onAppointmentAdded: (appointment: Appointment) => void | Promise<void>;
-  /** "medicina" = médico, "procedimientos" = enfermera */
-  variant?: "medicina" | "procedimientos";
+  /** "medicina" = médico, "procedimientos" = enfermera, "rx_ecografias" = RX/Ecografías (médico) */
+  variant?: "medicina" | "procedimientos" | "rx_ecografias";
   defaultLocation?: string;
 }
 
@@ -80,7 +80,9 @@ export function AddAppointmentModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const professionalLabel = variant === "procedimientos"
     ? (procedureProfessionalKind === "enfermera" ? "Enfermera" : "Médico")
-    : "Médico";
+    : variant === "rx_ecografias"
+      ? "Técnico / Médico"
+      : "Médico";
 
   const [isOpen, setIsOpen] = useState(false);
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -131,7 +133,7 @@ export function AddAppointmentModal({
       ? (procedureProfessionalKind === "enfermera"
           ? getDepartmentForCategory("enfermeria")
           : getDepartmentForCategory("medicina"))
-      : getDepartmentForCategory("medicina");
+      : getDepartmentForCategory(variant === "rx_ecografias" ? "rx_ecografias" : "medicina");
     if (!department) {
       setProfessionals([]);
       return;

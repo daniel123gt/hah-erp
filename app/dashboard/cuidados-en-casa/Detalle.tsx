@@ -17,6 +17,7 @@ import {
   EditHomeCareContractModal,
   type ContractFormData,
 } from "~/components/ui/edit-home-care-contract-modal";
+import { formatDateOnly } from "~/lib/utils";
 
 function getPatientName(contract: HomeCareContractWithPatient | null): string {
   if (!contract?.patient) return "Paciente";
@@ -24,13 +25,11 @@ function getPatientName(contract: HomeCareContractWithPatient | null): string {
   return Array.isArray(p) ? (p[0]?.name ?? "Paciente") : (p?.name ?? "Paciente");
 }
 
+/** Formatea fecha YYYY-MM-DD en hora local (evita desfase de un día por UTC). */
 function formatDate(s: string | null): string {
   if (!s) return "-";
-  try {
-    return new Date(s).toLocaleDateString("es-PE");
-  } catch {
-    return s;
-  }
+  const formatted = formatDateOnly(s, "es-PE");
+  return formatted || s;
 }
 
 function formatMoney(n: number): string {
@@ -80,6 +79,8 @@ export default function CuidadosEnCasaDetalle() {
 
   const planMontoFinal = contract ? (contract.plan_monto_mensual_final ?? contract.plan_monto_mensual) : 0;
   const montoQuincena = planMontoFinal / 2;
+  /** Turno del plan del contrato (ej. "8H día Lu-Sá", "24X24"); se usa al crear/editar periodos. */
+  const planTurno = contract?.plan_id ? (plans.find((p) => p.id === contract.plan_id)?.turno ?? null) : null;
 
   const handleSaveContract = async (data: ContractFormData) => {
     if (!contract) return;
@@ -114,9 +115,13 @@ export default function CuidadosEnCasaDetalle() {
 
   const handleSavePeriod = async (data: PeriodFormData) => {
     if (!contract) return;
+    const turno =
+      periodModalMode === "edit" && editingPeriod?.turno
+        ? editingPeriod.turno
+        : (planTurno ?? "24X24");
     const payload = {
       fecha_pago_quincena: data.fecha_pago_quincena || null,
-      turno: "24X24" as const,
+      turno,
       f_desde: data.f_desde,
       f_hasta: data.f_hasta,
       monto: montoQuincena,
@@ -292,6 +297,7 @@ export default function CuidadosEnCasaDetalle() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="whitespace-nowrap">ITEM</TableHead>
+                    <TableHead className="whitespace-nowrap">ESTADO</TableHead>
                     <TableHead className="whitespace-nowrap">F. PAGO C.</TableHead>
                     <TableHead className="whitespace-nowrap">TURNO</TableHead>
                     <TableHead className="whitespace-nowrap">N° PAGO</TableHead>
@@ -314,6 +320,11 @@ export default function CuidadosEnCasaDetalle() {
                   {periods.map((p) => (
                     <TableRow key={p.id}>
                       <TableCell>{p.item}</TableCell>
+                      <TableCell>
+                        <span className={p.fecha_pago ? "text-emerald-600 font-medium" : "text-amber-600 font-medium"}>
+                          {p.fecha_pago ? "Completado" : "Pendiente"}
+                        </span>
+                      </TableCell>
                       <TableCell>{formatDate(p.fecha_pago_quincena)}</TableCell>
                       <TableCell>{p.turno ?? "-"}</TableCell>
                       <TableCell>{p.n_pago}</TableCell>
@@ -376,6 +387,7 @@ export default function CuidadosEnCasaDetalle() {
         mode={periodModalMode}
         contractId={contract.id}
         planMontoMensual={planMontoFinal}
+        planTurno={planTurno}
         period={periodModalMode === "edit" ? editingPeriod : null}
         onSaved={loadData}
         onSave={handleSavePeriod}
