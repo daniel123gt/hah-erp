@@ -50,12 +50,13 @@ export function ReminderChecker() {
     const oneHourFromNow = now + 60 * 60 * 1000;
     const today = getTodayLocal();
 
-    // Citas (medicina + procedimientos) con fecha/hora en la próxima hora
+    // Citas (medicina + procedimientos + RX/Ecografías) con fecha/hora en la próxima hora
     Promise.all([
       appointmentsService.list("medicina"),
       appointmentsService.list("procedimientos"),
-    ]).then(([med, proc]) => {
-      const all = [...med, ...proc];
+      appointmentsService.list("rx_ecografias"),
+    ]).then(([med, proc, rxEco]) => {
+      const all = [...med, ...proc, ...rxEco];
       all.forEach((apt) => {
         if (apt.date !== today) return;
         const ts = parseAppointmentDateTime(apt.date, apt.time);

@@ -11,7 +11,7 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import { Badge } from "~/components/ui/badge";
-import { Calendar, Stethoscope, HeartPulse, ArrowLeft, Loader2 } from "lucide-react";
+import { Calendar, Stethoscope, HeartPulse, Scan, ArrowLeft, Loader2 } from "lucide-react";
 import { getTodayLocal } from "~/lib/dateUtils";
 import { appointmentsService } from "~/services/appointmentsService";
 
@@ -22,7 +22,7 @@ interface TodayCitaRow {
   profesional: string;
   tipo: string;
   estado: string;
-  variant: "medicina" | "procedimientos";
+  variant: "medicina" | "procedimientos" | "rx_ecografias";
 }
 
 export default function CitasHome() {
@@ -36,8 +36,9 @@ export default function CitasHome() {
     Promise.all([
       appointmentsService.list("medicina"),
       appointmentsService.list("procedimientos"),
+      appointmentsService.list("rx_ecografias"),
     ])
-      .then(([med, proc]) => {
+      .then(([med, proc, rxEco]) => {
         if (cancelled) return;
         const today = getTodayLocal();
         const fromMed = med
@@ -62,7 +63,18 @@ export default function CitasHome() {
             estado: c.status,
             variant: "procedimientos" as const,
           }));
-        const combined = [...fromMed, ...fromProc].sort((a, b) =>
+        const fromRxEco = rxEco
+          .filter((c) => c.date === today)
+          .map((c) => ({
+            id: c.id,
+            hora: c.time,
+            paciente: c.patientName,
+            profesional: c.doctorName,
+            tipo: c.type,
+            estado: c.status,
+            variant: "rx_ecografias" as const,
+          }));
+        const combined = [...fromMed, ...fromProc, ...fromRxEco].sort((a, b) =>
           (a.hora || "").localeCompare(b.hora || "")
         );
         setTodayCitas(combined);
@@ -91,6 +103,13 @@ export default function CitasHome() {
       action: () => navigate("/citas/medicina"),
       color: "bg-blue-50 border-blue-200 hover:bg-blue-100",
     },
+    {
+      title: "Citas RX / Ecografías",
+      description: "Agenda de citas a domicilio de RX y ecografías",
+      icon: <Scan className="w-8 h-8 text-teal-600" />,
+      action: () => navigate("/citas/rx-ecografias"),
+      color: "bg-teal-50 border-teal-200 hover:bg-teal-100",
+    },
   ];
 
   return (
@@ -112,7 +131,7 @@ export default function CitasHome() {
       </div>
 
       {/* Cards informativos */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>
@@ -142,6 +161,17 @@ export default function CitasHome() {
               </p>
             </div>
             <HeartPulse className="w-8 h-8 text-green-500" />
+          </div>
+        </Card>
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">RX/Ecografías hoy</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {todayCitas.filter((c) => c.variant === "rx_ecografias").length}
+              </p>
+            </div>
+            <Scan className="w-8 h-8 text-teal-500" />
           </div>
         </Card>
         <Card className="p-4">
@@ -188,7 +218,7 @@ export default function CitasHome() {
             Citas de hoy
           </h2>
           {todayCitas.length > 0 && (
-            <Button variant="outline" size="sm" onClick={() => navigate("/citas/procedimientos")}>
+            <Button variant="outline" size="sm" onClick={() => navigate("/citas/medicina")}>
               Ver agendas
             </Button>
           )}
@@ -228,10 +258,16 @@ export default function CitasHome() {
                         variant="ghost"
                         size="sm"
                         onClick={() =>
-                          navigate(c.variant === "medicina" ? "/citas/medicina" : "/citas/procedimientos")
+                          navigate(
+                            c.variant === "medicina"
+                              ? "/citas/medicina"
+                              : c.variant === "rx_ecografias"
+                                ? "/citas/rx-ecografias"
+                                : "/citas/procedimientos"
+                          )
                         }
                       >
-                        {c.variant === "medicina" ? "Medicina" : "Procedimientos"}
+                        {c.variant === "medicina" ? "Medicina" : c.variant === "rx_ecografias" ? "RX/Ecografías" : "Procedimientos"}
                       </Button>
                     </TableCell>
                   </TableRow>

@@ -8,7 +8,7 @@ import {
 /** Re-export para listados de citas (formato dd/mm/yyyy) */
 export const formatDateOnly = formatDateOnlyDdMmYyyy;
 
-export type AppointmentVariant = "medicina" | "procedimientos";
+export type AppointmentVariant = "medicina" | "procedimientos" | "rx_ecografias";
 
 export interface Appointment {
   id: string;

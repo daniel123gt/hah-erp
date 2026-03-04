@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Eye, Loader2, Building2, Search, Users, FileText, DollarSign } from "lucide-react";
 import homeCareService, { type HomeCareContractWithPatient } from "~/services/homeCareService";
 import { AddHomeCarePatientModal } from "~/components/ui/add-home-care-patient-modal";
-import { normalizeSearchText } from "~/lib/utils";
+import { normalizeSearchText, formatDateOnly } from "~/lib/utils";
 
 function getPatientName(contract: HomeCareContractWithPatient): string {
   const p = contract.patient;
@@ -216,7 +216,7 @@ export default function CuidadosEnCasaList() {
                       <TableCell>{contract.familiar_encargado ?? "-"}</TableCell>
                       <TableCell>
                         {contract.fecha_inicio
-                          ? new Date(contract.fecha_inicio).toLocaleDateString("es-PE")
+                          ? formatDateOnly(contract.fecha_inicio, "es-PE")
                           : "-"}
                       </TableCell>
                       <TableCell>{contract.plan_nombre ?? "-"}</TableCell>

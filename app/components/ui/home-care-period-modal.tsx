@@ -235,6 +235,8 @@ interface HomeCarePeriodModalProps {
   mode: "add" | "edit";
   contractId: string;
   planMontoMensual: number;
+  /** Turno del plan del contrato (ej. "8H día Lu-Sá", "24X24"); se muestra en el modal y se guarda en el periodo. */
+  planTurno?: string | null;
   period?: HomeCarePeriod | null;
   onSaved: () => void;
   onSave: (data: PeriodFormData) => Promise<void>;
@@ -246,6 +248,7 @@ export function HomeCarePeriodModal({
   mode,
   contractId,
   planMontoMensual,
+  planTurno,
   period,
   onSaved,
   onSave,
@@ -450,7 +453,11 @@ export function HomeCarePeriodModal({
               </div>
               <div className="space-y-1">
                 <Label>Turno</Label>
-                <Input value="24X24" readOnly className="bg-muted" />
+                <Input
+                  value={period?.turno ?? planTurno ?? "24X24"}
+                  readOnly
+                  className="bg-muted"
+                />
               </div>
               <div className="space-y-1">
                 <Label>Monto base quincena</Label>

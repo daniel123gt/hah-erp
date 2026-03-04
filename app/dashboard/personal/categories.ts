@@ -95,6 +95,7 @@ export function getDepartmentForCategory(categorySlug: string): string | null {
     enfermeria: "Enfermeria",
     medicina: "Medicina",
     administracion: "Administracion",
+    rx_ecografias: "Medicina",
   };
   return map[categorySlug] ?? null;
 }

@@ -100,6 +100,7 @@ const items: NavItem[] = [
     children: [
       { title: "Citas Medicina", url: "/citas/medicina" },
       { title: "Citas Procedimientos", url: "/citas/procedimientos" },
+      { title: "Citas RX / Ecografías", url: "/citas/rx-ecografias" },
     ],
   },
   {
@@ -119,6 +120,15 @@ const items: NavItem[] = [
     children: [
       { title: "Listado", url: "/registro-citas-medicas/listado" },
       { title: "Reportes", url: "/registro-citas-medicas/reportes" },
+    ],
+  },
+  {
+    title: "Registro RX / Ecografías",
+    url: "/registro-rx-ecografias",
+    icon: Calendar,
+    children: [
+      { title: "Listado", url: "/registro-rx-ecografias/listado" },
+      { title: "Reportes", url: "/registro-rx-ecografias/reportes" },
     ],
   },
   {
