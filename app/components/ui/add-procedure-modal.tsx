@@ -156,25 +156,23 @@ export function AddProcedureModal({ onCreated }: AddProcedureModalProps) {
               <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium mb-1">Paciente</label>
-                  <select
-                    value={form.patient_id ?? ""}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setForm((f) => ({
-                        ...f,
-                        patient_id: v || null,
-                        patient_name: v ? (patients.find((p) => p.id === v)?.name ?? f.patient_name) : "",
-                      }));
-                    }}
-                    className="w-full border rounded-md px-3 py-2 mb-2"
-                  >
-                    <option value="">Sin asignar / Otro</option>
-                    {patients.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="mb-2">
+                    <Combobox
+                      options={patients.map((p) => ({ value: p.id, label: p.name }))}
+                      value={form.patient_id ?? ""}
+                      onValueChange={(v) => {
+                        const id = v || "";
+                        setForm((f) => ({
+                          ...f,
+                          patient_id: id ? id : null,
+                          patient_name: id ? (patients.find((p) => p.id === id)?.name ?? f.patient_name) : "",
+                        }));
+                      }}
+                      placeholder="Buscar paciente..."
+                      emptyOption={{ value: "", label: "Sin asignar / Otro" }}
+                      emptySearchText="Sin pacientes."
+                    />
+                  </div>
                   <Button
                     type="button"
                     variant="outline"

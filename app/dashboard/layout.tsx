@@ -8,6 +8,7 @@ import { RealtimeNotificationsSubscriber } from "~/components/RealtimeNotificati
 import { useAuthStore, getAppRole } from "~/store/authStore";
 import { Navigate, Outlet, useLocation } from "react-router";
 import Loading from "~/components/root/Loading/Loading";
+import { getPrimaryColor } from "~/lib/erpBranding";
 
 /** Rutas que el rol gestor puede acceder (prefijos o ruta exacta). /reportes (Reportes general) solo admin. */
 const GESTOR_ALLOWED_PATHS = ["/", "/pacientes", "/enfermeria", "/laboratorio", "/citas"];
@@ -45,7 +46,7 @@ export default function Layout() {
       <RealtimeNotificationsSubscriber />
       <SidebarProvider style={{
           "--sidebar-width": "17rem",
-          "--sidebar-background": "#1F3666"
+          "--sidebar-background": getPrimaryColor()
       } as React.CSSProperties }>
         <AppSidebar />
         <main className="py-12 px-8 text-primary-blue flex-1 max-w-full overflow-hidden">

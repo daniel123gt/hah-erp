@@ -499,7 +499,7 @@ ${data.citasDelDia.map((cita: any) =>
               Actividad por día (últimos 14 días)
             </CardTitle>
             <p className="text-sm text-gray-600 mt-1">
-              Citas de medicina, citas de procedimientos y órdenes de laboratorio
+              Citas de medicina, citas de procedimientos, RX/Ecografías y órdenes de laboratorio
             </p>
           </CardHeader>
           <CardContent>
@@ -543,6 +543,14 @@ ${data.citasDelDia.map((cita: any) =>
                     dataKey="citasProcedimientos"
                     name="Citas procedimientos"
                     stroke="#16a34a"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="citasRxEcografias"
+                    name="RX / Ecografías"
+                    stroke="#0d9488"
                     strokeWidth={2}
                     dot={{ r: 3 }}
                   />

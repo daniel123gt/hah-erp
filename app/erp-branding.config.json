@@ -1,0 +1,9 @@
+{
+  "appName": "Health At Home ERP",
+  "shortName": "Health At Home",
+  "primaryColor": "#1F3666",
+  "accentColor": "#73CBCF",
+  "secondaryColor": "#3C5894",
+  "logoPath": "/logo.svg",
+  "faviconPath": "/logo.svg"
+}
