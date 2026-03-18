@@ -3,7 +3,7 @@ import { Button } from "./button";
 import { Card, CardContent, CardHeader, CardTitle } from "./card";
 import { Avatar, AvatarFallback, AvatarImage } from "./avatar";
 import { Badge } from "./badge";
-import { Settings, Calendar, Hash, HeartPulse, FlaskConical } from "lucide-react";
+import { Settings, Calendar, Hash, HeartPulse, FlaskConical, Scan } from "lucide-react";
 import { useAuthStore, getAppRole } from "~/store/authStore";
 import { useNavigate } from "react-router";
 import { appointmentsService } from "~/services/appointmentsService";
@@ -15,6 +15,7 @@ export function RightSidebar() {
   const role = getAppRole(user);
   const navigate = useNavigate();
   const [todayProcedimientos, setTodayProcedimientos] = useState<{ id: string; time: string; patientName: string; procedure_name?: string }[]>([]);
+  const [todayRxEcografias, setTodayRxEcografias] = useState<{ id: string; time: string; patientName: string; type?: string }[]>([]);
   const [todayLabOrders, setTodayLabOrders] = useState<{ id: string; itemsCount: number; total_amount: number }[]>([]);
 
   useEffect(() => {
@@ -33,6 +34,24 @@ export function RightSidebar() {
         )
       )
       .catch(() => setTodayProcedimientos([]));
+  }, []);
+
+  useEffect(() => {
+    const today = getTodayLocal();
+    appointmentsService
+      .list("rx_ecografias")
+      .then((list) => list.filter((c) => c.date === today).sort((a, b) => a.time.localeCompare(b.time)))
+      .then((filtered) =>
+        setTodayRxEcografias(
+          filtered.map((c) => ({
+            id: c.id,
+            time: c.time,
+            patientName: c.patientName,
+            type: c.type,
+          }))
+        )
+      )
+      .catch(() => setTodayRxEcografias([]));
   }, []);
 
   useEffect(() => {
@@ -124,6 +143,40 @@ export function RightSidebar() {
             variant="outline"
             className="w-full mt-2 border-primary-blue text-primary-blue hover:bg-primary-blue hover:text-white"
             onClick={() => navigate("/citas/procedimientos")}
+          >
+            Ver todas las citas
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* RX / Ecografías de hoy */}
+      <Card>
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg font-semibold text-primary-blue flex items-center gap-2">
+            <Scan className="w-5 h-5" />
+            RX / Ecografías hoy
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {todayRxEcografias.length === 0 ? (
+            <p className="text-sm text-gray-500 py-2">No hay citas de RX/Ecografías hoy.</p>
+          ) : (
+            todayRxEcografias.slice(0, 5).map((cita) => (
+              <div key={cita.id} className="flex justify-between items-start p-3 bg-gray-50 rounded-lg gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-gray-900 truncate">{cita.patientName}</p>
+                  <p className="text-xs text-gray-500">
+                    {cita.time}
+                    {cita.type ? ` · ${cita.type}` : ""}
+                  </p>
+                </div>
+              </div>
+            ))
+          )}
+          <Button
+            variant="outline"
+            className="w-full mt-2 border-primary-blue text-primary-blue hover:bg-primary-blue hover:text-white"
+            onClick={() => navigate("/citas/rx-ecografias")}
           >
             Ver todas las citas
           </Button>

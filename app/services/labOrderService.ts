@@ -351,7 +351,22 @@ export const labOrderService = {
   ): Promise<void> {
     try {
       const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
-      if (data.payment_method !== undefined) updateData.payment_method = data.payment_method;
+      if (data.payment_method !== undefined) {
+        updateData.payment_method = data.payment_method;
+
+        // Si el método de pago es tarjeta/link/POS, aplicar recargo 3% al total (solo en la orden, no en items).
+        // Subtotal base = suma de precios de items (sin descuento).
+        const { data: items, error: itemsError } = await supabase
+          .from("lab_exam_order_items")
+          .select("price")
+          .eq("order_id", orderId);
+        if (itemsError) throw itemsError;
+        const subtotal = (items ?? []).reduce((sum, it) => sum + Number((it as any).price ?? 0), 0);
+        const hasSurcharge = data.payment_method === "tarjeta_link_pos";
+        const totalWithSurcharge = hasSurcharge ? subtotal * 1.03 : subtotal;
+        const rounded = Math.round((Number(totalWithSurcharge) + Number.EPSILON) * 100) / 100;
+        updateData.total_amount = rounded;
+      }
       if (data.payment_status !== undefined) updateData.payment_status = data.payment_status;
       if (data.payment_reference !== undefined) updateData.payment_reference = data.payment_reference;
       const { error } = await supabase

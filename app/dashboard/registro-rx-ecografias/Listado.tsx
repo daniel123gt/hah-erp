@@ -11,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "~/components/ui/table";
+import { Badge } from "~/components/ui/badge";
 import {
   rxEcografiaRecordsService,
   type RxEcografiaRecord,
@@ -140,6 +141,7 @@ export default function ListadoRegistroRxEcografias() {
                   <TableHead>Fecha</TableHead>
                   <TableHead>Paciente</TableHead>
                   <TableHead>Tipo</TableHead>
+                  <TableHead>Estado</TableHead>
                   <TableHead>Técnico / Médico</TableHead>
                   <TableHead className="text-right">Ingreso (S/.)</TableHead>
                   <TableHead className="text-right">Costo (S/.)</TableHead>
@@ -152,13 +154,27 @@ export default function ListadoRegistroRxEcografias() {
                   const ingreso = Number(r.ingreso ?? 0);
                   const costo = Number(r.costo ?? 0);
                   const utilidad = ingreso - costo;
+                  const tipo = (r.appointment_type ?? "—").toUpperCase();
+                  const estadoPago = ingreso <= 0 ? "Pendiente" : "Completado";
                   return (
                     <TableRow key={r.id}>
                       <TableCell className="whitespace-nowrap">
                         {formatDateOnly(r.fecha)}
                       </TableCell>
                       <TableCell>{r.patient_name ?? "—"}</TableCell>
-                      <TableCell>{r.appointment_type ?? "—"}</TableCell>
+                      <TableCell>{tipo}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="secondary"
+                          className={
+                            estadoPago === "Pendiente"
+                              ? "bg-amber-100 text-amber-800 border-amber-300"
+                              : "bg-emerald-100 text-emerald-800 border-emerald-300"
+                          }
+                        >
+                          {estadoPago}
+                        </Badge>
+                      </TableCell>
                       <TableCell>{r.doctor_name ?? "—"}</TableCell>
                       <TableCell className="text-right tabular-nums">{ingreso.toFixed(2)}</TableCell>
                       <TableCell className="text-right tabular-nums">{costo.toFixed(2)}</TableCell>

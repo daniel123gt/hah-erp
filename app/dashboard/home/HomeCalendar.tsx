@@ -41,6 +41,7 @@ const MESSAGES = {
 const EVENT_STYLES: Record<string, { background: string; border?: string }> = {
   medicina: { background: "#2563eb", border: "1px solid #1d4ed8" },
   procedimientos: { background: "#16a34a", border: "1px solid #15803d" },
+  rx_ecografias: { background: "#0d9488", border: "1px solid #0f766e" },
   laboratorio: { background: "#0891b2", border: "1px solid #0e7490" },
 };
 
@@ -84,6 +85,8 @@ export default function HomeCalendar({ onNavigate }: HomeCalendarProps) {
     const { type, id } = event.resource;
     if (type === "laboratorio") {
       (onNavigate ?? navigate)(`/laboratorio/ordenes/${id}`);
+    } else if (type === "rx_ecografias") {
+      (onNavigate ?? navigate)("/citas/rx-ecografias");
     } else {
       (onNavigate ?? navigate)("/citas");
     }
@@ -124,6 +127,10 @@ export default function HomeCalendar({ onNavigate }: HomeCalendarProps) {
             <span className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded" style={{ background: EVENT_STYLES.procedimientos.background }} />
               Citas procedimientos
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded" style={{ background: EVENT_STYLES.rx_ecografias.background }} />
+              RX / Ecografías
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded" style={{ background: EVENT_STYLES.laboratorio.background }} />

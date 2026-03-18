@@ -59,7 +59,7 @@ export interface TodayAppointmentItem {
   type: string;
   status: string;
   priority: string;
-  variant: "medicina" | "procedimientos";
+  variant: "medicina" | "procedimientos" | "rx_ecografias";
 }
 
 export interface TopServiceItem {
@@ -93,6 +93,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     patientStats,
     medicinaCitas,
     procedimientosCitas,
+    rxEcografiasCitas,
     todayLabOrdersRaw,
     procedureCatalog,
     procedureRecords,
@@ -102,6 +103,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     patientsService.getPatientStats().catch(() => ({ total: 0, thisMonth: 0 })),
     appointmentsService.list("medicina"),
     appointmentsService.list("procedimientos"),
+    appointmentsService.list("rx_ecografias"),
     labOrderService.getOrdersForSampleDate(today),
     procedureService.getCatalog(true),
     procedureService.getRecords({
@@ -132,6 +134,7 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   const todayMedicina = medicinaCitas.filter((c) => c.date === today);
   const todayProcedimientos = procedimientosCitas.filter((c) => c.date === today);
+  const todayRxEcografias = rxEcografiasCitas.filter((c) => c.date === today);
   const todayAppointments: TodayAppointmentItem[] = [
     ...todayMedicina.map((c) => ({
       id: c.id,
@@ -152,6 +155,16 @@ export async function getDashboardData(): Promise<DashboardData> {
       status: c.status,
       priority: "normal" as const,
       variant: "procedimientos" as const,
+    })),
+    ...todayRxEcografias.map((c) => ({
+      id: c.id,
+      patient: c.patientName,
+      time: c.time,
+      doctor: c.doctorName,
+      type: c.type,
+      status: c.status,
+      priority: "normal" as const,
+      variant: "rx_ecografias" as const,
     })),
   ].sort((a, b) => a.time.localeCompare(b.time));
 
@@ -242,26 +255,30 @@ export interface DashboardChartPoint {
   label: string;
   citasMedicina: number;
   citasProcedimientos: number;
+  citasRxEcografias: number;
   laboratorio: number;
 }
 
 const CHART_DAYS = 14;
 
-/** Datos para el gráfico del dashboard: citas medicina, procedimientos y laboratorio por día (últimos 14 días). */
+/** Datos para el gráfico del dashboard: citas medicina, procedimientos, RX/Ecografías y laboratorio por día (últimos 14 días). */
 export async function getDashboardChartData(): Promise<DashboardChartPoint[]> {
   const dates = getLastDays(CHART_DAYS);
-  const [medicinaCitas, procedimientosCitas, ...labOrdersByDay] = await Promise.all([
+  const [medicinaCitas, procedimientosCitas, rxEcografiasCitas, ...labOrdersByDay] = await Promise.all([
     appointmentsService.list("medicina"),
     appointmentsService.list("procedimientos"),
+    appointmentsService.list("rx_ecografias"),
     ...dates.map((d) => labOrderService.getOrdersForSampleDate(d)),
   ]);
 
   const dateSet = new Set(dates);
   const medicinaByDate: Record<string, number> = {};
   const procedimientosByDate: Record<string, number> = {};
+  const rxEcografiasByDate: Record<string, number> = {};
   dates.forEach((d) => {
     medicinaByDate[d] = 0;
     procedimientosByDate[d] = 0;
+    rxEcografiasByDate[d] = 0;
   });
   medicinaCitas.forEach((c) => {
     const d = c.date.length >= 10 ? c.date.slice(0, 10) : c.date;
@@ -270,6 +287,10 @@ export async function getDashboardChartData(): Promise<DashboardChartPoint[]> {
   procedimientosCitas.forEach((c) => {
     const d = c.date.length >= 10 ? c.date.slice(0, 10) : c.date;
     if (dateSet.has(d)) procedimientosByDate[d] = (procedimientosByDate[d] ?? 0) + 1;
+  });
+  rxEcografiasCitas.forEach((c) => {
+    const d = c.date.length >= 10 ? c.date.slice(0, 10) : c.date;
+    if (dateSet.has(d)) rxEcografiasByDate[d] = (rxEcografiasByDate[d] ?? 0) + 1;
   });
 
   return dates.map((date) => {
@@ -281,12 +302,13 @@ export async function getDashboardChartData(): Promise<DashboardChartPoint[]> {
       label,
       citasMedicina: medicinaByDate[date] ?? 0,
       citasProcedimientos: procedimientosByDate[date] ?? 0,
+      citasRxEcografias: rxEcografiasByDate[date] ?? 0,
       laboratorio: labCount,
     };
   });
 }
 
-export type CalendarEventType = "medicina" | "procedimientos" | "laboratorio";
+export type CalendarEventType = "medicina" | "procedimientos" | "rx_ecografias" | "laboratorio";
 
 export interface CalendarEventResource {
   type: CalendarEventType;
@@ -315,11 +337,12 @@ function parseTimeToMinutes(time: string): number {
   return h * 60 + m;
 }
 
-/** Genera eventos para el calendario (citas medicina, procedimientos y laboratorio) en el rango [fromDate, toDate]. */
+/** Genera eventos para el calendario (citas medicina, procedimientos, RX/Ecografías y laboratorio) en el rango [fromDate, toDate]. */
 export async function getCalendarEvents(fromDate: string, toDate: string): Promise<CalendarEvent[]> {
-  const [medicinaCitas, procedimientosCitas, labOrders] = await Promise.all([
+  const [medicinaCitas, procedimientosCitas, rxEcografiasCitas, labOrders] = await Promise.all([
     appointmentsService.list("medicina"),
     appointmentsService.list("procedimientos"),
+    appointmentsService.list("rx_ecografias"),
     labOrderService.getOrdersForSampleDateRange(fromDate, toDate),
   ]);
 
@@ -363,6 +386,28 @@ export async function getCalendarEvents(fromDate: string, toDate: string): Promi
       end,
       resource: {
         type: "procedimientos",
+        id: c.id,
+        patientName: c.patientName,
+        doctorName: c.doctorName,
+        status: c.status,
+      },
+    });
+  });
+
+  rxEcografiasCitas.forEach((c) => {
+    const d = c.date.length >= 10 ? c.date.slice(0, 10) : c.date;
+    if (d < from || d > to) return;
+    const startMins = parseTimeToMinutes(c.time);
+    const start = new Date(d + "T12:00:00");
+    start.setHours(Math.floor(startMins / 60), startMins % 60, 0, 0);
+    const end = new Date(start.getTime() + (c.duration || 30) * 60 * 1000);
+    events.push({
+      id: `rx-${c.id}`,
+      title: `${c.patientName} · ${c.type}`,
+      start,
+      end,
+      resource: {
+        type: "rx_ecografias",
         id: c.id,
         patientName: c.patientName,
         doctorName: c.doctorName,

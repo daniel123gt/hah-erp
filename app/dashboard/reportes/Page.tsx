@@ -16,6 +16,7 @@ import { Badge } from "~/components/ui/badge";
 import labOrderService from "~/services/labOrderService";
 import { procedureService } from "~/services/procedureService";
 import shiftCareService from "~/services/shiftCareService";
+import { rxEcografiaRecordsService } from "~/services/rxEcografiaRecordsService";
 import { formatDateOnly } from "~/lib/utils";
 import {
   Select,
@@ -34,6 +35,7 @@ import {
   ChevronRight,
   Download,
   FileText,
+  Scan,
 } from "lucide-react";
 import {
   BarChart,
@@ -55,7 +57,7 @@ import {
 
 export type EstadoFilterValue = "todos" | "pendientes" | "completados";
 
-export type ReportRowOrigin = "Laboratorio" | "Procedimientos" | "Cuidados por turnos";
+export type ReportRowOrigin = "Laboratorio" | "Procedimientos" | "RX / Ecografías" | "Cuidados por turnos";
 
 export interface ReportConsolidatedRow {
   id: string;
@@ -76,6 +78,7 @@ function firstDayOfMonth(year: number, month: number): string {
 function buildConsolidatedRowsFromReports(
   labRows: Array<{ id: string; order_date: string; physician_name: string | null; patient_name: string | null; n_items: number; total_amount: number; cost: number; utility: number }>,
   procRows: Array<{ id: string; fecha: string; patient_name: string; procedure_name: string; ingreso: number; costo: number; utility: number }>,
+  rxRows: Array<{ id: string; fecha: string; patient_name: string; appointment_type: string; ingreso: number; costo: number; utility: number }>,
   shiftRows: Array<{ id: string; fecha: string; patient_name: string; turno: string | null; monto_a_pagar: number }>
 ): ReportConsolidatedRow[] {
   const rows: ReportConsolidatedRow[] = [];
@@ -101,6 +104,19 @@ function buildConsolidatedRowsFromReports(
       fecha: String(r.fecha).trim().slice(0, 10),
       origen: "Procedimientos",
       detalle: r.procedure_name ?? "Procedimiento",
+      paciente: r.patient_name ?? "—",
+      monto: Number(r.ingreso ?? 0),
+      egresos: Number(r.costo ?? 0),
+      utilidad: Number(r.utility ?? 0),
+    });
+  });
+
+  rxRows.forEach((r) => {
+    rows.push({
+      id: `rx-${r.id}`,
+      fecha: String(r.fecha).trim().slice(0, 10),
+      origen: "RX / Ecografías",
+      detalle: r.appointment_type ?? "RX/Ecografía",
       paciente: r.patient_name ?? "—",
       monto: Number(r.ingreso ?? 0),
       egresos: Number(r.costo ?? 0),
@@ -159,6 +175,7 @@ export default function ReportesPage() {
   const [loading, setLoading] = useState(true);
   const [labReport, setLabReport] = useState<Awaited<ReturnType<typeof labOrderService.getReportLaboratorio>> | null>(null);
   const [procReport, setProcReport] = useState<Awaited<ReturnType<typeof procedureService.getReportProcedimientos>> | null>(null);
+  const [rxReport, setRxReport] = useState<Awaited<ReturnType<typeof rxEcografiaRecordsService.getReport>> | null>(null);
   const [shiftReport, setShiftReport] = useState<Awaited<ReturnType<typeof shiftCareService.getReportCuidadosPorTurnos>> | null>(null);
   const [tableRows, setTableRows] = useState<ReportConsolidatedRow[]>([]);
 
@@ -167,20 +184,24 @@ export default function ReportesPage() {
     Promise.all([
       labOrderService.getReportLaboratorio(startDate, endDate),
       procedureService.getReportProcedimientos(startDate, endDate),
+      rxEcografiaRecordsService.getReport(startDate, endDate),
       shiftCareService.getReportCuidadosPorTurnos(startDate, endDate),
     ])
-      .then(([lab, proc, shift]) => {
+      .then(([lab, proc, rx, shift]) => {
         setLabReport(lab);
         setProcReport(proc);
+        setRxReport(rx);
         setShiftReport(shift);
         const labRows = filterLabRowsByEstado(lab.rows ?? [], "todos");
         const procRows = filterProcRowsByEstado(proc.rows ?? [], "todos");
-        const rows = buildConsolidatedRowsFromReports(labRows, procRows, shift.rows ?? []);
+        const rxRows = rx.rows ?? [];
+        const rows = buildConsolidatedRowsFromReports(labRows, procRows, rxRows, shift.rows ?? []);
         setTableRows(rows);
       })
       .catch(() => {
         setLabReport(null);
         setProcReport(null);
+        setRxReport(null);
         setShiftReport(null);
         setTableRows([]);
       })
@@ -189,12 +210,13 @@ export default function ReportesPage() {
 
   const labRowsRaw = labReport?.rows ?? [];
   const procRowsRaw = procReport?.rows ?? [];
+  const rxRowsRaw = rxReport?.rows ?? [];
   const shiftRowsRaw = shiftReport?.rows ?? [];
   const filteredLabRows = filterLabRowsByEstado(labRowsRaw, estadoFilter);
   const filteredProcRows = filterProcRowsByEstado(procRowsRaw, estadoFilter);
   const displayRows =
-    labReport && procReport && shiftReport
-      ? buildConsolidatedRowsFromReports(filteredLabRows, filteredProcRows, shiftRowsRaw)
+    labReport && procReport && rxReport && shiftReport
+      ? buildConsolidatedRowsFromReports(filteredLabRows, filteredProcRows, rxRowsRaw, shiftRowsRaw)
       : tableRows;
 
   const labRevenue = filteredLabRows.reduce((s, r) => s + Number(r.total_amount ?? 0), 0);
@@ -203,13 +225,16 @@ export default function ReportesPage() {
   const procedureRevenue = filteredProcRows.reduce((s, r) => s + Number(r.ingreso ?? 0), 0);
   const procedureCost = filteredProcRows.reduce((s, r) => s + Number(r.costo ?? 0), 0);
   const procedureUtility = filteredProcRows.reduce((s, r) => s + Number(r.utility ?? 0), 0);
+  const rxRevenue = rxRowsRaw.reduce((s, r) => s + Number(r.ingreso ?? 0), 0);
+  const rxCost = rxRowsRaw.reduce((s, r) => s + Number(r.costo ?? 0), 0);
+  const rxUtility = rxRowsRaw.reduce((s, r) => s + Number(r.utility ?? 0), 0);
   const shiftRevenue = shiftRowsRaw.reduce((s, r) => s + Number(r.monto_a_pagar ?? 0), 0);
   const shiftCost = 0;
   const shiftUtility = shiftRevenue;
 
-  const totalRevenue = labRevenue + procedureRevenue + shiftRevenue;
-  const totalEgresos = labCost + procedureCost + shiftCost;
-  const totalUtilidad = labUtility + procedureUtility + shiftUtility;
+  const totalRevenue = labRevenue + procedureRevenue + rxRevenue + shiftRevenue;
+  const totalEgresos = labCost + procedureCost + rxCost + shiftCost;
+  const totalUtilidad = labUtility + procedureUtility + rxUtility + shiftUtility;
   const periodLabel = `${formatDateOnly(startDate, "es-PE")} – ${formatDateOnly(endDate, "es-PE")}`;
 
   const tableTotalMonto = displayRows.reduce((s, r) => s + r.monto, 0);
@@ -252,6 +277,17 @@ export default function ReportesPage() {
     if (!procRows.length) return [];
     const map = new Map<string, number>();
     procRows.forEach((r) => {
+      const d = String(r.fecha).trim().slice(0, 10);
+      map.set(d, (map.get(d) ?? 0) + r.monto);
+    });
+    return chartDataByDate.map(({ date, label }) => ({ date, label, monto: map.get(date) ?? 0 }));
+  }, [displayRows, chartDataByDate]);
+
+  const chartDataByDateRx = useMemo(() => {
+    const rxRows = displayRows.filter((r) => r.origen === "RX / Ecografías");
+    if (!rxRows.length) return [];
+    const map = new Map<string, number>();
+    rxRows.forEach((r) => {
       const d = String(r.fecha).trim().slice(0, 10);
       map.set(d, (map.get(d) ?? 0) + r.monto);
     });
@@ -312,6 +348,8 @@ export default function ReportesPage() {
         return "bg-blue-100 text-blue-800 border-blue-200";
       case "Procedimientos":
         return "bg-green-100 text-green-800 border-green-200";
+      case "RX / Ecografías":
+        return "bg-teal-100 text-teal-800 border-teal-200";
       case "Cuidados por turnos":
         return "bg-amber-100 text-amber-800 border-amber-200";
       default:
@@ -328,7 +366,7 @@ export default function ReportesPage() {
             Reportes y Análisis
           </h1>
           <p className="text-gray-600 mt-1">
-            Resumen de ingresos: Laboratorio, Procedimientos y Cuidados por turnos
+            Resumen de ingresos: Laboratorio, Procedimientos, RX/Ecografías y Cuidados por turnos
           </p>
         </div>
       </div>
@@ -446,6 +484,34 @@ export default function ReportesPage() {
                 </div>
                 <Button variant="ghost" size="sm" className="mt-3 w-full justify-between" asChild>
                   <Link to="/procedimientos/reportes">
+                    Ver reporte
+                    <ChevronRight className="w-4 h-4" />
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-md transition-shadow">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-600">RX / Ecografías</p>
+                    <p className="text-2xl font-bold text-gray-900">S/ {rxRevenue.toFixed(2)}</p>
+                    <p className="text-xs text-gray-500 mt-1">Egresos: S/ {rxCost.toFixed(2)} · Utilidad: S/ {rxUtility.toFixed(2)}</p>
+                    {chartDataByDateRx.length > 0 && (
+                      <div className="h-9 w-full mt-1">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={chartDataByDateRx} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
+                            <Line type="monotone" dataKey="monto" stroke="#0d9488" strokeWidth={1.5} dot={false} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                  </div>
+                  <Scan className="w-8 h-8 text-teal-500 shrink-0" />
+                </div>
+                <Button variant="ghost" size="sm" className="mt-3 w-full justify-between" asChild>
+                  <Link to="/registro-rx-ecografias/reportes">
                     Ver reporte
                     <ChevronRight className="w-4 h-4" />
                   </Link>
@@ -616,7 +682,7 @@ export default function ReportesPage() {
               {displayRows.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <FileText className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                  <p>No hay registros en este período para los tres servicios.</p>
+                  <p>No hay registros en este período para los servicios.</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto rounded-md border border-gray-200">
@@ -676,12 +742,14 @@ export default function ReportesPage() {
             </CardHeader>
             <CardContent>
               <p className="text-gray-600 mb-4">
-                Los ingresos del reporte general corresponden únicamente a: <strong>Laboratorio</strong>, <strong>Procedimientos</strong> y <strong>Cuidados por turnos</strong>. No incluye Cuidados en casa.
+                Los ingresos del reporte general corresponden a: <strong>Laboratorio</strong>, <strong>Procedimientos</strong>, <strong>RX / Ecografías</strong> y <strong>Cuidados por turnos</strong>. No incluye Cuidados en casa.
               </p>
               <div className="flex flex-wrap gap-4 text-sm">
                 <span className="text-gray-500">Laboratorio: S/ {labRevenue.toFixed(2)}</span>
                 <span className="text-gray-400">+</span>
                 <span className="text-gray-500">Procedimientos: S/ {procedureRevenue.toFixed(2)}</span>
+                <span className="text-gray-400">+</span>
+                <span className="text-gray-500">RX/Ecografías: S/ {rxRevenue.toFixed(2)}</span>
                 <span className="text-gray-400">+</span>
                 <span className="text-gray-500">Cuidados por turnos: S/ {shiftRevenue.toFixed(2)}</span>
                 <span className="text-gray-400">=</span>

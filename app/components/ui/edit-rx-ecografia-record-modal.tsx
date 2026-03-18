@@ -29,6 +29,7 @@ const PAYMENT_METHODS = [
 ];
 
 export function EditRxEcografiaRecordModal({ record, onClose, onUpdated }: EditRxEcografiaRecordModalProps) {
+  const [fecha, setFecha] = useState((record.fecha ?? "").slice(0, 10));
   const [ingreso, setIngreso] = useState(String(record.ingreso ?? 0));
   const [costo, setCosto] = useState(String(record.costo ?? 0));
   const [payment_method, setPayment_method] = useState(record.payment_method ?? "");
@@ -42,6 +43,7 @@ export function EditRxEcografiaRecordModal({ record, onClose, onUpdated }: EditR
     try {
       await rxEcografiaRecordsService.update({
         id: record.id,
+        fecha: fecha?.trim() ? fecha.trim() : record.fecha,
         ingreso: Number(ingreso) || 0,
         costo: Number(costo) || 0,
         payment_method: payment_method?.trim() || null,
@@ -74,7 +76,7 @@ export function EditRxEcografiaRecordModal({ record, onClose, onUpdated }: EditR
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                {record.patient_name ?? "—"} · {record.appointment_type} · {record.fecha}
+                {record.patient_name ?? "—"} · {record.appointment_type} · {fecha || record.fecha}
               </p>
             </CardContent>
           </Card>
@@ -87,6 +89,10 @@ export function EditRxEcografiaRecordModal({ record, onClose, onUpdated }: EditR
               </CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Fecha</Label>
+                <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+              </div>
               <div className="grid gap-2">
                 <Label>Ingreso (S/.)</Label>
                 <Input

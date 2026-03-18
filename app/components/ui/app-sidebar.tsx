@@ -40,6 +40,7 @@ import { useNavigate, useLocation, Link } from "react-router";
 import { toast } from "sonner";
 import { Button } from "./button";
 import { cn } from "~/lib/utils";
+import { getShortName, getLogoPath } from "~/lib/erpBranding";
 import "./sidebar-scroll.css";
 
 type NavItem = {
@@ -251,7 +252,7 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <div className="p-8 flex justify-center">
-              <img src="/logo.svg" alt="Health at Home" className="w-2/3" />
+              <img src={getLogoPath()} alt={getShortName()} className="w-2/3" />
             </div>
           </SidebarGroupContent>
           

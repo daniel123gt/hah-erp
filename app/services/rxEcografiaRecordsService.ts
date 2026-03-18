@@ -35,6 +35,7 @@ export interface CreateRxEcografiaRecordData {
 
 export interface UpdateRxEcografiaRecordData {
   id: string;
+  fecha?: string;
   ingreso?: number;
   costo?: number;
   payment_method?: string | null;

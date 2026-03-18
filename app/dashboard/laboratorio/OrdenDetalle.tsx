@@ -320,6 +320,12 @@ export default function OrdenDetalle() {
     );
   }
 
+  const subtotalBase = order.items.reduce((sum, item) => sum + Number(item.price ?? 0), 0);
+  const hasTarjetaRecargo = order.payment_method === "tarjeta_link_pos";
+  const recargoTarjeta = hasTarjetaRecargo ? subtotalBase * 0.03 : 0;
+  const totalAntesDeDescuento = subtotalBase + recargoTarjeta;
+  const totalFinal = Math.max(0, totalAntesDeDescuento - Number(order.discount_amount ?? 0));
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -578,8 +584,14 @@ export default function OrdenDetalle() {
               <div className="pt-4 border-t space-y-1">
                 <div className="flex justify-between text-sm text-gray-600">
                   <span>Subtotal:</span>
-                  <span>S/ {Number(order.total_amount ?? 0).toFixed(2)}</span>
+                  <span>S/ {subtotalBase.toFixed(2)}</span>
                 </div>
+                {hasTarjetaRecargo && (
+                  <div className="flex justify-between text-sm text-gray-600">
+                    <span>Recargo (3%):</span>
+                    <span>S/ {recargoTarjeta.toFixed(2)}</span>
+                  </div>
+                )}
                 {(order.discount_amount ?? 0) > 0 && (
                   <div className="flex justify-between text-sm text-gray-600">
                     <span>Descuento:</span>
@@ -589,7 +601,7 @@ export default function OrdenDetalle() {
                 <div className="flex items-center justify-between pt-2">
                   <span className="text-lg font-semibold text-gray-700">Total:</span>
                   <span className="text-2xl font-bold text-green-600">
-                    S/ {Math.max(0, Number(order.total_amount ?? 0) - Number(order.discount_amount ?? 0)).toFixed(2)}
+                    S/ {totalFinal.toFixed(2)}
                   </span>
                 </div>
               </div>
@@ -883,12 +895,18 @@ export default function OrdenDetalle() {
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Subtotal ({order.items.length} exámenes):</span>
                       <span className="font-medium">
-                        S/ {order.items.reduce((sum, item) => sum + item.price, 0).toFixed(2)}
+                        S/ {subtotalBase.toFixed(2)}
                       </span>
                     </div>
+                    {hasTarjetaRecargo && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Recargo (3%):</span>
+                        <span className="font-medium">S/ {recargoTarjeta.toFixed(2)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-lg font-bold pt-2 border-t">
                       <span>Total:</span>
-                      <span className="text-green-600">S/ {Math.max(0, Number(order.total_amount ?? 0) - Number(order.discount_amount ?? 0)).toFixed(2)}</span>
+                      <span className="text-green-600">S/ {totalFinal.toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
