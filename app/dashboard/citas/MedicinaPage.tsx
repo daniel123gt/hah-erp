@@ -242,9 +242,9 @@ export default function CitasMedicinaPage() {
       case "scheduled":
         return <Badge className="bg-blue-100 text-blue-800">Programada</Badge>;
       case "confirmed":
-        return <Badge className="bg-green-100 text-green-800">Confirmada</Badge>;
+        return <Badge className="bg-gray-100 text-gray-800">Confirmada</Badge>;
       case "completed":
-        return <Badge className="bg-gray-100 text-gray-800">Completada</Badge>;
+        return <Badge className="bg-green-100 text-green-800">Completada</Badge>;
       case "cancelled":
         return <Badge className="bg-red-100 text-red-800">Cancelada</Badge>;
       case "no-show":
