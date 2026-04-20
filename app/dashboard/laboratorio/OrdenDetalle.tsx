@@ -78,7 +78,8 @@ export default function OrdenDetalle() {
     }
     const ratio = discount / total;
     if (ratio >= 0.15) setDiscountPercent("20");
-    else if (ratio >= 0.05) setDiscountPercent("10");
+    else if (ratio >= 0.075) setDiscountPercent("10");
+    else if (ratio >= 0.025) setDiscountPercent("5");
     else setDiscountPercent("0");
   }, [order?.id, order?.discount_amount, order?.total_amount]);
 
@@ -147,7 +148,8 @@ export default function OrdenDetalle() {
   const handleDiscountPercentChange = async (value: string) => {
     if (!order) return;
     const total = Number(order.total_amount ?? 0);
-    const percent = value === "0" ? 0 : value === "10" ? 10 : 20;
+    const percent =
+      value === "0" ? 0 : value === "5" ? 5 : value === "10" ? 10 : value === "20" ? 20 : 0;
     const amount = total * (percent / 100);
     try {
       setUpdatingDiscount(true);
@@ -543,6 +545,7 @@ export default function OrdenDetalle() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="0">Sin descuento</SelectItem>
+                      <SelectItem value="5">5%</SelectItem>
                       <SelectItem value="10">10%</SelectItem>
                       <SelectItem value="20">20%</SelectItem>
                     </SelectContent>

@@ -359,6 +359,13 @@ export function HomeCarePeriodModal({
     setForm((prev) => ({ ...prev, f_pausas: next.join(", ") }));
   };
 
+  /** Si el paciente no recibe servicio en un feriado, se puede quitar: no cuenta para el recargo. */
+  const removeFeriado = (idx: number) => {
+    const next = feriadosDates.filter((_, i) => i !== idx);
+    setFeriadosDates(next);
+    setForm((prev) => syncFormFromArrays(next, pausasDates, prev));
+  };
+
   const addFechaPago = () => {
     const iso = normalizeToIsoDate(nuevaFechaPago);
     if (!iso) return;
@@ -476,15 +483,27 @@ export function HomeCarePeriodModal({
               <Banknote className="w-4 h-4" />
               Feriados en el periodo
             </h3>
+            <p className="text-xs text-muted-foreground">
+              Si ese día no hay servicio (no va la enfermera), puede quitar el feriado; no se aplicará recargo por ese día.
+            </p>
             <div className="flex flex-wrap items-center gap-3">
               {feriadosDates.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5">
                   {feriadosDates.map((d, idx) => (
                     <span
                       key={`${d}-${idx}`}
-                      className="inline-flex items-center rounded-md bg-background border px-2 py-1 text-sm"
+                      className="inline-flex items-center gap-1 rounded-md bg-background border px-2 py-1 text-sm"
                     >
                       {new Date(d + "T12:00:00").toLocaleDateString("es-PE")}
+                      <button
+                        type="button"
+                        onClick={() => removeFeriado(idx)}
+                        className="rounded hover:bg-muted p-0.5"
+                        aria-label="Quitar feriado del recargo"
+                        title="Sin servicio este día — quitar recargo"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
                     </span>
                   ))}
                 </div>
