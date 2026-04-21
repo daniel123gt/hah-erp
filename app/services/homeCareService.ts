@@ -108,6 +108,9 @@ export const homeCareService = {
         patient:patients(id, name, dni, phone)
       `)
       .eq("patient_id", patientId)
+      .order("is_active", { ascending: false })
+      .order("fecha_inicio", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (error) throw error;
