@@ -112,6 +112,38 @@ export default function CitasHome() {
     },
   ];
 
+  const getEstadoLabel = (estado: string) => {
+    switch (estado) {
+      case "scheduled":
+        return "Pendiente";
+      case "confirmed":
+        return "Confirmada";
+      case "completed":
+        return "Completada";
+      case "cancelled":
+      case "no-show":
+        return "Cancelada";
+      default:
+        return estado;
+    }
+  };
+
+  const getEstadoBadgeClass = (estado: string) => {
+    switch (estado) {
+      case "scheduled":
+        return "bg-amber-100 text-amber-800 border-amber-300";
+      case "confirmed":
+        return "bg-gray-100 text-gray-800 border-gray-300";
+      case "completed":
+        return "bg-blue-100 text-blue-800 border-blue-300";
+      case "cancelled":
+      case "no-show":
+        return "bg-red-100 text-red-800 border-red-300";
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-300";
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -229,7 +261,7 @@ export default function CitasHome() {
             Cargando...
           </div>
         ) : todayCitas.length === 0 ? (
-          <p className="text-gray-500 text-center py-6">No hay citas programadas para hoy.</p>
+          <p className="text-gray-500 text-center py-6">No hay citas pendientes para hoy.</p>
         ) : (
           <div className="overflow-x-auto">
             <Table>
@@ -251,7 +283,9 @@ export default function CitasHome() {
                     <TableCell>{c.profesional}</TableCell>
                     <TableCell>{c.tipo}</TableCell>
                     <TableCell>
-                      <Badge variant="secondary">{c.estado}</Badge>
+                      <Badge variant="secondary" className={getEstadoBadgeClass(c.estado)}>
+                        {getEstadoLabel(c.estado)}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <Button

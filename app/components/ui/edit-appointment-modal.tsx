@@ -256,25 +256,23 @@ export function EditAppointmentModal({
               <Badge
                 className={
                   formData.status === "scheduled"
-                    ? "bg-blue-100 text-blue-800"
+                    ? "bg-amber-100 text-amber-800"
                     : formData.status === "confirmed"
-                      ? "bg-green-100 text-green-800"
+                      ? "bg-gray-100 text-gray-800"
                       : formData.status === "completed"
-                        ? "bg-gray-100 text-gray-800"
+                        ? "bg-blue-100 text-blue-800"
                         : formData.status === "cancelled"
                           ? "bg-red-100 text-red-800"
-                          : "bg-orange-100 text-orange-800"
+                          : "bg-red-100 text-red-800"
                 }
               >
                 {formData.status === "scheduled"
-                  ? "Programada"
+                  ? "Pendiente"
                   : formData.status === "confirmed"
                     ? "Confirmada"
                     : formData.status === "completed"
                       ? "Completada"
-                      : formData.status === "cancelled"
-                        ? "Cancelada"
-                        : "No Asistió"}
+                      : "Cancelada"}
               </Badge>
             )}
           </DialogTitle>
@@ -356,11 +354,10 @@ export function EditAppointmentModal({
                       onChange={(e) => handleInputChange("status", e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
                     >
-                      <option value="scheduled">Programada</option>
+                      <option value="scheduled">Pendiente</option>
                       <option value="confirmed">Confirmada</option>
                       <option value="completed">Completada</option>
                       <option value="cancelled">Cancelada</option>
-                      <option value="no-show">No Asistió</option>
                     </select>
                   </div>
                   <div>
@@ -649,10 +646,10 @@ export function EditAppointmentModal({
                       )}
                     {formData.status && (
                       <Badge className="bg-gray-100 text-gray-800">
-                        {formData.status === "scheduled" ? "Programada" :
+                        {formData.status === "scheduled" ? "Pendiente" :
                          formData.status === "confirmed" ? "Confirmada" :
                          formData.status === "completed" ? "Completada" :
-                         formData.status === "cancelled" ? "Cancelada" : "No Asistió"}
+                         "Cancelada"}
                       </Badge>
                     )}
                   </div>

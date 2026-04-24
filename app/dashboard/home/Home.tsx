@@ -101,15 +101,15 @@ export default function HomeDashboard() {
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { label: string; color: string }> = {
-      confirmada: { label: "Confirmada", color: "bg-green-100 text-green-800" },
-      confirmed: { label: "Confirmada", color: "bg-green-100 text-green-800" },
+      confirmada: { label: "Confirmada", color: "bg-gray-100 text-gray-800" },
+      confirmed: { label: "Confirmada", color: "bg-gray-100 text-gray-800" },
       en_progreso: { label: "En Progreso", color: "bg-blue-100 text-blue-800" },
       pendiente: { label: "Pendiente", color: "bg-yellow-100 text-yellow-800" },
-      scheduled: { label: "Programada", color: "bg-yellow-100 text-yellow-800" },
+      scheduled: { label: "Pendiente", color: "bg-yellow-100 text-yellow-800" },
       cancelada: { label: "Cancelada", color: "bg-red-100 text-red-800" },
       cancelled: { label: "Cancelada", color: "bg-red-100 text-red-800" },
-      completed: { label: "Completada", color: "bg-gray-100 text-gray-800" },
-      "no-show": { label: "No Asistió", color: "bg-orange-100 text-orange-800" },
+      completed: { label: "Completada", color: "bg-blue-100 text-blue-800" },
+      "no-show": { label: "Cancelada", color: "bg-red-100 text-red-800" },
     };
     const config = statusConfig[status] || { label: status, color: "bg-gray-100 text-gray-800" };
     return <Badge className={config.color}>{config.label}</Badge>;

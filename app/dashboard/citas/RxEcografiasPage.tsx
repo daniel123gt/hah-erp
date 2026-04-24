@@ -234,15 +234,15 @@ export default function CitasRxEcografiasPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "scheduled":
-        return <Badge className="bg-blue-100 text-blue-800">Programada</Badge>;
+        return <Badge className="bg-amber-100 text-amber-800">Pendiente</Badge>;
       case "confirmed":
         return <Badge className="bg-gray-100 text-gray-800">Confirmada</Badge>;
       case "completed":
-        return <Badge className="bg-green-100 text-green-800">Completada</Badge>;
+        return <Badge className="bg-blue-100 text-blue-800">Completada</Badge>;
       case "cancelled":
         return <Badge className="bg-red-100 text-red-800">Cancelada</Badge>;
       case "no-show":
-        return <Badge className="bg-orange-100 text-orange-800">No Asistió</Badge>;
+        return <Badge className="bg-red-100 text-red-800">Cancelada</Badge>;
       default:
         return <Badge>{status}</Badge>;
     }
@@ -266,15 +266,15 @@ export default function CitasRxEcografiasPage() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "scheduled":
-        return <Clock className="w-4 h-4 text-blue-600" />;
+        return <Clock className="w-4 h-4 text-amber-600" />;
       case "confirmed":
-        return <CheckCircle className="w-4 h-4 text-green-600" />;
-      case "completed":
         return <CheckCircle className="w-4 h-4 text-gray-600" />;
+      case "completed":
+        return <CheckCircle className="w-4 h-4 text-blue-600" />;
       case "cancelled":
         return <XCircle className="w-4 h-4 text-red-600" />;
       case "no-show":
-        return <AlertCircle className="w-4 h-4 text-orange-600" />;
+        return <XCircle className="w-4 h-4 text-red-600" />;
       default:
         return <Clock className="w-4 h-4 text-gray-600" />;
     }
@@ -336,7 +336,7 @@ export default function CitasRxEcografiasPage() {
                 <Clock className="w-6 h-6 text-yellow-600" />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-600">Programadas</p>
+                <p className="text-sm font-medium text-gray-600">Pendientes</p>
                 <p className="text-2xl font-bold text-gray-900">
                   {appointments.filter((a) => a.status === "scheduled").length}
                 </p>
@@ -423,11 +423,10 @@ export default function CitasRxEcografiasPage() {
               className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
             >
               <option value="all">Todos los estados</option>
-              <option value="scheduled">Programadas</option>
+              <option value="scheduled">Pendientes</option>
               <option value="confirmed">Confirmadas</option>
               <option value="completed">Completadas</option>
               <option value="cancelled">Canceladas</option>
-              <option value="no-show">No Asistió</option>
             </select>
             <select
               value={filterType}

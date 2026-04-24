@@ -427,11 +427,10 @@ export function AddAppointmentModal({
                       onChange={(e) => handleInputChange("status", e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
                     >
-                      <option value="scheduled">Programada</option>
+                      <option value="scheduled">Pendiente</option>
                       <option value="confirmed">Confirmada</option>
                       <option value="completed">Completada</option>
                       <option value="cancelled">Cancelada</option>
-                      <option value="no-show">No Asistió</option>
                     </select>
                   </div>
                   <div>
@@ -718,10 +717,10 @@ export function AddAppointmentModal({
                       )}
                     {formData.status && (
                       <Badge className="bg-gray-100 text-gray-800">
-                        {formData.status === "scheduled" ? "Programada" :
+                        {formData.status === "scheduled" ? "Pendiente" :
                          formData.status === "confirmed" ? "Confirmada" :
                          formData.status === "completed" ? "Completada" :
-                         formData.status === "cancelled" ? "Cancelada" : "No Asistió"}
+                         "Cancelada"}
                       </Badge>
                     )}
                   </div>

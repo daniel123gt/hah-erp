@@ -64,6 +64,80 @@ export interface HomeCarePlan {
   updated_at: string;
 }
 
+function toIsoDateMaybe(value: string): string | null {
+  const t = value.trim();
+  if (!t) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
+  const m = t.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (!m) return null;
+  const dd = Number(m[1]);
+  const mm = Number(m[2]);
+  let yy = Number(m[3]);
+  if (yy < 100) yy += 2000;
+  if (yy < 2000 || yy > 2100 || mm < 1 || mm > 12 || dd < 1 || dd > 31) return null;
+  const d = new Date(yy, mm - 1, dd);
+  if (d.getFullYear() !== yy || d.getMonth() !== mm - 1 || d.getDate() !== dd) return null;
+  return `${yy}-${String(mm).padStart(2, "0")}-${String(dd).padStart(2, "0")}`;
+}
+
+/** Extrae fechas ISO desde strings legacy de fecha_pago (ej. "07 Y 15/5/2025", "24/12/25 Y 02/01/26"). */
+function extractPaymentIsoDates(value: string | null | undefined): string[] {
+  if (!value) return [];
+  const text = String(value).trim();
+  if (!text) return [];
+
+  const directParts = text
+    .split(/\s*[,;]\s*|\s+Y\s+/i)
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+  const result = new Set<string>();
+  let pendingDays: number[] = [];
+  let lastMonth: number | null = null;
+  let lastYear: number | null = null;
+
+  const flushPending = () => {
+    if (lastMonth == null || lastYear == null || pendingDays.length === 0) return;
+    for (const day of pendingDays) {
+      const iso = toIsoDateMaybe(`${day}/${lastMonth}/${lastYear}`);
+      if (iso) result.add(iso);
+    }
+    pendingDays = [];
+  };
+
+  for (const part of directParts) {
+    if (/^\d{1,2}$/.test(part)) {
+      pendingDays.push(Number(part));
+      continue;
+    }
+    const multi = part.match(/^(\d{1,2}(?:-\d{1,2})*)[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+    if (multi) {
+      flushPending();
+      const days = multi[1].split("-").map((x) => Number(x));
+      const month = Number(multi[2]);
+      let year = Number(multi[3]);
+      if (year < 100) year += 2000;
+      for (const day of days) {
+        const iso = toIsoDateMaybe(`${day}/${month}/${year}`);
+        if (iso) result.add(iso);
+      }
+      lastMonth = month;
+      lastYear = year;
+      continue;
+    }
+    const iso = toIsoDateMaybe(part);
+    if (iso) {
+      flushPending();
+      result.add(iso);
+      lastMonth = Number(iso.slice(5, 7));
+      lastYear = Number(iso.slice(0, 4));
+    }
+  }
+  flushPending();
+
+  return Array.from(result).sort((a, b) => a.localeCompare(b));
+}
+
 export const homeCareService = {
   /** Lista planes activos (para selector en alta de contrato) */
   async getPlans(): Promise<HomeCarePlan[]> {
@@ -387,17 +461,28 @@ export const homeCareService = {
         contract:home_care_contracts(patient_id, patient:patients(name))
       `
       )
-      .gte("fecha_pago", fromDate)
-      .lte("fecha_pago", toDate)
       .not("fecha_pago", "is", null)
-      .order("fecha_pago", { ascending: false });
+      .order("updated_at", { ascending: false });
     if (error) {
       console.error("Error al obtener periodos para reporte:", error);
       return [];
     }
-    return (data ?? []) as (HomeCarePeriod & {
+    const rows = (data ?? []) as (HomeCarePeriod & {
       contract?: { patient_id: string; patient?: { name: string } | null } | null;
     })[];
+    return rows
+      .map((row) => {
+        const paymentDates = extractPaymentIsoDates(row.fecha_pago);
+        const inRange = paymentDates.filter((d) => d >= fromDate && d <= toDate);
+        if (!inRange.length) return null;
+        return {
+          ...row,
+          // Guardamos la primera fecha en rango para visualización/orden en reportes.
+          fecha_pago: inRange[0],
+        };
+      })
+      .filter((x): x is HomeCarePeriod & { contract?: { patient_id: string; patient?: { name: string } | null } | null } => Boolean(x))
+      .sort((a, b) => String(b.fecha_pago ?? "").localeCompare(String(a.fecha_pago ?? "")));
   },
 
   /**

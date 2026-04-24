@@ -53,15 +53,15 @@ export function ViewAppointmentModal({ appointment, professionalLabel = "Médico
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "scheduled":
-        return <Badge className="bg-blue-100 text-blue-800">Programada</Badge>;
+        return <Badge className="bg-amber-100 text-amber-800">Pendiente</Badge>;
       case "confirmed":
-        return <Badge className="bg-green-100 text-green-800">Confirmada</Badge>;
+        return <Badge className="bg-gray-100 text-gray-800">Confirmada</Badge>;
       case "completed":
-        return <Badge className="bg-gray-100 text-gray-800">Completada</Badge>;
+        return <Badge className="bg-blue-100 text-blue-800">Completada</Badge>;
       case "cancelled":
         return <Badge className="bg-red-100 text-red-800">Cancelada</Badge>;
       case "no-show":
-        return <Badge className="bg-orange-100 text-orange-800">No Asistió</Badge>;
+        return <Badge className="bg-red-100 text-red-800">Cancelada</Badge>;
       default:
         return <Badge>{status}</Badge>;
     }
@@ -88,15 +88,15 @@ export function ViewAppointmentModal({ appointment, professionalLabel = "Médico
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "scheduled":
-        return <Clock className="w-5 h-5 text-blue-600" />;
+        return <Clock className="w-5 h-5 text-amber-600" />;
       case "confirmed":
-        return <CheckCircle className="w-5 h-5 text-green-600" />;
-      case "completed":
         return <CheckCircle className="w-5 h-5 text-gray-600" />;
+      case "completed":
+        return <CheckCircle className="w-5 h-5 text-blue-600" />;
       case "cancelled":
         return <XCircle className="w-5 h-5 text-red-600" />;
       case "no-show":
-        return <AlertCircle className="w-5 h-5 text-orange-600" />;
+        return <XCircle className="w-5 h-5 text-red-600" />;
       default:
         return <Clock className="w-5 h-5 text-gray-600" />;
     }

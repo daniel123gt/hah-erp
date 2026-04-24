@@ -99,19 +99,36 @@ export default function CuidadosEnCasaReportes() {
   }, [startDate, endDate]);
 
   const totals = dbReport?.totals ?? null;
-  const revenue = totals?.total_revenue ?? periods.reduce((s, p) => s + Number(p.monto_total ?? 0), 0);
-  const totalPeriods = totals?.total_periods ?? periods.length;
-  const promedio = totals ? totals.promedio : (totalPeriods ? revenue / totalPeriods : 0);
-
-  const reportRows = dbReport?.rows ?? [];
+  const hasDbRows = (dbReport?.rows?.length ?? 0) > 0;
+  const reportRows = hasDbRows ? (dbReport?.rows ?? []) : [];
+  const chartSourceRows = hasDbRows
+    ? reportRows.map((r) => ({
+        fecha_pago: r.fecha_pago,
+        f_desde: r.f_desde,
+        patient_name: r.patient_name,
+        monto_total: Number(r.monto_total ?? 0),
+      }))
+    : periods.map((p) => ({
+        fecha_pago: p.fecha_pago,
+        f_desde: p.f_desde,
+        patient_name: getPatientName(p),
+        monto_total: Number(p.monto_total ?? 0),
+      }));
+  const revenue = hasDbRows
+    ? Number(totals?.total_revenue ?? 0)
+    : periods.reduce((s, p) => s + Number(p.monto_total ?? 0), 0);
+  const totalPeriods = hasDbRows ? Number(totals?.total_periods ?? reportRows.length) : periods.length;
+  const promedio = hasDbRows
+    ? Number(totals?.promedio ?? (totalPeriods ? revenue / totalPeriods : 0))
+    : (totalPeriods ? revenue / totalPeriods : 0);
 
   type ChartTabId = "distribucion" | "evolucion" | "pacientes" | "pagos";
   const [chartTab, setChartTab] = useState<ChartTabId>("distribucion");
 
   const chartDataByDate = useMemo(() => {
-    if (!reportRows.length) return [];
+    if (!chartSourceRows.length) return [];
     const map = new Map<string, { ingreso: number; pagos: number }>();
-    reportRows.forEach((r) => {
+    chartSourceRows.forEach((r) => {
       const d = String(r.fecha_pago ?? r.f_desde).trim().slice(0, 10);
       const cur = map.get(d) || { ingreso: 0, pagos: 0 };
       cur.ingreso += Number(r.monto_total ?? 0);
@@ -121,28 +138,28 @@ export default function CuidadosEnCasaReportes() {
     return Array.from(map.entries())
       .map(([date, v]) => ({ date, label: formatDateOnly(date, "es-PE"), ...v }))
       .sort((a, b) => a.date.localeCompare(b.date));
-  }, [reportRows]);
+  }, [chartSourceRows]);
 
   const chartDataTopPagos = useMemo(() => {
-    return [...reportRows]
+    return [...chartSourceRows]
       .sort((a, b) => Number(b.monto_total ?? 0) - Number(a.monto_total ?? 0))
       .slice(0, 15)
       .map((r, i) => ({
         name: `#${i + 1} ${formatDateOnly(r.fecha_pago ?? r.f_desde, "es-PE")} ${(r.patient_name ?? "").slice(0, 15)}${(r.patient_name?.length ?? 0) > 15 ? "…" : ""}`,
         monto: Number(r.monto_total ?? 0),
       }));
-  }, [reportRows]);
+  }, [chartSourceRows]);
 
   const patientStats = useMemo(() => {
     const map = new Map<string, number>();
-    reportRows.forEach((r) => {
+    chartSourceRows.forEach((r) => {
       const name = r.patient_name ?? "Sin nombre";
       map.set(name, (map.get(name) ?? 0) + Number(r.monto_total ?? 0));
     });
     return Array.from(map.entries())
       .map(([patient_name, total_ingreso]) => ({ patient_name, total_ingreso }))
       .sort((a, b) => b.total_ingreso - a.total_ingreso);
-  }, [reportRows]);
+  }, [chartSourceRows]);
 
   const CHART_COLORS = ["#2563eb", "#16a34a", "#0891b2", "#dc2626", "#ea580c", "#7c3aed", "#db2777", "#64748b"];
 
@@ -283,7 +300,7 @@ export default function CuidadosEnCasaReportes() {
         </div>
       )}
 
-      {!loading && (dbReport?.rows?.length ?? periods.length) > 0 && (
+      {!loading && (hasDbRows ? reportRows.length : periods.length) > 0 && (
         <div className="flex justify-end">
           <Button onClick={handleExportCSV} disabled={exportingCSV}>
             {exportingCSV ? (
@@ -426,15 +443,15 @@ export default function CuidadosEnCasaReportes() {
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>Pagos del período ({(dbReport?.rows?.length ?? periods.length)})</CardTitle>
+            <CardTitle>Pagos del período ({hasDbRows ? reportRows.length : periods.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            {(dbReport?.rows?.length ?? periods.length) === 0 ? (
+            {(hasDbRows ? reportRows.length : periods.length) === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 <FileText className="w-12 h-12 mx-auto mb-2 text-gray-300" />
                 <p>No hay pagos registrados en este período.</p>
               </div>
-            ) : dbReport?.rows?.length ? (
+            ) : hasDbRows ? (
               <div className="overflow-x-auto rounded-md border border-gray-200">
                 <Table>
                   <TableHeader>
