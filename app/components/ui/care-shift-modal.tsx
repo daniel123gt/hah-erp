@@ -162,11 +162,46 @@ export function CareShiftModal({
   const [categoryFilter, setCategoryFilter] = useState<"todos" | HomeCarePlanCategoria>("todos");
   const [planComboboxOpen, setPlanComboboxOpen] = useState(false);
 
-  /** Solo planes especial y semana (para turnos eventuales) */
-  const shiftPlans = useMemo(
-    () => plans.filter((p) => (p.tipo ?? "mensual") === "especial" || (p.tipo ?? "mensual") === "semana"),
-    [plans]
+  /** Turnos mínimos de técnicas que deben existir siempre en el selector. */
+  const requiredTecnicasTurnos = useMemo<HomeCarePlan[]>(
+    () => [
+      {
+        id: "fallback-turno-6h-140",
+        name: "6 horas",
+        turno: "6H",
+        monto_mensual: 140,
+        categoria: "tecnicas",
+        tipo: "especial",
+        is_active: true,
+        created_at: "",
+        updated_at: "",
+      },
+      {
+        id: "fallback-turno-8h-150",
+        name: "8 horas",
+        turno: "8H",
+        monto_mensual: 150,
+        categoria: "tecnicas",
+        tipo: "especial",
+        is_active: true,
+        created_at: "",
+        updated_at: "",
+      },
+    ],
+    []
   );
+
+  /** Solo planes especial y semana (para turnos eventuales) */
+  const shiftPlans = useMemo(() => {
+    const base = plans.filter(
+      (p) => (p.tipo ?? "mensual") === "especial" || (p.tipo ?? "mensual") === "semana"
+    );
+    const byName = new Map(base.map((p) => [p.name, p] as const));
+    for (const required of requiredTecnicasTurnos) {
+      if (!byName.has(required.name)) byName.set(required.name, required);
+    }
+    return Array.from(byName.values());
+  }, [plans, requiredTecnicasTurnos]);
   const filteredPlans = useMemo(() => {
     if (categoryFilter === "todos") return shiftPlans;
     return shiftPlans.filter((p) => (p.categoria ?? "tecnicas") === categoryFilter);
