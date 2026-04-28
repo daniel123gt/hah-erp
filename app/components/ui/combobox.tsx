@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Check, ChevronsUpDown } from "lucide-react";
-import { cn } from "~/lib/utils";
+import { cn, normalizeSearchText } from "~/lib/utils";
 import { Button } from "~/components/ui/button";
 import {
   Popover,
@@ -102,7 +102,7 @@ export function Combobox({
               {allOptions.map((opt) => (
                 <CommandItem
                   key={opt.value}
-                  value={opt.label}
+                  value={`${opt.label} ${normalizeSearchText(opt.label)}`}
                   onSelect={() => handleSelect(opt.value)}
                 >
                   <Check

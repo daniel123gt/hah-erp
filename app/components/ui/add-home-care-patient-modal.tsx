@@ -108,11 +108,14 @@ export function AddHomeCarePatientModal({ onAdded }: AddHomeCarePatientModalProp
         patientsService.getPatients({ limit: 500 }),
         homeCareService.getPlans(),
       ]);
-      const ids = new Set((contractsRes as HomeCareContractWithPatient[]).map((c) => c.patient_id));
+      const ids = new Set(
+        (contractsRes as HomeCareContractWithPatient[])
+          .filter((c) => c.is_active)
+          .map((c) => c.patient_id)
+      );
       setActiveContractPatientIds(ids);
       setPatients(
         patientsRes.data
-          .filter((p) => !ids.has(p.id))
           .map((p) => ({ id: p.id, name: p.name, dni: p.dni }))
       );
       setPlans(plansRes);
@@ -142,6 +145,15 @@ export function AddHomeCarePatientModal({ onAdded }: AddHomeCarePatientModalProp
 
       const descuento = Number(contract.descuento) || 0;
       const planMontoFinal = Math.max(0, selectedPlan.monto_mensual - descuento);
+
+      // Si ya existe contrato activo, lo cerramos para abrir el nuevo (historial de cambios de plan).
+      if (activeContractPatientIds.has(patientId)) {
+        const activeContracts = await homeCareService.getContracts({ is_active: true });
+        const activeForPatient = activeContracts.filter((c) => c.patient_id === patientId);
+        for (const c of activeForPatient) {
+          await homeCareService.updateContract(c.id, { is_active: false });
+        }
+      }
 
       await homeCareService.createContract({
         patient_id: patientId,
@@ -243,6 +255,11 @@ export function AddHomeCarePatientModal({ onAdded }: AddHomeCarePatientModalProp
                     Agregar paciente
                   </Button>
                 </div>
+                {patientId && activeContractPatientIds.has(patientId) && (
+                  <p className="text-xs text-amber-700">
+                    Este paciente ya tiene contrato activo. Al guardar, se cerrará el contrato vigente y se creará uno nuevo.
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>
