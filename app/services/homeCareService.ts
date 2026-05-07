@@ -138,6 +138,20 @@ function extractPaymentIsoDates(value: string | null | undefined): string[] {
   return Array.from(result).sort((a, b) => a.localeCompare(b));
 }
 
+/** Para ordenar periodos: prioriza la fecha de pago más reciente; si no hay, quincena; luego inicio del periodo. */
+function getPeriodPaymentSortMs(period: HomeCarePeriod): number {
+  const payDates = extractPaymentIsoDates(period.fecha_pago);
+  if (payDates.length > 0) {
+    const lastIso = payDates[payDates.length - 1];
+    return Date.parse(`${lastIso}T12:00:00`);
+  }
+  const quincena = toIsoDateMaybe(String(period.fecha_pago_quincena ?? "").trim());
+  if (quincena) return Date.parse(`${quincena}T12:00:00`);
+  const desde = toIsoDateMaybe(String(period.f_desde ?? "").trim());
+  if (desde) return Date.parse(`${desde}T12:00:00`);
+  return 0;
+}
+
 export const homeCareService = {
   /** Lista planes activos (para selector en alta de contrato) */
   async getPlans(): Promise<HomeCarePlan[]> {
@@ -196,11 +210,15 @@ export const homeCareService = {
     const { data, error } = await supabase
       .from("home_care_periods")
       .select("id, contract_id, item, fecha_pago_quincena, turno, n_pago, f_desde, f_hasta, monto, f_feriados, m_feriados, p_del_serv, f_pausas, monto_total, fecha_pago, metodo_pago, numero_operacion, factura_boleta, created_at, updated_at")
-      .eq("contract_id", contractId)
-      .order("item", { ascending: true });
+      .eq("contract_id", contractId);
 
     if (error) throw error;
-    return (data ?? []) as HomeCarePeriod[];
+    const rows = (data ?? []) as HomeCarePeriod[];
+    return [...rows].sort((a, b) => {
+      const diff = getPeriodPaymentSortMs(b) - getPeriodPaymentSortMs(a);
+      if (diff !== 0) return diff;
+      return (b.item ?? 0) - (a.item ?? 0);
+    });
   },
 
   /** Crea un contrato de cuidado en casa para un paciente. Si se pasa plan_id, se usan nombre y monto del plan. plan_monto_mensual_final es el monto usado para periodos (por defecto plan_monto_mensual - descuento). */
