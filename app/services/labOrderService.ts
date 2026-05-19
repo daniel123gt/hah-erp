@@ -1,5 +1,12 @@
 import supabase from "~/utils/supabase";
 import { normalizeSearchText } from "~/lib/utils";
+import {
+  DEFAULT_LAB_ORDER_SORT,
+  DEFAULT_LAB_ORDER_SORT_ASC,
+  needsClientSideLabSort,
+  sortLabOrders,
+  type LabOrderSortColumn,
+} from "~/lib/labOrderTableSort";
 import { procedureService } from "~/services/procedureService";
 
 const TOMA_DE_MUESTRA_NAME = "toma de muestra";
@@ -209,30 +216,21 @@ export const labOrderService = {
     limit?: number;
     status?: string;
     search?: string;
+    sortBy?: LabOrderSortColumn;
+    sortAsc?: boolean;
   } = {}): Promise<{ data: LabExamOrder[]; total: number }> {
     try {
-      const { page = 1, limit = 50, status, search } = options;
+      const {
+        page = 1,
+        limit = 50,
+        status,
+        search,
+        sortBy = DEFAULT_LAB_ORDER_SORT,
+        sortAsc = DEFAULT_LAB_ORDER_SORT_ASC,
+      } = options;
       const searchTrim = search?.trim() ?? '';
       const from = (page - 1) * limit;
       const to = from + limit - 1;
-
-      let query = supabase
-        .from('lab_exam_orders')
-        .select('*', { count: 'exact' })
-        .order('sample_date', { ascending: false, nullsFirst: false })
-        .order('order_date', { ascending: false })
-        .order('created_at', { ascending: false })
-        .range(from, to);
-
-      if (status) {
-        if (status === "Pendiente") {
-          query = query.in("status", ["Pendiente", "En Proceso", "En toma de muestra"]);
-        } else {
-          query = query.eq("status", status);
-        }
-      } else {
-        query = query.neq("status", "Cancelado");
-      }
 
       if (searchTrim) {
         // Búsqueda insensible a acentos vía RPC (unaccent en PostgreSQL).
@@ -249,11 +247,9 @@ export const labOrderService = {
           p_status: status || null,
         });
         if (countError) throw countError;
-        let orders = ordersRpc ?? [];
-        if (!status) {
-          orders = orders.filter((o: { status?: string }) => o.status !== "Cancelado");
-        }
-        const totalMerged = status ? Number(totalRpc ?? 0) : orders.length;
+        const orders = ordersRpc ?? [];
+        // Con búsqueda activa y filtro "Todos": incluir cancelados (el RPC ya filtra por texto)
+        const totalMerged = Number(totalRpc ?? orders.length);
         const ordersWithItems = await Promise.all(
           orders.map(async (order: any) => {
             const { data: items } = await supabase
@@ -277,6 +273,50 @@ export const labOrderService = {
         );
         return { data: ordersWithItems, total: totalMerged };
       }
+
+      let query =
+        sortBy === "patient"
+          ? supabase
+              .from("lab_exam_orders")
+              .select("*, patients!patient_id(name)", { count: "exact" })
+          : supabase.from("lab_exam_orders").select("*", { count: "exact" });
+
+      if (status) {
+        if (status === "Pendiente") {
+          query = query.in("status", ["Pendiente", "En Proceso", "En toma de muestra"]);
+        } else {
+          query = query.eq("status", status);
+        }
+      } else {
+        query = query.neq("status", "Cancelado");
+      }
+
+      if (sortBy === "sample_date") {
+        query = query
+          .order("sample_date", { ascending: sortAsc, nullsFirst: sortAsc })
+          .order("order_date", { ascending: sortAsc })
+          .order("created_at", { ascending: sortAsc });
+      } else if (sortBy === "patient") {
+        query = query.order("name", { foreignTable: "patients", ascending: sortAsc });
+      } else if (needsClientSideLabSort(sortBy)) {
+        query = query
+          .order("sample_date", { ascending: false, nullsFirst: false })
+          .order("order_date", { ascending: false })
+          .order("created_at", { ascending: false });
+      } else {
+        const columnMap: Partial<Record<LabOrderSortColumn, string>> = {
+          id: "id",
+          status: "status",
+          order_date: "order_date",
+          physician: "physician_name",
+          priority: "priority",
+          total: "total_amount",
+        };
+        const col = columnMap[sortBy] ?? "created_at";
+        query = query.order(col, { ascending: sortAsc });
+      }
+
+      query = query.range(from, to);
 
       const { data: orders, error, count } = await query;
 
@@ -306,9 +346,13 @@ export const labOrderService = {
         })
       );
 
+      const sorted = needsClientSideLabSort(sortBy)
+        ? sortLabOrders(ordersWithItems, sortBy, sortAsc)
+        : ordersWithItems;
+
       return {
-        data: ordersWithItems,
-        total: count || 0
+        data: sorted,
+        total: count || 0,
       };
     } catch (error: any) {
       console.error('Error al obtener órdenes:', error);

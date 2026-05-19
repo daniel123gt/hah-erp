@@ -59,13 +59,27 @@ export function isAppointmentCancelado(status: string | null | undefined): boole
   return normalizeAppointmentEstado(status) === "Cancelado";
 }
 
+export type EstadoListFilterOptions = {
+  /** Si hay texto en el buscador, en "Todos" se incluyen cancelados que coincidan con la búsqueda */
+  searchActive?: boolean;
+};
+
+/** Etiqueta del filtro "Todos" según si el buscador está activo */
+export function getDefaultEstadoFilterLabel(searchActive: boolean): string {
+  return searchActive ? "Todos" : "Todos (sin cancelados)";
+}
+
 /** Filtro de citas por estado homologado (valores: all | pendiente | completado | cancelado) */
 export function matchesAppointmentEstadoFilter(
   status: string | null | undefined,
-  filter: string
+  filter: string,
+  options?: EstadoListFilterOptions
 ): boolean {
-  // Por defecto ("all") no mostrar canceladas; solo con filtro "cancelado"
-  if (filter === "all") return !isAppointmentCancelado(status);
+  // Sin búsqueda: "Todos" oculta cancelados. Con búsqueda: "Todos" incluye cancelados que coincidan.
+  if (filter === "all") {
+    if (options?.searchActive) return true;
+    return !isAppointmentCancelado(status);
+  }
   const norm = normalizeAppointmentEstado(status);
   if (filter === "pendiente") return norm === "Pendiente";
   if (filter === "completado") return norm === "Completado";
@@ -78,8 +92,15 @@ export function matchesAppointmentEstadoFilter(
 }
 
 /** Filtro de laboratorio por estado homologado */
-export function matchesLabEstadoFilter(status: string | null | undefined, filter: string): boolean {
-  if (filter === "all") return normalizeLabEstado(status) !== "Cancelado";
+export function matchesLabEstadoFilter(
+  status: string | null | undefined,
+  filter: string,
+  options?: EstadoListFilterOptions
+): boolean {
+  if (filter === "all") {
+    if (options?.searchActive) return true;
+    return normalizeLabEstado(status) !== "Cancelado";
+  }
   return normalizeLabEstado(status) === filter;
 }
 

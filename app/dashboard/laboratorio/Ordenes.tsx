@@ -1,16 +1,28 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { Input } from "~/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
+import { SortableTableHead, type SortDirection } from "~/components/ui/sortable-table-head";
 import { toast } from "sonner";
-import { ArrowLeft, Search, Eye, Calendar, FileText, Loader2, Filter } from "lucide-react";
+import { ArrowLeft, Eye, Calendar, FileText, Loader2 } from "lucide-react";
 import labOrderService, { type LabExamOrder } from "~/services/labOrderService";
 import patientsService, { type Patient } from "~/services/patientsService";
 import { formatDateOnly } from "~/lib/utils";
-import { getLabEstadoBadgeClassName, getLabEstadoLabel } from "~/lib/estadoDisplay";
+import {
+  getDefaultEstadoFilterLabel,
+  getLabEstadoBadgeClassName,
+  getLabEstadoLabel,
+} from "~/lib/estadoDisplay";
+import {
+  DEFAULT_LAB_ORDER_SORT,
+  DEFAULT_LAB_ORDER_SORT_ASC,
+  needsClientSideLabSort,
+  sortLabOrders,
+  type LabOrderSortColumn,
+} from "~/lib/labOrderTableSort";
 import {
   Select,
   SelectContent,
@@ -29,6 +41,8 @@ export default function OrdenesLaboratorio() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalOrders, setTotalOrders] = useState(0);
+  const [sortColumn, setSortColumn] = useState<LabOrderSortColumn>(DEFAULT_LAB_ORDER_SORT);
+  const [sortAsc, setSortAsc] = useState(DEFAULT_LAB_ORDER_SORT_ASC);
   const limit = 20;
 
   useEffect(() => {
@@ -39,13 +53,9 @@ export default function OrdenesLaboratorio() {
   // Volver a página 1 cuando cambien filtros o búsqueda
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch, statusFilter]);
+  }, [debouncedSearch, statusFilter, sortColumn, sortAsc]);
 
-  useEffect(() => {
-    loadOrders();
-  }, [currentPage, statusFilter, debouncedSearch]);
-
-  const loadOrders = async () => {
+  const loadOrders = useCallback(async () => {
     try {
       setLoading(true);
       const result = await labOrderService.getAllOrders({
@@ -53,13 +63,11 @@ export default function OrdenesLaboratorio() {
         limit,
         status: statusFilter !== "all" ? statusFilter : undefined,
         search: debouncedSearch.trim() || undefined,
+        sortBy: sortColumn,
+        sortAsc,
       });
 
-      setOrders(result.data);
-      setTotalOrders(result.total);
-
-      // Obtener información de pacientes únicos
-      const uniquePatientIds = [...new Set(result.data.map(o => o.patient_id))];
+      const uniquePatientIds = [...new Set(result.data.map((o) => o.patient_id))];
       const patientsData = await Promise.all(
         uniquePatientIds.map(async (id) => {
           try {
@@ -72,11 +80,24 @@ export default function OrdenesLaboratorio() {
       );
 
       const patientsMap: Record<string, Patient> = {};
-      patientsData.forEach(item => {
+      patientsData.forEach((item) => {
         if (item) patientsMap[item.id] = item.patient;
       });
-
       setPatients(patientsMap);
+
+      const patientNames: Record<string, string> = {};
+      Object.entries(patientsMap).forEach(([id, p]) => {
+        patientNames[id] = p.name;
+      });
+
+      const needsClientSort =
+        Boolean(debouncedSearch.trim()) || needsClientSideLabSort(sortColumn);
+      const rows = needsClientSort
+        ? sortLabOrders(result.data, sortColumn, sortAsc, patientNames)
+        : result.data;
+
+      setOrders(rows);
+      setTotalOrders(result.total);
     } catch (error) {
       console.error("Error al cargar órdenes:", error);
       if (currentPage > 1) setCurrentPage(1);
@@ -84,7 +105,22 @@ export default function OrdenesLaboratorio() {
     } finally {
       setLoading(false);
     }
+  }, [currentPage, statusFilter, debouncedSearch, sortColumn, sortAsc]);
+
+  useEffect(() => {
+    loadOrders();
+  }, [loadOrders]);
+
+  const handleSort = (column: LabOrderSortColumn) => {
+    if (sortColumn === column) {
+      setSortAsc((prev) => !prev);
+    } else {
+      setSortColumn(column);
+      setSortAsc(column === "patient" || column === "physician");
+    }
   };
+
+  const sortDirection: SortDirection = sortAsc ? "asc" : "desc";
 
   const getPriorityBadgeVariant = (priority: string) => {
     switch (priority) {
@@ -98,6 +134,7 @@ export default function OrdenesLaboratorio() {
   };
 
   const totalPages = Math.ceil(totalOrders / limit);
+  const isSearchActive = debouncedSearch.trim().length > 0;
 
   return (
     <div className="p-6 space-y-6">
@@ -119,13 +156,18 @@ export default function OrdenesLaboratorio() {
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
+            <div className="flex-1 space-y-1">
               <Input
                 placeholder="Buscar por paciente, ID de orden o médico..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full"
               />
+              {isSearchActive && statusFilter === "all" && (
+                <p className="text-xs text-gray-500">
+                  La búsqueda incluye órdenes canceladas. Sin buscar, los cancelados no se listan.
+                </p>
+              )}
             </div>
             <div className="w-full sm:w-48">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -133,7 +175,7 @@ export default function OrdenesLaboratorio() {
                   <SelectValue placeholder="Filtrar por estado" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos (sin cancelados)</SelectItem>
+                  <SelectItem value="all">{getDefaultEstadoFilterLabel(isSearchActive)}</SelectItem>
                   <SelectItem value="Pendiente">Pendiente</SelectItem>
                   <SelectItem value="Completado">Completado</SelectItem>
                   <SelectItem value="Cancelado">Cancelado</SelectItem>
@@ -174,16 +216,63 @@ export default function OrdenesLaboratorio() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>ID</TableHead>
-                      <TableHead>Fecha toma muestra</TableHead>
-                      <TableHead>Estado</TableHead>
-                      <TableHead>Paciente</TableHead>
-                      <TableHead>Exámenes</TableHead>
-                      <TableHead>Fecha</TableHead>
-                      <TableHead>Médico</TableHead>
-                      <TableHead>Prioridad</TableHead>
-                      <TableHead>Total</TableHead>
-                      <TableHead className="whitespace-nowrap sticky right-0 bg-muted shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10 min-w-[100px]">Acciones</TableHead>
+                      <SortableTableHead
+                        label="ID"
+                        active={sortColumn === "id"}
+                        direction={sortDirection}
+                        onSort={() => handleSort("id")}
+                      />
+                      <SortableTableHead
+                        label="Fecha toma muestra"
+                        active={sortColumn === "sample_date"}
+                        direction={sortDirection}
+                        onSort={() => handleSort("sample_date")}
+                      />
+                      <SortableTableHead
+                        label="Estado"
+                        active={sortColumn === "status"}
+                        direction={sortDirection}
+                        onSort={() => handleSort("status")}
+                      />
+                      <SortableTableHead
+                        label="Paciente"
+                        active={sortColumn === "patient"}
+                        direction={sortDirection}
+                        onSort={() => handleSort("patient")}
+                      />
+                      <SortableTableHead
+                        label="Exámenes"
+                        active={sortColumn === "exams"}
+                        direction={sortDirection}
+                        onSort={() => handleSort("exams")}
+                      />
+                      <SortableTableHead
+                        label="Fecha"
+                        active={sortColumn === "order_date"}
+                        direction={sortDirection}
+                        onSort={() => handleSort("order_date")}
+                      />
+                      <SortableTableHead
+                        label="Médico"
+                        active={sortColumn === "physician"}
+                        direction={sortDirection}
+                        onSort={() => handleSort("physician")}
+                      />
+                      <SortableTableHead
+                        label="Prioridad"
+                        active={sortColumn === "priority"}
+                        direction={sortDirection}
+                        onSort={() => handleSort("priority")}
+                      />
+                      <SortableTableHead
+                        label="Total"
+                        active={sortColumn === "total"}
+                        direction={sortDirection}
+                        onSort={() => handleSort("total")}
+                      />
+                      <TableHead className="whitespace-nowrap sticky right-0 bg-muted shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10 min-w-[100px]">
+                        Acciones
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

@@ -11,6 +11,7 @@ import {
   getAppointmentEstadoIconClassName,
   getAppointmentEstadoLabel,
   isAppointmentCompletado,
+  getDefaultEstadoFilterLabel,
   isAppointmentCancelado,
   isAppointmentPendiente,
   matchesAppointmentEstadoFilter,
@@ -109,12 +110,16 @@ export default function CitasRxEcografiasPage() {
       .catch(() => setPatients({}));
   }, [appointments]);
 
+  const isSearchActive = normalizeSearchText(searchTerm).length > 0;
+
   const filteredAppointments = appointments.filter((appointment) => {
     const matchesSearch =
       normalizeSearchText(appointment.patientName).includes(normalizeSearchText(searchTerm)) ||
       normalizeSearchText(appointment.doctorName).includes(normalizeSearchText(searchTerm));
     const matchesDate = !filterDate || appointment.date === filterDate;
-    const matchesStatus = matchesAppointmentEstadoFilter(appointment.status, filterStatus);
+    const matchesStatus = matchesAppointmentEstadoFilter(appointment.status, filterStatus, {
+      searchActive: isSearchActive,
+    });
     const matchesType = filterType === "all" || appointment.type === filterType;
     return matchesSearch && matchesDate && matchesStatus && matchesType;
   });
@@ -391,14 +396,21 @@ export default function CitasRxEcografiasPage() {
       <Card>
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                placeholder="Buscar por paciente o técnico/médico..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+            <div className="flex-1 space-y-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Input
+                  placeholder="Buscar por paciente o técnico/médico..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              {isSearchActive && filterStatus === "all" && (
+                <p className="text-xs text-gray-500 pl-1">
+                  La búsqueda incluye citas canceladas. Sin buscar, las canceladas no se listan.
+                </p>
+              )}
             </div>
             <input
               type="date"
@@ -411,7 +423,7 @@ export default function CitasRxEcografiasPage() {
               onChange={(e) => setFilterStatus(e.target.value)}
               className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
             >
-              <option value="all">Todos (sin cancelados)</option>
+              <option value="all">{getDefaultEstadoFilterLabel(isSearchActive)}</option>
               <option value="pendiente">Pendientes</option>
               <option value="completado">Completados</option>
               <option value="cancelado">Cancelados</option>
