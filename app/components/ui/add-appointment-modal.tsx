@@ -12,6 +12,10 @@ import {
 } from "~/components/ui/dialog";
 import { Badge } from "~/components/ui/badge";
 import {
+  getAppointmentEstadoBadgeClassName,
+  getAppointmentEstadoLabel,
+} from "~/lib/estadoDisplay";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -428,9 +432,8 @@ export function AddAppointmentModal({
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
                     >
                       <option value="scheduled">Pendiente</option>
-                      <option value="confirmed">Confirmada</option>
-                      <option value="completed">Completada</option>
-                      <option value="cancelled">Cancelada</option>
+                      <option value="completed">Completado</option>
+                      <option value="cancelled">Cancelado</option>
                     </select>
                   </div>
                   <div>
@@ -716,11 +719,8 @@ export function AddAppointmentModal({
                         formData.procedureName
                       )}
                     {formData.status && (
-                      <Badge className="bg-gray-100 text-gray-800">
-                        {formData.status === "scheduled" ? "Pendiente" :
-                         formData.status === "confirmed" ? "Confirmada" :
-                         formData.status === "completed" ? "Completada" :
-                         "Cancelada"}
+                      <Badge className={getAppointmentEstadoBadgeClassName(formData.status)}>
+                        {getAppointmentEstadoLabel(formData.status)}
                       </Badge>
                     )}
                   </div>

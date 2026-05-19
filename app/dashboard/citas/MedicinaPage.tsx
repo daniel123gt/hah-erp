@@ -6,6 +6,15 @@ import { patientsService, type Patient } from "~/services/patientsService";
 import { medicalAppointmentRecordsService } from "~/services/medicalAppointmentRecordsService";
 import { getTodayLocal } from "~/lib/dateUtils";
 import { normalizeSearchText } from "~/lib/utils";
+import {
+  getAppointmentEstadoBadgeClassName,
+  getAppointmentEstadoIconClassName,
+  getAppointmentEstadoLabel,
+  isAppointmentCompletado,
+  isAppointmentCancelado,
+  isAppointmentPendiente,
+  matchesAppointmentEstadoFilter,
+} from "~/lib/estadoDisplay";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -110,7 +119,7 @@ export default function CitasMedicinaPage() {
       normalizeSearchText(appointment.patientName).includes(normalizeSearchText(searchTerm)) ||
       normalizeSearchText(appointment.doctorName).includes(normalizeSearchText(searchTerm));
     const matchesDate = !filterDate || appointment.date === filterDate;
-    const matchesStatus = filterStatus === "all" || appointment.status === filterStatus;
+    const matchesStatus = matchesAppointmentEstadoFilter(appointment.status, filterStatus);
     const matchesType = filterType === "all" || appointment.type === filterType;
     return matchesSearch && matchesDate && matchesStatus && matchesType;
   });
@@ -237,22 +246,11 @@ export default function CitasMedicinaPage() {
       });
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "scheduled":
-        return <Badge className="bg-amber-100 text-amber-800">Pendiente</Badge>;
-      case "confirmed":
-        return <Badge className="bg-gray-100 text-gray-800">Confirmada</Badge>;
-      case "completed":
-        return <Badge className="bg-blue-100 text-blue-800">Completada</Badge>;
-      case "cancelled":
-        return <Badge className="bg-red-100 text-red-800">Cancelada</Badge>;
-      case "no-show":
-        return <Badge className="bg-red-100 text-red-800">Cancelada</Badge>;
-      default:
-        return <Badge>{status}</Badge>;
-    }
-  };
+  const getStatusBadge = (status: string) => (
+    <Badge className={getAppointmentEstadoBadgeClassName(status)}>
+      {getAppointmentEstadoLabel(status)}
+    </Badge>
+  );
 
   const getTypeBadge = (type: string) => {
     switch (type) {
@@ -270,23 +268,16 @@ export default function CitasMedicinaPage() {
   };
 
   const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "scheduled":
-        return <Clock className="w-4 h-4 text-amber-600" />;
-      case "confirmed":
-        return <CheckCircle className="w-4 h-4 text-gray-600" />;
-      case "completed":
-        return <CheckCircle className="w-4 h-4 text-blue-600" />;
-      case "cancelled":
-        return <XCircle className="w-4 h-4 text-red-600" />;
-      case "no-show":
-        return <XCircle className="w-4 h-4 text-red-600" />;
-      default:
-        return <Clock className="w-4 h-4 text-gray-600" />;
-    }
+    const iconClass = `w-4 h-4 ${getAppointmentEstadoIconClassName(status)}`;
+    const label = getAppointmentEstadoLabel(status);
+    if (label === "Completado") return <CheckCircle className={iconClass} />;
+    if (label === "Cancelado") return <XCircle className={iconClass} />;
+    return <Clock className={iconClass} />;
   };
 
-  const todayAppointments = appointments.filter((a) => a.date === getTodayLocal());
+  const todayAppointments = appointments.filter(
+    (a) => a.date === getTodayLocal() && !isAppointmentCancelado(a.status)
+  );
 
   return (
     <div className="space-y-6">
@@ -327,9 +318,9 @@ export default function CitasMedicinaPage() {
                 <CheckCircle className="w-6 h-6 text-green-600" />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-600">Confirmadas</p>
+                <p className="text-sm font-medium text-gray-600">Completados</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {appointments.filter((a) => a.status === "confirmed").length}
+                  {appointments.filter((a) => isAppointmentCompletado(a.status)).length}
                 </p>
               </div>
             </div>
@@ -344,7 +335,7 @@ export default function CitasMedicinaPage() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Pendientes</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {appointments.filter((a) => a.status === "scheduled").length}
+                  {appointments.filter((a) => isAppointmentPendiente(a.status)).length}
                 </p>
               </div>
             </div>
@@ -428,11 +419,10 @@ export default function CitasMedicinaPage() {
               onChange={(e) => setFilterStatus(e.target.value)}
               className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
             >
-              <option value="all">Todos los estados</option>
-              <option value="scheduled">Pendientes</option>
-              <option value="confirmed">Confirmadas</option>
-              <option value="completed">Completadas</option>
-              <option value="cancelled">Canceladas</option>
+              <option value="all">Todos (sin cancelados)</option>
+              <option value="pendiente">Pendientes</option>
+              <option value="completado">Completados</option>
+              <option value="cancelado">Cancelados</option>
             </select>
             <select
               value={filterType}

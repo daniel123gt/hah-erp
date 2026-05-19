@@ -4,6 +4,7 @@
  */
 
 import { getTodayLocal } from "~/lib/dateUtils";
+import { isAppointmentCancelado, isLabCancelado } from "~/lib/estadoDisplay";
 import patientsService from "~/services/patientsService";
 import { appointmentsService } from "~/services/appointmentsService";
 import { procedureService, type ProcedureRecord } from "~/services/procedureService";
@@ -123,7 +124,9 @@ export async function getDashboardData(): Promise<DashboardData> {
   labPatients.forEach((p, i) => {
     if (p) labPatientMap[labPatientIds[i]] = p.name;
   });
-  const todayLabOrders: TodayLabOrderItem[] = todayLabOrdersRaw.map((o) => ({
+  const todayLabOrders: TodayLabOrderItem[] = todayLabOrdersRaw
+    .filter((o) => !isLabCancelado(o.status))
+    .map((o) => ({
     id: o.id,
     patient_id: o.patient_id,
     patientName: labPatientMap[o.patient_id] ?? "Paciente",
@@ -132,9 +135,15 @@ export async function getDashboardData(): Promise<DashboardData> {
     status: o.status,
   }));
 
-  const todayMedicina = medicinaCitas.filter((c) => c.date === today);
-  const todayProcedimientos = procedimientosCitas.filter((c) => c.date === today);
-  const todayRxEcografias = rxEcografiasCitas.filter((c) => c.date === today);
+  const todayMedicina = medicinaCitas.filter(
+    (c) => c.date === today && !isAppointmentCancelado(c.status)
+  );
+  const todayProcedimientos = procedimientosCitas.filter(
+    (c) => c.date === today && !isAppointmentCancelado(c.status)
+  );
+  const todayRxEcografias = rxEcografiasCitas.filter(
+    (c) => c.date === today && !isAppointmentCancelado(c.status)
+  );
   const todayAppointments: TodayAppointmentItem[] = [
     ...todayMedicina.map((c) => ({
       id: c.id,
@@ -281,14 +290,17 @@ export async function getDashboardChartData(): Promise<DashboardChartPoint[]> {
     rxEcografiasByDate[d] = 0;
   });
   medicinaCitas.forEach((c) => {
+    if (isAppointmentCancelado(c.status)) return;
     const d = c.date.length >= 10 ? c.date.slice(0, 10) : c.date;
     if (dateSet.has(d)) medicinaByDate[d] = (medicinaByDate[d] ?? 0) + 1;
   });
   procedimientosCitas.forEach((c) => {
+    if (isAppointmentCancelado(c.status)) return;
     const d = c.date.length >= 10 ? c.date.slice(0, 10) : c.date;
     if (dateSet.has(d)) procedimientosByDate[d] = (procedimientosByDate[d] ?? 0) + 1;
   });
   rxEcografiasCitas.forEach((c) => {
+    if (isAppointmentCancelado(c.status)) return;
     const d = c.date.length >= 10 ? c.date.slice(0, 10) : c.date;
     if (dateSet.has(d)) rxEcografiasByDate[d] = (rxEcografiasByDate[d] ?? 0) + 1;
   });
@@ -351,6 +363,7 @@ export async function getCalendarEvents(fromDate: string, toDate: string): Promi
   const to = toDate.slice(0, 10);
 
   medicinaCitas.forEach((c) => {
+    if (isAppointmentCancelado(c.status)) return;
     const d = c.date.length >= 10 ? c.date.slice(0, 10) : c.date;
     if (d < from || d > to) return;
     const startMins = parseTimeToMinutes(c.time);
@@ -373,6 +386,7 @@ export async function getCalendarEvents(fromDate: string, toDate: string): Promi
   });
 
   procedimientosCitas.forEach((c) => {
+    if (isAppointmentCancelado(c.status)) return;
     const d = c.date.length >= 10 ? c.date.slice(0, 10) : c.date;
     if (d < from || d > to) return;
     const startMins = parseTimeToMinutes(c.time);
@@ -395,6 +409,7 @@ export async function getCalendarEvents(fromDate: string, toDate: string): Promi
   });
 
   rxEcografiasCitas.forEach((c) => {
+    if (isAppointmentCancelado(c.status)) return;
     const d = c.date.length >= 10 ? c.date.slice(0, 10) : c.date;
     if (d < from || d > to) return;
     const startMins = parseTimeToMinutes(c.time);
@@ -425,6 +440,7 @@ export async function getCalendarEvents(fromDate: string, toDate: string): Promi
   );
 
   labOrders.forEach((order) => {
+    if (isLabCancelado(order.status)) return;
     const raw = order.sample_date || order.order_date || "";
     const rawStr = String(raw);
     const d =

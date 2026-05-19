@@ -9,6 +9,11 @@ import {
   DialogTrigger,
 } from "~/components/ui/dialog";
 import { Badge } from "~/components/ui/badge";
+import {
+  getAppointmentEstadoBadgeClassName,
+  getAppointmentEstadoIconClassName,
+  getAppointmentEstadoLabel,
+} from "~/lib/estadoDisplay";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { 
   Eye, 
@@ -50,22 +55,11 @@ interface ViewAppointmentModalProps {
 }
 
 export function ViewAppointmentModal({ appointment, professionalLabel = "Médico" }: ViewAppointmentModalProps) {
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "scheduled":
-        return <Badge className="bg-amber-100 text-amber-800">Pendiente</Badge>;
-      case "confirmed":
-        return <Badge className="bg-gray-100 text-gray-800">Confirmada</Badge>;
-      case "completed":
-        return <Badge className="bg-blue-100 text-blue-800">Completada</Badge>;
-      case "cancelled":
-        return <Badge className="bg-red-100 text-red-800">Cancelada</Badge>;
-      case "no-show":
-        return <Badge className="bg-red-100 text-red-800">Cancelada</Badge>;
-      default:
-        return <Badge>{status}</Badge>;
-    }
-  };
+  const getStatusBadge = (status: string) => (
+    <Badge className={getAppointmentEstadoBadgeClassName(status)}>
+      {getAppointmentEstadoLabel(status)}
+    </Badge>
+  );
 
   const getTypeBadge = (type: string, procedureName?: string) => {
     if (type === "procedimiento") {
@@ -86,20 +80,11 @@ export function ViewAppointmentModal({ appointment, professionalLabel = "Médico
   };
 
   const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "scheduled":
-        return <Clock className="w-5 h-5 text-amber-600" />;
-      case "confirmed":
-        return <CheckCircle className="w-5 h-5 text-gray-600" />;
-      case "completed":
-        return <CheckCircle className="w-5 h-5 text-blue-600" />;
-      case "cancelled":
-        return <XCircle className="w-5 h-5 text-red-600" />;
-      case "no-show":
-        return <XCircle className="w-5 h-5 text-red-600" />;
-      default:
-        return <Clock className="w-5 h-5 text-gray-600" />;
-    }
+    const iconClass = `w-5 h-5 ${getAppointmentEstadoIconClassName(status)}`;
+    const label = getAppointmentEstadoLabel(status);
+    if (label === "Completado") return <CheckCircle className={iconClass} />;
+    if (label === "Cancelado") return <XCircle className={iconClass} />;
+    return <Clock className={iconClass} />;
   };
 
   const formatDate = (dateString: string) => {
@@ -342,8 +327,8 @@ export function ViewAppointmentModal({ appointment, professionalLabel = "Médico
                   </div>
                 )}
                 {appointment.status === "completed" && (
-                  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+                  <div className="flex items-center space-x-3 p-3 bg-emerald-50 rounded-lg">
+                    <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
                     <div>
                       <p className="text-sm font-medium">Cita completada</p>
                       <p className="text-xs text-gray-500">

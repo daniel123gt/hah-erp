@@ -15,6 +15,12 @@ import {
 import labOrderService, { type LabExamOrder } from "~/services/labOrderService";
 import { procedureService } from "~/services/procedureService";
 import { formatDateOnly } from "~/lib/utils";
+import {
+  getLabEstadoBadgeClassName,
+  getLabEstadoLabel,
+  matchesLabEstadoFilter,
+  normalizeLabEstado,
+} from "~/lib/estadoDisplay";
 import { getExams } from "~/services/labService";
 import { toast } from "sonner";
 
@@ -95,7 +101,7 @@ export default function LaboratorioReportes() {
   const filteredReport = useMemo(() => {
     if (!dbReport) return null;
     if (statusFilter === 'all') return dbReport;
-    const rows = dbReport.rows.filter((r) => r.status === statusFilter);
+    const rows = dbReport.rows.filter((r) => matchesLabEstadoFilter(r.status, statusFilter));
     return {
       totals: {
         total_orders: rows.length,
@@ -144,22 +150,6 @@ export default function LaboratorioReportes() {
   /** Colores para donut (exámenes) */
   const CHART_COLORS = ['#2563eb', '#16a34a', '#0891b2', '#dc2626', '#ea580c', '#7c3aed', '#db2777', '#64748b'];
 
-  const getStatusBadgeClassName = (status: string) => {
-    switch (status) {
-      case "Pendiente":
-        return "bg-amber-100 text-amber-800 border-amber-300";
-      case "Completado":
-        return "bg-emerald-100 text-emerald-800 border-emerald-300";
-      case "En Proceso":
-      case "En toma de muestra":
-        return "bg-blue-100 text-blue-800 border-blue-300";
-      case "Cancelado":
-        return "bg-red-100 text-red-800 border-red-300";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-300";
-    }
-  };
-
   const loadReportData = async () => {
     try {
       setIsLoading(true);
@@ -189,11 +179,7 @@ export default function LaboratorioReportes() {
         totalRevenue: filteredOrders.reduce((sum, order) => sum + order.total_amount, 0),
         totalExams: filteredOrders.reduce((sum, order) => sum + order.items.length, 0),
         completedOrders: filteredOrders.filter(order => order.status === 'Completado').length,
-        pendingOrders: filteredOrders.filter(order => 
-          order.status === 'Pendiente' || 
-          order.status === 'En toma de muestra' || 
-          order.status === 'En Proceso'
-        ).length
+        pendingOrders: filteredOrders.filter((order) => normalizeLabEstado(order.status) === "Pendiente").length,
       };
       setStats(calculatedStats);
 
@@ -344,7 +330,6 @@ export default function LaboratorioReportes() {
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
                   <SelectItem value="Pendiente">Pendiente</SelectItem>
-                  <SelectItem value="En Proceso">En Proceso</SelectItem>
                   <SelectItem value="Completado">Completado</SelectItem>
                   <SelectItem value="Cancelado">Cancelado</SelectItem>
                 </SelectContent>
@@ -638,8 +623,8 @@ export default function LaboratorioReportes() {
                             <td className="p-2">{formatDateOnly(row.order_date)}</td>
                             <td className="p-2">{row.physician_name || '-'}</td>
                             <td className="p-2">
-                              <Badge variant="secondary" className={getStatusBadgeClassName(row.status)}>
-                                {row.status}
+                              <Badge variant="secondary" className={getLabEstadoBadgeClassName(row.status)}>
+                                {getLabEstadoLabel(row.status)}
                               </Badge>
                             </td>
                             <td className="p-2 text-right">{row.n_items}</td>
@@ -693,8 +678,8 @@ export default function LaboratorioReportes() {
                               <td className="p-2">{formatDateOnly(order.order_date)}</td>
                               <td className="p-2">{order.physician_name || '-'}</td>
                               <td className="p-2">
-                                <Badge variant="secondary" className={getStatusBadgeClassName(order.status)}>
-                                  {order.status}
+                                <Badge variant="secondary" className={getLabEstadoBadgeClassName(order.status)}>
+                                  {getLabEstadoLabel(order.status)}
                                 </Badge>
                               </td>
                               <td className="p-2">

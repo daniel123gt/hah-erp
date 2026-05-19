@@ -138,17 +138,12 @@ function extractPaymentIsoDates(value: string | null | undefined): string[] {
   return Array.from(result).sort((a, b) => a.localeCompare(b));
 }
 
-/** Para ordenar periodos: prioriza la fecha de pago más reciente; si no hay, quincena; luego inicio del periodo. */
-function getPeriodPaymentSortMs(period: HomeCarePeriod): number {
-  const payDates = extractPaymentIsoDates(period.fecha_pago);
-  if (payDates.length > 0) {
-    const lastIso = payDates[payDates.length - 1];
-    return Date.parse(`${lastIso}T12:00:00`);
-  }
-  const quincena = toIsoDateMaybe(String(period.fecha_pago_quincena ?? "").trim());
-  if (quincena) return Date.parse(`${quincena}T12:00:00`);
+/** Orden de listado: quincena (f_desde) más reciente primero; coincide con ITEM renumerado. */
+function getPeriodChronologicalSortMs(period: HomeCarePeriod): number {
   const desde = toIsoDateMaybe(String(period.f_desde ?? "").trim());
   if (desde) return Date.parse(`${desde}T12:00:00`);
+  const quincena = toIsoDateMaybe(String(period.fecha_pago_quincena ?? "").trim());
+  if (quincena) return Date.parse(`${quincena}T12:00:00`);
   return 0;
 }
 
@@ -215,7 +210,7 @@ export const homeCareService = {
     if (error) throw error;
     const rows = (data ?? []) as HomeCarePeriod[];
     return [...rows].sort((a, b) => {
-      const diff = getPeriodPaymentSortMs(b) - getPeriodPaymentSortMs(a);
+      const diff = getPeriodChronologicalSortMs(b) - getPeriodChronologicalSortMs(a);
       if (diff !== 0) return diff;
       return (b.item ?? 0) - (a.item ?? 0);
     });
@@ -336,8 +331,15 @@ export const homeCareService = {
     let item = data.item;
     let n_pago = data.n_pago;
     if (item == null || n_pago == null) {
-      const existing = await this.getPeriodsByContractId(contractId);
-      const next = existing.length + 1;
+      const { data: existingRows } = await supabase
+        .from("home_care_periods")
+        .select("item")
+        .eq("contract_id", contractId);
+      const maxItem = (existingRows ?? []).reduce(
+        (max, row) => Math.max(max, Number(row.item) || 0),
+        0
+      );
+      const next = maxItem + 1;
       item = data.item ?? next;
       n_pago = data.n_pago ?? next;
     }

@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { toast } from "sonner";
 import { ArrowLeft, Loader2, FileText, User, Calendar, Edit, Plus, X, Search, Trash2, KeyRound, Copy } from "lucide-react";
 import { formatDateOnly } from "~/lib/utils";
+import { getLabEstadoBadgeClassName, getLabEstadoLabel } from "~/lib/estadoDisplay";
 import labOrderService, {
   type LabExamOrder,
   type LabOrderPaymentMethod,
@@ -268,22 +269,6 @@ export default function OrdenDetalle() {
     }
   }, [searchQuery, isAddingExams, order]);
 
-  const getStatusBadgeClassName = (status: string) => {
-    switch (status) {
-      case "Pendiente":
-        return "bg-amber-100 text-amber-800 border-amber-300";
-      case "Completado":
-        return "bg-emerald-100 text-emerald-800 border-emerald-300";
-      case "En Proceso":
-      case "En toma de muestra":
-        return "bg-blue-100 text-blue-800 border-blue-300";
-      case "Cancelado":
-        return "bg-red-100 text-red-800 border-red-300";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-300";
-    }
-  };
-
   const getPriorityBadgeVariant = (priority: string) => {
     switch (priority) {
       case "urgente":
@@ -353,8 +338,8 @@ export default function OrdenDetalle() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="secondary" className={`text-sm px-3 py-1 ${getStatusBadgeClassName(order.status)}`}>
-            {order.status}
+          <Badge variant="secondary" className={`text-sm px-3 py-1 ${getLabEstadoBadgeClassName(order.status)}`}>
+            {getLabEstadoLabel(order.status)}
           </Badge>
           <Badge variant={getPriorityBadgeVariant(order.priority)} className="text-sm px-3 py-1">
             {order.priority}
@@ -447,8 +432,10 @@ export default function OrdenDetalle() {
                 <span className="text-sm text-gray-500">Estado:</span>
                 <div className="mt-2">
                   <Select
-                    value={order.status}
-                    onValueChange={(value: LabExamOrder['status']) => handleStatusUpdate(value)}
+                    value={getLabEstadoLabel(order.status)}
+                    onValueChange={(value: "Pendiente" | "Completado" | "Cancelado") =>
+                      handleStatusUpdate(value as LabExamOrder["status"])
+                    }
                     disabled={updating}
                   >
                     <SelectTrigger>
@@ -456,7 +443,6 @@ export default function OrdenDetalle() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Pendiente">Pendiente</SelectItem>
-                      <SelectItem value="En Proceso">En Proceso</SelectItem>
                       <SelectItem value="Completado">Completado</SelectItem>
                       <SelectItem value="Cancelado">Cancelado</SelectItem>
                     </SelectContent>
@@ -864,8 +850,8 @@ export default function OrdenDetalle() {
                           <span className="font-semibold">S/ {item.price.toFixed(2)}</span>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="secondary" className={getStatusBadgeClassName(item.status)}>
-                            {item.status}
+                          <Badge variant="secondary" className={getLabEstadoBadgeClassName(item.status)}>
+                            {getLabEstadoLabel(item.status)}
                           </Badge>
                         </TableCell>
                         {isEditing && (

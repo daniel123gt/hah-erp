@@ -10,6 +10,7 @@ import { ArrowLeft, Search, Eye, Calendar, FileText, Loader2, Filter } from "luc
 import labOrderService, { type LabExamOrder } from "~/services/labOrderService";
 import patientsService, { type Patient } from "~/services/patientsService";
 import { formatDateOnly } from "~/lib/utils";
+import { getLabEstadoBadgeClassName, getLabEstadoLabel } from "~/lib/estadoDisplay";
 import {
   Select,
   SelectContent,
@@ -85,22 +86,6 @@ export default function OrdenesLaboratorio() {
     }
   };
 
-  const getStatusBadgeClassName = (status: string) => {
-    switch (status) {
-      case "Pendiente":
-        return "bg-amber-100 text-amber-800 border-amber-300";
-      case "Completado":
-        return "bg-emerald-100 text-emerald-800 border-emerald-300";
-      case "En Proceso":
-      case "En toma de muestra":
-        return "bg-blue-100 text-blue-800 border-blue-300";
-      case "Cancelado":
-        return "bg-red-100 text-red-800 border-red-300";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-300";
-    }
-  };
-
   const getPriorityBadgeVariant = (priority: string) => {
     switch (priority) {
       case "urgente":
@@ -148,9 +133,8 @@ export default function OrdenesLaboratorio() {
                   <SelectValue placeholder="Filtrar por estado" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos los estados</SelectItem>
+                  <SelectItem value="all">Todos (sin cancelados)</SelectItem>
                   <SelectItem value="Pendiente">Pendiente</SelectItem>
-                  <SelectItem value="En Proceso">En Proceso</SelectItem>
                   <SelectItem value="Completado">Completado</SelectItem>
                   <SelectItem value="Cancelado">Cancelado</SelectItem>
                 </SelectContent>
@@ -191,8 +175,8 @@ export default function OrdenesLaboratorio() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>ID</TableHead>
-                      <TableHead>Estado</TableHead>
                       <TableHead>Fecha toma muestra</TableHead>
+                      <TableHead>Estado</TableHead>
                       <TableHead>Paciente</TableHead>
                       <TableHead>Exámenes</TableHead>
                       <TableHead>Fecha</TableHead>
@@ -210,11 +194,6 @@ export default function OrdenesLaboratorio() {
                           <TableCell className="font-mono text-xs">
                             {order.id.slice(0, 8)}...
                           </TableCell>
-                          <TableCell>
-                            <Badge variant="secondary" className={getStatusBadgeClassName(order.status)}>
-                              {order.status}
-                            </Badge>
-                          </TableCell>
                           <TableCell className="whitespace-nowrap">
                             {(() => {
                               const sd = order.sample_date ?? order.order_date;
@@ -222,6 +201,11 @@ export default function OrdenesLaboratorio() {
                               const timeStr = sd && String(sd).includes("T") ? String(sd).slice(11, 16) : null;
                               return timeStr ? `${dateStr} ${timeStr}` : dateStr;
                             })()}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary" className={getLabEstadoBadgeClassName(order.status)}>
+                              {getLabEstadoLabel(order.status)}
+                            </Badge>
                           </TableCell>
                           <TableCell className="font-medium">
                             {patient?.name || 'Paciente no encontrado'}

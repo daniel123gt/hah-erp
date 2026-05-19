@@ -13,6 +13,7 @@ import {
 import { Badge } from "~/components/ui/badge";
 import { Calendar, Stethoscope, HeartPulse, Scan, ArrowLeft, Loader2 } from "lucide-react";
 import { getTodayLocal } from "~/lib/dateUtils";
+import { isAppointmentCancelado } from "~/lib/estadoDisplay";
 import { appointmentsService } from "~/services/appointmentsService";
 
 interface TodayCitaRow {
@@ -42,7 +43,7 @@ export default function CitasHome() {
         if (cancelled) return;
         const today = getTodayLocal();
         const fromMed = med
-          .filter((c) => c.date === today)
+          .filter((c) => c.date === today && !isAppointmentCancelado(c.status))
           .map((c) => ({
             id: c.id,
             hora: c.time,
@@ -53,7 +54,7 @@ export default function CitasHome() {
             variant: "medicina" as const,
           }));
         const fromProc = proc
-          .filter((c) => c.date === today)
+          .filter((c) => c.date === today && !isAppointmentCancelado(c.status))
           .map((c) => ({
             id: c.id,
             hora: c.time,
@@ -64,7 +65,7 @@ export default function CitasHome() {
             variant: "procedimientos" as const,
           }));
         const fromRxEco = rxEco
-          .filter((c) => c.date === today)
+          .filter((c) => c.date === today && !isAppointmentCancelado(c.status))
           .map((c) => ({
             id: c.id,
             hora: c.time,

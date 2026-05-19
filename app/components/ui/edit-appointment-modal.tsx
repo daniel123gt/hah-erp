@@ -12,6 +12,10 @@ import {
 } from "~/components/ui/dialog";
 import { Badge } from "~/components/ui/badge";
 import {
+  getAppointmentEstadoBadgeClassName,
+  getAppointmentEstadoLabel,
+} from "~/lib/estadoDisplay";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -253,26 +257,8 @@ export function EditAppointmentModal({
           <DialogTitle className="flex items-center gap-3 text-2xl font-bold text-primary-blue">
             Editar Cita #{appointment.id.slice(0, 8)}
             {formData.status && (
-              <Badge
-                className={
-                  formData.status === "scheduled"
-                    ? "bg-amber-100 text-amber-800"
-                    : formData.status === "confirmed"
-                      ? "bg-gray-100 text-gray-800"
-                      : formData.status === "completed"
-                        ? "bg-blue-100 text-blue-800"
-                        : formData.status === "cancelled"
-                          ? "bg-red-100 text-red-800"
-                          : "bg-red-100 text-red-800"
-                }
-              >
-                {formData.status === "scheduled"
-                  ? "Pendiente"
-                  : formData.status === "confirmed"
-                    ? "Confirmada"
-                    : formData.status === "completed"
-                      ? "Completada"
-                      : "Cancelada"}
+              <Badge className={getAppointmentEstadoBadgeClassName(formData.status)}>
+                {getAppointmentEstadoLabel(formData.status)}
               </Badge>
             )}
           </DialogTitle>
@@ -355,9 +341,8 @@ export function EditAppointmentModal({
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
                     >
                       <option value="scheduled">Pendiente</option>
-                      <option value="confirmed">Confirmada</option>
-                      <option value="completed">Completada</option>
-                      <option value="cancelled">Cancelada</option>
+                      <option value="completed">Completado</option>
+                      <option value="cancelled">Cancelado</option>
                     </select>
                   </div>
                   <div>
@@ -645,11 +630,8 @@ export function EditAppointmentModal({
                         formData.procedure_name
                       )}
                     {formData.status && (
-                      <Badge className="bg-gray-100 text-gray-800">
-                        {formData.status === "scheduled" ? "Pendiente" :
-                         formData.status === "confirmed" ? "Confirmada" :
-                         formData.status === "completed" ? "Completada" :
-                         "Cancelada"}
+                      <Badge className={getAppointmentEstadoBadgeClassName(formData.status)}>
+                        {getAppointmentEstadoLabel(formData.status)}
                       </Badge>
                     )}
                   </div>

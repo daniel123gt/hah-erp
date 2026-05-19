@@ -6,6 +6,7 @@ import { Badge } from "~/components/ui/badge";
 import { getExamStats } from "~/services/labService";
 import labOrderService, { type LabExamOrder } from "~/services/labOrderService";
 import { formatDateOnly } from "~/lib/utils";
+import { getLabEstadoBadgeClassName, getLabEstadoLabel } from "~/lib/estadoDisplay";
 import { toast } from "sonner";
 import {
   FileText,
@@ -60,22 +61,6 @@ export default function LaboratorioDashboard() {
     loadStats();
     loadRecentOrders();
   }, []);
-
-  const getStatusBadgeClassName = (status: string) => {
-    switch (status) {
-      case "Pendiente":
-        return "bg-amber-100 text-amber-800 border-amber-300";
-      case "Completado":
-        return "bg-emerald-100 text-emerald-800 border-emerald-300";
-      case "En Proceso":
-      case "En toma de muestra":
-        return "bg-blue-100 text-blue-800 border-blue-300";
-      case "Cancelado":
-        return "bg-red-100 text-red-800 border-red-300";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-300";
-    }
-  };
 
   const dashboardCards = [
     {
@@ -212,8 +197,8 @@ export default function LaboratorioDashboard() {
                     <span className="font-medium text-sm">
                       Orden #{order.id.slice(0, 8)}
                     </span>
-                    <Badge variant="secondary" className={getStatusBadgeClassName(order.status)}>
-                      {order.status}
+                    <Badge variant="secondary" className={getLabEstadoBadgeClassName(order.status)}>
+                      {getLabEstadoLabel(order.status)}
                     </Badge>
                   </div>
                   <p className="text-sm text-gray-600">

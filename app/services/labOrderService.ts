@@ -225,7 +225,13 @@ export const labOrderService = {
         .range(from, to);
 
       if (status) {
-        query = query.eq('status', status);
+        if (status === "Pendiente") {
+          query = query.in("status", ["Pendiente", "En Proceso", "En toma de muestra"]);
+        } else {
+          query = query.eq("status", status);
+        }
+      } else {
+        query = query.neq("status", "Cancelado");
       }
 
       if (searchTrim) {
@@ -243,8 +249,11 @@ export const labOrderService = {
           p_status: status || null,
         });
         if (countError) throw countError;
-        const orders = ordersRpc ?? [];
-        const totalMerged = Number(totalRpc ?? 0);
+        let orders = ordersRpc ?? [];
+        if (!status) {
+          orders = orders.filter((o: { status?: string }) => o.status !== "Cancelado");
+        }
+        const totalMerged = status ? Number(totalRpc ?? 0) : orders.length;
         const ordersWithItems = await Promise.all(
           orders.map(async (order: any) => {
             const { data: items } = await supabase
@@ -698,6 +707,7 @@ export const labOrderService = {
         .select('*')
         .gte('sample_date', dayStart)
         .lte('sample_date', dayEnd)
+        .neq('status', 'Cancelado')
         .order('created_at', { ascending: false });
       if (e1) throw e1;
       const { data: byOrderDate, error: e2 } = await supabase
@@ -705,6 +715,7 @@ export const labOrderService = {
         .select('*')
         .is('sample_date', null)
         .eq('order_date', sampleDate)
+        .neq('status', 'Cancelado')
         .order('created_at', { ascending: false });
       if (e2) throw e2;
       const idsBySample = new Set((bySample ?? []).map((r) => r.id));
@@ -745,6 +756,7 @@ export const labOrderService = {
         .select('*')
         .gte('sample_date', from)
         .lte('sample_date', to)
+        .neq('status', 'Cancelado')
         .order('sample_date', { ascending: true })
         .order('created_at', { ascending: false });
       if (e1) throw e1;
@@ -754,6 +766,7 @@ export const labOrderService = {
         .is('sample_date', null)
         .gte('order_date', fromDate)
         .lte('order_date', toDate)
+        .neq('status', 'Cancelado')
         .order('order_date', { ascending: true })
         .order('created_at', { ascending: false });
       if (e2) throw e2;
