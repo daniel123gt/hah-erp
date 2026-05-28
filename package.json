@@ -32,6 +32,8 @@
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
     "isbot": "^5.1.27",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "lucide-react": "^0.511.0",
     "next-themes": "^0.4.6",
     "react": "^19.1.0",

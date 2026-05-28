@@ -9,8 +9,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "./dialog";
-import { Loader2, Plus, X, Calendar, Banknote, Pause, Receipt } from "lucide-react";
-import homeCareService, { type HomeCarePeriod } from "~/services/homeCareService";
+import { Loader2, Plus, X, Calendar, Banknote, Pause, Receipt, Sparkles } from "lucide-react";
+import homeCareService, {
+  type HomeCarePeriod,
+  type HomeCarePeriodAdicional,
+} from "~/services/homeCareService";
 
 function addDays(isoDate: string, days: number): string {
   if (!isoDate) return "";
@@ -175,11 +178,11 @@ export type PeriodFormData = {
   horas_pausa: string;
   p_del_serv: string;
   f_pausas: string;
+  adicionales: HomeCarePeriodAdicional[];
   monto_total: string;
   fecha_pago: string;
   metodo_pago: string;
   numero_operacion: string;
-  factura_boleta: string;
 };
 
 const emptyForm: PeriodFormData = {
@@ -192,11 +195,11 @@ const emptyForm: PeriodFormData = {
   horas_pausa: "0",
   p_del_serv: "0",
   f_pausas: "",
+  adicionales: [],
   monto_total: "",
   fecha_pago: "",
   metodo_pago: "",
   numero_operacion: "",
-  factura_boleta: "",
 };
 
 function parseHorasFromPdelServ(s: string | null): number {
@@ -221,12 +224,16 @@ function periodToForm(p: HomeCarePeriod, montoQuincena: number): PeriodFormData 
     horas_pausa: String(horas),
     p_del_serv: p.p_del_serv ?? "0",
     f_pausas: pausasStr,
+    adicionales: p.adicionales ?? [],
     monto_total: String(p.monto_total ?? 0),
     fecha_pago: p.fecha_pago ?? "",
     metodo_pago: p.metodo_pago ?? "",
     numero_operacion: p.numero_operacion ?? "",
-    factura_boleta: p.factura_boleta ?? "",
   };
+}
+
+function sumAdicionales(list: HomeCarePeriodAdicional[]): number {
+  return list.reduce((acc, a) => acc + (Number(a.monto) || 0), 0);
 }
 
 interface HomeCarePeriodModalProps {
@@ -271,6 +278,12 @@ export function HomeCarePeriodModal({
   const [fechaPagoDates, setFechaPagoDates] = useState<string[]>([]);
   const [nuevaPausa, setNuevaPausa] = useState("");
   const [nuevaFechaPago, setNuevaFechaPago] = useState("");
+  const [adicionalesList, setAdicionalesList] = useState<HomeCarePeriodAdicional[]>([]);
+  const [nuevoAdicional, setNuevoAdicional] = useState({
+    monto: "",
+    fecha: "",
+    descripcion: "",
+  });
 
   // Sincronizar form y arrays al abrir (useLayoutEffect para evitar parpadeo de chips vacíos)
   useLayoutEffect(() => {
@@ -281,32 +294,46 @@ export function HomeCarePeriodModal({
       setFeriadosDates(parseFechasFromString(f.f_feriados));
       setPausasDates(parseFechasFromString(f.f_pausas));
       setFechaPagoDates(parseFechasFromString(f.fecha_pago));
+      setAdicionalesList(period.adicionales ?? []);
     } else {
       setForm({ ...emptyForm, monto_total: montoQuincena.toFixed(2) });
       setFeriadosDates([]);
       setPausasDates([]);
       setFechaPagoDates([]);
+      setAdicionalesList([]);
     }
     setNuevaPausa("");
     setNuevaFechaPago("");
+    setNuevoAdicional({ monto: "", fecha: "", descripcion: "" });
   }, [open, period, montoQuincena]);
+
+  const computeMontoTotal = (
+    feriadosCount: number,
+    horasPausa: number,
+    adicionales: HomeCarePeriodAdicional[]
+  ) =>
+    montoQuincena +
+    feriadosCount * montoPorDia -
+    horasPausa * montoPorHora +
+    sumAdicionales(adicionales);
 
   const syncFormFromArrays = (
     feriados: string[],
     pausas: string[],
+    adicionales: HomeCarePeriodAdicional[],
     prev: PeriodFormData
   ): PeriodFormData => {
     const n_feriados = feriados.length;
     const m_feriados = n_feriados * montoPorDia;
     const horas_pausa = parseFloat(prev.horas_pausa) || 0;
-    const descuentoPausa = horas_pausa * montoPorHora;
-    const monto_total = montoQuincena + m_feriados - descuentoPausa;
+    const monto_total = computeMontoTotal(n_feriados, horas_pausa, adicionales);
     return {
       ...prev,
       f_feriados: feriados.join(", "),
       n_feriados: String(n_feriados),
       m_feriados: m_feriados.toFixed(2),
       f_pausas: pausas.join(", "),
+      adicionales,
       monto_total: monto_total.toFixed(2),
     };
   };
@@ -325,9 +352,9 @@ export function HomeCarePeriodModal({
       const n_feriados = feriadosDates.length;
       const horas_pausa = parseFloat(next.horas_pausa) || 0;
       const m_feriados = n_feriados * montoPorDia;
-      const descuentoPausa = horas_pausa * montoPorHora;
-      next.monto_total = (montoQuincena + m_feriados - descuentoPausa).toFixed(2);
+      next.monto_total = computeMontoTotal(n_feriados, horas_pausa, adicionalesList).toFixed(2);
       next.m_feriados = m_feriados.toFixed(2);
+      next.adicionales = adicionalesList;
       return next;
     });
     // Al cambiar la fecha de pago de quincena, auto-rellenar feriados del rango [f_desde, f_hasta]
@@ -335,9 +362,34 @@ export function HomeCarePeriodModal({
       const f_hasta = addDays(value, 14);
       homeCareService.getHolidaysInRange(value, f_hasta).then((dates) => {
         setFeriadosDates(dates);
-        setForm((prev) => syncFormFromArrays(dates, pausasDates, prev));
+        setForm((prev) => syncFormFromArrays(dates, pausasDates, adicionalesList, prev));
       });
     }
+  };
+
+  const addAdicional = () => {
+    const monto = parseFloat(nuevoAdicional.monto);
+    const descripcion = nuevoAdicional.descripcion.trim();
+    const fecha = nuevoAdicional.fecha.trim();
+    if (!descripcion || Number.isNaN(monto) || monto <= 0 || !fecha) return;
+    const next: HomeCarePeriodAdicional[] = [
+      ...adicionalesList,
+      {
+        id: crypto.randomUUID(),
+        monto,
+        fecha,
+        descripcion,
+      },
+    ];
+    setAdicionalesList(next);
+    setNuevoAdicional({ monto: "", fecha: "", descripcion: "" });
+    setForm((prev) => syncFormFromArrays(feriadosDates, pausasDates, next, prev));
+  };
+
+  const removeAdicional = (id: string) => {
+    const next = adicionalesList.filter((a) => a.id !== id);
+    setAdicionalesList(next);
+    setForm((prev) => syncFormFromArrays(feriadosDates, pausasDates, next, prev));
   };
 
   const addPausa = () => {
@@ -363,7 +415,7 @@ export function HomeCarePeriodModal({
   const removeFeriado = (idx: number) => {
     const next = feriadosDates.filter((_, i) => i !== idx);
     setFeriadosDates(next);
-    setForm((prev) => syncFormFromArrays(next, pausasDates, prev));
+    setForm((prev) => syncFormFromArrays(next, pausasDates, adicionalesList, prev));
   };
 
   const addFechaPago = () => {
@@ -393,10 +445,11 @@ export function HomeCarePeriodModal({
         fecha_pago: fechasToStandardString(fechaPagoDates),
         n_feriados: String(feriadosDates.length),
         m_feriados: (feriadosDates.length * montoPorDia).toFixed(2),
-        monto_total: (
-          montoQuincena +
-          feriadosDates.length * montoPorDia -
-          (parseFloat(form.horas_pausa) || 0) * montoPorHora
+        adicionales: adicionalesList,
+        monto_total: computeMontoTotal(
+          feriadosDates.length,
+          parseFloat(form.horas_pausa) || 0,
+          adicionalesList
         ).toFixed(2),
       };
       await onSave(payload);
@@ -574,8 +627,93 @@ export function HomeCarePeriodModal({
               </div>
             </div>
             <div className="pt-1">
-              <Label className="text-xs text-muted-foreground">Monto total (auto)</Label>
+              <Label className="text-xs text-muted-foreground">Monto total periodo (auto)</Label>
               <p className="text-lg font-semibold">S/ {form.monto_total}</p>
+            </div>
+          </section>
+
+          {/* Adicionales */}
+          <section className="rounded-lg border bg-muted/30 p-4 space-y-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2 text-foreground">
+              <Sparkles className="w-4 h-4" />
+              Adicionales
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <Label>Monto</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={nuevoAdicional.monto}
+                  onChange={(e) =>
+                    setNuevoAdicional((prev) => ({ ...prev, monto: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Fecha del adicional</Label>
+                <Input
+                  type="date"
+                  value={nuevoAdicional.fecha}
+                  onChange={(e) =>
+                    setNuevoAdicional((prev) => ({ ...prev, fecha: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-1 sm:col-span-1">
+                <Label>Descripción</Label>
+                <Input
+                  value={nuevoAdicional.descripcion}
+                  onChange={(e) =>
+                    setNuevoAdicional((prev) => ({ ...prev, descripcion: e.target.value }))
+                  }
+                  placeholder="Ej. medicamentos, insumos..."
+                />
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button type="button" variant="outline" size="sm" onClick={addAdicional}>
+                <Plus className="w-4 h-4 mr-1" />
+                Agregar
+              </Button>
+              {adicionalesList.length > 0 && (
+                <ul className="flex flex-col gap-1.5 w-full sm:w-auto sm:flex-1">
+                  {adicionalesList.map((a) => (
+                    <li
+                      key={a.id}
+                      className="inline-flex items-center justify-between gap-2 rounded-md bg-background border px-2 py-1.5 text-sm"
+                    >
+                      <span>
+                        <span className="font-medium">{a.descripcion}</span>
+                        <span className="text-muted-foreground">
+                          {" "}
+                          · {new Date(a.fecha + "T12:00:00").toLocaleDateString("es-PE")} · S/{" "}
+                          {a.monto.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                        </span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeAdicional(a.id)}
+                        className="rounded hover:bg-muted p-0.5 shrink-0"
+                        aria-label="Quitar adicional"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="ml-auto min-w-[120px]">
+                <Label className="text-xs text-muted-foreground">Monto total adicionales</Label>
+                <p className="text-sm font-semibold">
+                  S/{" "}
+                  {sumAdicionales(adicionalesList).toLocaleString("es-PE", {
+                    minimumFractionDigits: 2,
+                  })}
+                </p>
+              </div>
             </div>
           </section>
 
@@ -619,7 +757,7 @@ export function HomeCarePeriodModal({
                 )}
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label>Método de pago</Label>
                 <select
@@ -640,13 +778,6 @@ export function HomeCarePeriodModal({
                 <Input
                   value={form.numero_operacion}
                   onChange={(e) => handleChange("numero_operacion", e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>Factura/Boleta</Label>
-                <Input
-                  value={form.factura_boleta}
-                  onChange={(e) => handleChange("factura_boleta", e.target.value)}
                 />
               </div>
             </div>

@@ -18,6 +18,13 @@ export interface HomeCareContract {
   updated_at: string;
 }
 
+export interface HomeCarePeriodAdicional {
+  id: string;
+  monto: number;
+  fecha: string;
+  descripcion: string;
+}
+
 export interface HomeCarePeriod {
   id: string;
   contract_id: string;
@@ -32,6 +39,7 @@ export interface HomeCarePeriod {
   m_feriados: number;
   p_del_serv: string | null;
   f_pausas: string | null;
+  adicionales: HomeCarePeriodAdicional[];
   monto_total: number;
   fecha_pago: string | null;
   metodo_pago: string | null;
@@ -39,6 +47,30 @@ export interface HomeCarePeriod {
   factura_boleta: string | null;
   created_at: string;
   updated_at: string;
+}
+
+function parseAdicionales(raw: unknown): HomeCarePeriodAdicional[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((row) => {
+      if (!row || typeof row !== "object") return null;
+      const o = row as Record<string, unknown>;
+      const monto = Number(o.monto);
+      const fecha = typeof o.fecha === "string" ? o.fecha.slice(0, 10) : "";
+      const descripcion = typeof o.descripcion === "string" ? o.descripcion.trim() : "";
+      if (!descripcion || Number.isNaN(monto)) return null;
+      return {
+        id: typeof o.id === "string" && o.id ? o.id : crypto.randomUUID(),
+        monto,
+        fecha,
+        descripcion,
+      };
+    })
+    .filter((x): x is HomeCarePeriodAdicional => x !== null);
+}
+
+function normalizePeriodRow(row: HomeCarePeriod): HomeCarePeriod {
+  return { ...row, adicionales: parseAdicionales((row as HomeCarePeriod & { adicionales?: unknown }).adicionales) };
 }
 
 export interface HomeCareContractWithPatient extends HomeCareContract {
@@ -204,11 +236,11 @@ export const homeCareService = {
   async getPeriodsByContractId(contractId: string): Promise<HomeCarePeriod[]> {
     const { data, error } = await supabase
       .from("home_care_periods")
-      .select("id, contract_id, item, fecha_pago_quincena, turno, n_pago, f_desde, f_hasta, monto, f_feriados, m_feriados, p_del_serv, f_pausas, monto_total, fecha_pago, metodo_pago, numero_operacion, factura_boleta, created_at, updated_at")
+      .select("id, contract_id, item, fecha_pago_quincena, turno, n_pago, f_desde, f_hasta, monto, f_feriados, m_feriados, p_del_serv, f_pausas, adicionales, monto_total, fecha_pago, metodo_pago, numero_operacion, factura_boleta, created_at, updated_at")
       .eq("contract_id", contractId);
 
     if (error) throw error;
-    const rows = (data ?? []) as HomeCarePeriod[];
+    const rows = ((data ?? []) as HomeCarePeriod[]).map(normalizePeriodRow);
     return [...rows].sort((a, b) => {
       const diff = getPeriodChronologicalSortMs(b) - getPeriodChronologicalSortMs(a);
       if (diff !== 0) return diff;
@@ -321,11 +353,12 @@ export const homeCareService = {
       m_feriados: number;
       p_del_serv: string | null;
       f_pausas: string | null;
+      adicionales?: HomeCarePeriodAdicional[];
       monto_total: number;
       fecha_pago: string | null;
       metodo_pago: string | null;
       numero_operacion: string | null;
-      factura_boleta: string | null;
+      factura_boleta?: string | null;
     }>
   ): Promise<HomeCarePeriod> {
     let item = data.item;
@@ -365,6 +398,7 @@ export const homeCareService = {
           m_feriados: data.m_feriados ?? 0,
           p_del_serv: data.p_del_serv ?? null,
           f_pausas: data.f_pausas ?? null,
+          adicionales: data.adicionales ?? [],
           monto_total: data.monto_total ?? data.monto ?? 0,
           fecha_pago: data.fecha_pago ?? null,
           metodo_pago: data.metodo_pago ?? null,
@@ -375,7 +409,7 @@ export const homeCareService = {
       .select()
       .single();
     if (error) throw error;
-    return period as HomeCarePeriod;
+    return normalizePeriodRow(period as HomeCarePeriod);
   },
 
   /** Actualiza un periodo quincenal. */
@@ -391,11 +425,12 @@ export const homeCareService = {
       m_feriados: number;
       p_del_serv: string | null;
       f_pausas: string | null;
+      adicionales?: HomeCarePeriodAdicional[];
       monto_total: number;
       fecha_pago: string | null;
       metodo_pago: string | null;
       numero_operacion: string | null;
-      factura_boleta: string | null;
+      factura_boleta?: string | null;
     }>
   ): Promise<HomeCarePeriod> {
     const payload: Record<string, unknown> = { ...data };
@@ -407,6 +442,7 @@ export const homeCareService = {
     if (data.m_feriados !== undefined) payload.m_feriados = data.m_feriados;
     if (data.p_del_serv !== undefined) payload.p_del_serv = data.p_del_serv;
     if (data.f_pausas !== undefined) payload.f_pausas = data.f_pausas;
+    if (data.adicionales !== undefined) payload.adicionales = data.adicionales;
     if (data.monto_total !== undefined) payload.monto_total = data.monto_total;
     if (data.fecha_pago !== undefined) payload.fecha_pago = data.fecha_pago;
     if (data.metodo_pago !== undefined) payload.metodo_pago = data.metodo_pago;
@@ -419,7 +455,7 @@ export const homeCareService = {
       .select()
       .single();
     if (error) throw error;
-    return period as HomeCarePeriod;
+    return normalizePeriodRow(period as HomeCarePeriod);
   },
 
   /** Elimina un periodo quincenal */

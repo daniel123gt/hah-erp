@@ -18,6 +18,7 @@ import { procedureService } from "~/services/procedureService";
 import shiftCareService from "~/services/shiftCareService";
 import { rxEcografiaRecordsService } from "~/services/rxEcografiaRecordsService";
 import { formatDateOnly } from "~/lib/utils";
+import { downloadCsv, downloadWorkbook } from "~/lib/exportSpreadsheet";
 import {
   Select,
   SelectContent,
@@ -326,20 +327,67 @@ export default function ReportesPage() {
 
   const CHART_COLORS = ["#2563eb", "#16a34a", "#ea580c", "#7c3aed", "#db2777", "#64748b"];
 
+  const exportBaseName = `reporte-consolidado-${startDate}-${endDate}`;
+
+  const estadoFilterLabel =
+    estadoFilter === "todos"
+      ? "Todos"
+      : estadoFilter === "pendientes"
+        ? "Pendientes"
+        : "Completados";
+
+  const buildDetailExportRows = () =>
+    displayRows.map((r) => ({
+      Fecha: formatDateOnly(r.fecha, "es-PE"),
+      Origen: r.origen,
+      Detalle: r.detalle,
+      "Paciente / Referente": r.paciente,
+      "Monto (S/.)": Number(r.monto.toFixed(2)),
+      "Egresos (S/.)": Number(r.egresos.toFixed(2)),
+      "Utilidad (S/.)": Number(r.utilidad.toFixed(2)),
+    }));
+
   const handleExportCSV = () => {
     const headers = "Fecha,Origen,Detalle,Paciente,Monto (S/.),Egresos (S/.),Utilidad (S/.)\n";
     const csvRows = displayRows.map((r) =>
-      [`"${formatDateOnly(r.fecha, "es-PE")}"`, `"${r.origen}"`, `"${r.detalle}"`, `"${r.paciente}"`, r.monto.toFixed(2), r.egresos.toFixed(2), r.utilidad.toFixed(2)].join(",")
+      [
+        `"${formatDateOnly(r.fecha, "es-PE")}"`,
+        `"${r.origen}"`,
+        `"${String(r.detalle).replace(/"/g, '""')}"`,
+        `"${String(r.paciente).replace(/"/g, '""')}"`,
+        r.monto.toFixed(2),
+        r.egresos.toFixed(2),
+        r.utilidad.toFixed(2),
+      ].join(",")
     );
-    const blob = new Blob([headers + csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `reporte-consolidado-${startDate}-${endDate}.csv`;
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(link.href);
+    downloadCsv(headers + csvRows.join("\n"), `${exportBaseName}.csv`);
+  };
+
+  const handleExportExcel = () => {
+    downloadWorkbook(
+      [
+        {
+          name: "Resumen",
+          rows: [
+            { Campo: "Período", Valor: periodLabel },
+            { Campo: "Filtro estado", Valor: estadoFilterLabel },
+            { Campo: "Total ingresos (S/.)", Valor: Number(totalRevenue.toFixed(2)) },
+            { Campo: "Total egresos (S/.)", Valor: Number(totalEgresos.toFixed(2)) },
+            { Campo: "Total utilidad (S/.)", Valor: Number(totalUtilidad.toFixed(2)) },
+            { Campo: "Laboratorio (S/.)", Valor: Number(labRevenue.toFixed(2)) },
+            { Campo: "Procedimientos (S/.)", Valor: Number(procedureRevenue.toFixed(2)) },
+            { Campo: "RX / Ecografías (S/.)", Valor: Number(rxRevenue.toFixed(2)) },
+            { Campo: "Cuidados por turnos (S/.)", Valor: Number(shiftRevenue.toFixed(2)) },
+            { Campo: "Registros en detalle", Valor: displayRows.length },
+          ],
+        },
+        {
+          name: "Detalle",
+          rows: buildDetailExportRows(),
+        },
+      ],
+      `${exportBaseName}.xlsx`
+    );
   };
 
   const origenBadgeClass = (origen: ReportRowOrigin) => {
@@ -549,10 +597,14 @@ export default function ReportesPage() {
           </div>
 
           {displayRows.length > 0 && (
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
               <Button onClick={handleExportCSV} variant="outline">
                 <Download className="w-4 h-4 mr-2" />
-                Exportar tabla CSV
+                Exportar CSV
+              </Button>
+              <Button onClick={handleExportExcel} variant="outline">
+                <Download className="w-4 h-4 mr-2" />
+                Exportar Excel
               </Button>
             </div>
           )}
