@@ -20,6 +20,7 @@ import {
   EditHomeCareContractModal,
   type ContractFormData,
 } from "~/components/ui/edit-home-care-contract-modal";
+import { Tooltip, TooltipContent, TooltipTrigger } from "~/components/ui/tooltip";
 import { formatDateOnly } from "~/lib/utils";
 
 function getPatientName(contract: HomeCareContractWithPatient | null): string {
@@ -39,9 +40,49 @@ function formatMoney(n: number): string {
   return `S/. ${Number(n).toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-function formatAdicionalesCell(adicionales: HomeCarePeriodAdicional[] | undefined): string {
+function sumAdicionales(adicionales: HomeCarePeriodAdicional[] | undefined): number {
+  return (adicionales ?? []).reduce((s, a) => s + (Number(a.monto) || 0), 0);
+}
+
+function formatAdicionalesText(adicionales: HomeCarePeriodAdicional[] | undefined): string {
   if (!adicionales?.length) return "-";
-  return adicionales.map((a) => `${a.descripcion} — ${formatMoney(a.monto)}`).join("\n");
+  return adicionales.map((a) => `${a.descripcion} — ${formatMoney(a.monto)}`).join("; ");
+}
+
+function AdicionalesCell({ adicionales }: { adicionales?: HomeCarePeriodAdicional[] }) {
+  if (!adicionales?.length) {
+    return <span className="text-muted-foreground">-</span>;
+  }
+
+  const total = sumAdicionales(adicionales);
+  const detalle = formatAdicionalesText(adicionales);
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex max-w-[140px] items-center gap-1.5 rounded-md border border-dashed border-gray-300 bg-gray-50 px-2 py-0.5 text-left text-xs hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-blue/40"
+          title={detalle}
+        >
+          <span className="shrink-0 rounded bg-primary-blue/10 px-1.5 py-0.5 font-semibold text-primary-blue tabular-nums">
+            {adicionales.length}
+          </span>
+          <span className="truncate font-medium tabular-nums text-gray-800">{formatMoney(total)}</span>
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-sm text-left">
+        <p className="mb-1 font-semibold">Adicionales ({adicionales.length})</p>
+        <ul className="space-y-0.5">
+          {adicionales.map((a) => (
+            <li key={a.id} className="text-balance">
+              {a.descripcion} — {formatMoney(a.monto)}
+            </li>
+          ))}
+        </ul>
+      </TooltipContent>
+    </Tooltip>
+  );
 }
 
 export default function CuidadosEnCasaDetalle() {
@@ -263,7 +304,7 @@ export default function CuidadosEnCasaDetalle() {
           formatMoney(p.m_feriados),
           p.p_del_serv ?? "0",
           p.f_pausas ?? "0",
-          formatAdicionalesCell(p.adicionales),
+          formatAdicionalesText(p.adicionales),
           formatMoney(p.monto_total),
           formatDate(p.fecha_pago),
           p.metodo_pago ?? "-",
@@ -456,7 +497,7 @@ export default function CuidadosEnCasaDetalle() {
                     <TableHead className="whitespace-nowrap">M. FERIADOS</TableHead>
                     <TableHead className="whitespace-nowrap">P. DEL SERV</TableHead>
                     <TableHead className="whitespace-nowrap">F. PAUSAS</TableHead>
-                    <TableHead className="whitespace-nowrap min-w-[160px]">ADICIONALES</TableHead>
+                    <TableHead className="whitespace-nowrap">ADICIONALES</TableHead>
                     <TableHead className="whitespace-nowrap">MONTO TOTAL</TableHead>
                     <TableHead className="whitespace-nowrap">FECHA DE PAGO</TableHead>
                     <TableHead className="whitespace-nowrap">METODO PAGO</TableHead>
@@ -482,8 +523,8 @@ export default function CuidadosEnCasaDetalle() {
                       <TableCell>{formatMoney(p.m_feriados)}</TableCell>
                       <TableCell>{p.p_del_serv ?? "0"}</TableCell>
                       <TableCell>{p.f_pausas ?? "0"}</TableCell>
-                      <TableCell className="whitespace-pre-line text-sm">
-                        {formatAdicionalesCell(p.adicionales)}
+                      <TableCell className="py-2 align-middle">
+                        <AdicionalesCell adicionales={p.adicionales} />
                       </TableCell>
                       <TableCell className="font-medium">{formatMoney(p.monto_total)}</TableCell>
                       <TableCell>{p.fecha_pago ?? "-"}</TableCell>

@@ -14,6 +14,10 @@ import homeCareService, {
   type HomeCarePeriod,
   type HomeCarePeriodAdicional,
 } from "~/services/homeCareService";
+import {
+  computeMontoFeriados,
+  isSpecialHomeCareHoliday,
+} from "~/lib/homeCareHolidays";
 
 function addDays(isoDate: string, days: number): string {
   if (!isoDate) return "";
@@ -212,8 +216,9 @@ function periodToForm(p: HomeCarePeriod, montoQuincena: number): PeriodFormData 
   const horas = parseHorasFromPdelServ(p.p_del_serv);
   const feriadosStr = (p.f_feriados != null ? String(p.f_feriados) : "").trim();
   const pausasStr = (p.f_pausas != null ? String(p.f_pausas) : "").trim();
-  const n_feriados = parseFechasFromString(feriadosStr).length;
-  const m_feriados = n_feriados * (montoQuincena / 15);
+  const feriadosList = parseFechasFromString(feriadosStr);
+  const n_feriados = feriadosList.length;
+  const m_feriados = computeMontoFeriados(montoQuincena, feriadosList);
   return {
     fecha_pago_quincena: p.fecha_pago_quincena ? p.fecha_pago_quincena.toString().slice(0, 10) : "",
     f_desde: p.f_desde ? p.f_desde.toString().slice(0, 10) : "",
@@ -308,12 +313,12 @@ export function HomeCarePeriodModal({
   }, [open, period, montoQuincena]);
 
   const computeMontoTotal = (
-    feriadosCount: number,
+    feriados: string[],
     horasPausa: number,
     adicionales: HomeCarePeriodAdicional[]
   ) =>
     montoQuincena +
-    feriadosCount * montoPorDia -
+    computeMontoFeriados(montoQuincena, feriados) -
     horasPausa * montoPorHora +
     sumAdicionales(adicionales);
 
@@ -324,9 +329,9 @@ export function HomeCarePeriodModal({
     prev: PeriodFormData
   ): PeriodFormData => {
     const n_feriados = feriados.length;
-    const m_feriados = n_feriados * montoPorDia;
+    const m_feriados = computeMontoFeriados(montoQuincena, feriados);
     const horas_pausa = parseFloat(prev.horas_pausa) || 0;
-    const monto_total = computeMontoTotal(n_feriados, horas_pausa, adicionales);
+    const monto_total = computeMontoTotal(feriados, horas_pausa, adicionales);
     return {
       ...prev,
       f_feriados: feriados.join(", "),
@@ -349,10 +354,9 @@ export function HomeCarePeriodModal({
         const h = parseFloat(value) || 0;
         next.p_del_serv = h > 0 ? `${h} HORAS` : "0";
       }
-      const n_feriados = feriadosDates.length;
       const horas_pausa = parseFloat(next.horas_pausa) || 0;
-      const m_feriados = n_feriados * montoPorDia;
-      next.monto_total = computeMontoTotal(n_feriados, horas_pausa, adicionalesList).toFixed(2);
+      const m_feriados = computeMontoFeriados(montoQuincena, feriadosDates);
+      next.monto_total = computeMontoTotal(feriadosDates, horas_pausa, adicionalesList).toFixed(2);
       next.m_feriados = m_feriados.toFixed(2);
       next.adicionales = adicionalesList;
       return next;
@@ -444,10 +448,10 @@ export function HomeCarePeriodModal({
         f_pausas: fechasToStandardString(pausasDates),
         fecha_pago: fechasToStandardString(fechaPagoDates),
         n_feriados: String(feriadosDates.length),
-        m_feriados: (feriadosDates.length * montoPorDia).toFixed(2),
+        m_feriados: computeMontoFeriados(montoQuincena, feriadosDates).toFixed(2),
         adicionales: adicionalesList,
         monto_total: computeMontoTotal(
-          feriadosDates.length,
+          feriadosDates,
           parseFloat(form.horas_pausa) || 0,
           adicionalesList
         ).toFixed(2),
@@ -538,16 +542,25 @@ export function HomeCarePeriodModal({
             </h3>
             <p className="text-xs text-muted-foreground">
               Si ese día no hay servicio (no va la enfermera), puede quitar el feriado; no se aplicará recargo por ese día.
+              Los feriados del 1 de enero, 28 y 29 de julio y 25 de diciembre tienen recargo doble (monto quincena ÷ 7.5).
             </p>
             <div className="flex flex-wrap items-center gap-3">
               {feriadosDates.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5">
-                  {feriadosDates.map((d, idx) => (
+                  {feriadosDates.map((d, idx) => {
+                    const especial = isSpecialHomeCareHoliday(d);
+                    return (
                     <span
                       key={`${d}-${idx}`}
-                      className="inline-flex items-center gap-1 rounded-md bg-background border px-2 py-1 text-sm"
+                      className={`inline-flex items-center gap-1 rounded-md bg-background border px-2 py-1 text-sm ${
+                        especial ? "border-amber-400 bg-amber-50" : ""
+                      }`}
+                      title={especial ? "Feriado especial: recargo doble" : undefined}
                     >
                       {new Date(d + "T12:00:00").toLocaleDateString("es-PE")}
+                      {especial ? (
+                        <span className="text-[10px] font-semibold uppercase text-amber-700">×2</span>
+                      ) : null}
                       <button
                         type="button"
                         onClick={() => removeFeriado(idx)}
@@ -558,7 +571,8 @@ export function HomeCarePeriodModal({
                         <X className="w-3.5 h-3.5" />
                       </button>
                     </span>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <span className="text-sm text-muted-foreground">
