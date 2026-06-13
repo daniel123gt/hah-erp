@@ -206,7 +206,7 @@ export function AddHomeCarePatientModal({ onAdded }: AddHomeCarePatientModalProp
           Agregar paciente
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[1120px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <User className="w-5 h-5" />

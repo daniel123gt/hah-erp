@@ -472,7 +472,7 @@ export function HomeCarePeriodModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[620px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[1240px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
