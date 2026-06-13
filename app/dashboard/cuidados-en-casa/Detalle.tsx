@@ -22,6 +22,47 @@ import {
 } from "~/components/ui/edit-home-care-contract-modal";
 import { Tooltip, TooltipContent, TooltipTrigger } from "~/components/ui/tooltip";
 import { formatDateOnly } from "~/lib/utils";
+import { getPrimaryColor, getLogoPath } from "~/lib/erpBranding";
+
+/** Convierte un color hex (#1F3666) a [r, g, b] para jsPDF. Fallback al azul de marca. */
+function hexToRgb(hex: string): [number, number, number] {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return [31, 54, 102];
+  const n = parseInt(m[1], 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+/**
+ * Carga una imagen (incluido SVG) y la devuelve como PNG dataURL vía canvas,
+ * para poder insertarla en el PDF con doc.addImage. Devuelve null si falla.
+ */
+function loadImageAsPng(
+  src: string
+): Promise<{ dataUrl: string; ratio: number } | null> {
+  return new Promise((resolve) => {
+    if (typeof window === "undefined") return resolve(null);
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const w = img.naturalWidth || 360;
+      const h = img.naturalHeight || 331;
+      const scale = 2; // 2x para que se vea nítido en el PDF
+      const canvas = document.createElement("canvas");
+      canvas.width = w * scale;
+      canvas.height = h * scale;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return resolve(null);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      try {
+        resolve({ dataUrl: canvas.toDataURL("image/png"), ratio: w / h });
+      } catch {
+        resolve(null);
+      }
+    };
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
 
 function getPatientName(contract: HomeCareContractWithPatient | null): string {
   if (!contract?.patient) return "Paciente";
@@ -207,8 +248,21 @@ export default function CuidadosEnCasaDetalle() {
       const estadoContrato = contract.is_active ? "Activo" : "Inactivo";
       const nombrePaciente = getPatientName(contract);
 
-      doc.setFillColor(30, 64, 175);
+      // Azul de marca (mismo del menú) y logo del sistema.
+      const [br, bg, bb] = hexToRgb(getPrimaryColor());
+      const logo = await loadImageAsPng(getLogoPath());
+
+      doc.setFillColor(br, bg, bb);
       doc.rect(0, 0, pageWidth, 80, "F");
+
+      // Logo arriba a la derecha (el mismo del menú).
+      let logoW = 0;
+      if (logo) {
+        const logoH = 56;
+        logoW = logoH * logo.ratio;
+        doc.addImage(logo.dataUrl, "PNG", pageWidth - 36 - logoW, 12, logoW, logoH);
+      }
+
       doc.setTextColor(255, 255, 255);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(18);
@@ -216,7 +270,7 @@ export default function CuidadosEnCasaDetalle() {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(11);
       doc.text(`Paciente: ${nombrePaciente}`, 36, 62);
-      doc.text(`Generado: ${generadoEl}`, pageWidth - 220, 62);
+      doc.text(`Generado: ${generadoEl}`, pageWidth - 48 - logoW, 62, { align: "right" });
 
       doc.setTextColor(17, 24, 39);
       doc.setFont("helvetica", "bold");
@@ -236,7 +290,7 @@ export default function CuidadosEnCasaDetalle() {
         },
         headStyles: {
           fillColor: [239, 246, 255],
-          textColor: [30, 64, 175],
+          textColor: [br, bg, bb],
           fontStyle: "bold",
         },
         head: [["Campo", "Detalle"]],
@@ -260,6 +314,9 @@ export default function CuidadosEnCasaDetalle() {
       autoTable(doc, {
         startY: detalleInicio + 42,
         theme: "striped",
+        // Si una fila no entra completa en la página actual, se pasa entera
+        // a la siguiente (no se parte a la mitad entre páginas).
+        rowPageBreak: "avoid",
         styles: {
           font: "helvetica",
           fontSize: 8.5,
@@ -267,7 +324,7 @@ export default function CuidadosEnCasaDetalle() {
           textColor: [31, 41, 55],
         },
         headStyles: {
-          fillColor: [30, 64, 175],
+          fillColor: [br, bg, bb],
           textColor: [255, 255, 255],
           fontStyle: "bold",
         },

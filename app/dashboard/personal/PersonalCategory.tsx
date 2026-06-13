@@ -321,7 +321,7 @@ export default function PersonalCategoryPage() {
                             </AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="font-medium">{member.name}</p>
+                            <p className="font-medium uppercase">{member.name}</p>
                             <p className="text-sm text-gray-500">ID: {member.id.slice(-8)}</p>
                           </div>
                         </div>

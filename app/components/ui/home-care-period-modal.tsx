@@ -586,66 +586,6 @@ export function HomeCarePeriodModal({
             </div>
           </section>
 
-          {/* Pausas y monto total */}
-          <section className="rounded-lg border bg-muted/30 p-4 space-y-3">
-            <h3 className="text-sm font-semibold flex items-center gap-2 text-foreground">
-              <Pause className="w-4 h-4" />
-              Pausas y monto
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="space-y-1">
-                <Label>Horas de pausa</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.5"
-                  value={form.horas_pausa}
-                  onChange={(e) => handleChange("horas_pausa", e.target.value)}
-                  title="Por hora se descuenta: monto quincena / 15 / 24"
-                />
-              </div>
-              <div className="space-y-1 sm:col-span-2">
-                <Label>F. pausas</Label>
-                <div className="flex gap-2 flex-wrap items-center">
-                  <Input
-                    type="date"
-                    value={nuevaPausa}
-                    onChange={(e) => setNuevaPausa(e.target.value)}
-                    className="w-[140px]"
-                  />
-                  <Button type="button" variant="outline" size="sm" onClick={addPausa}>
-                    <Plus className="w-4 h-4 mr-1" />
-                    Agregar
-                  </Button>
-                  {pausasDates.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {pausasDates.map((d, idx) => (
-                        <span
-                          key={`${d}-${idx}`}
-                          className="inline-flex items-center gap-1 rounded-md bg-background border px-2 py-1 text-sm"
-                        >
-                          {new Date(d + "T12:00:00").toLocaleDateString("es-PE")}
-                          <button
-                            type="button"
-                            onClick={() => removePausa(idx)}
-                            className="rounded hover:bg-muted p-0.5"
-                            aria-label="Quitar"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-            <div className="pt-1">
-              <Label className="text-xs text-muted-foreground">Monto total periodo (auto)</Label>
-              <p className="text-lg font-semibold">S/ {form.monto_total}</p>
-            </div>
-          </section>
-
           {/* Adicionales */}
           <section className="rounded-lg border bg-muted/30 p-4 space-y-3">
             <h3 className="text-sm font-semibold flex items-center gap-2 text-foreground">
@@ -728,6 +668,66 @@ export function HomeCarePeriodModal({
                   })}
                 </p>
               </div>
+            </div>
+          </section>
+
+          {/* Pausas y monto total */}
+          <section className="rounded-lg border bg-muted/30 p-4 space-y-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2 text-foreground">
+              <Pause className="w-4 h-4" />
+              Pausas y monto
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <Label>Horas de pausa</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={form.horas_pausa}
+                  onChange={(e) => handleChange("horas_pausa", e.target.value)}
+                  title="Por hora se descuenta: monto quincena / 15 / 24"
+                />
+              </div>
+              <div className="space-y-1 sm:col-span-2">
+                <Label>F. pausas</Label>
+                <div className="flex gap-2 flex-wrap items-center">
+                  <Input
+                    type="date"
+                    value={nuevaPausa}
+                    onChange={(e) => setNuevaPausa(e.target.value)}
+                    className="w-[140px]"
+                  />
+                  <Button type="button" variant="outline" size="sm" onClick={addPausa}>
+                    <Plus className="w-4 h-4 mr-1" />
+                    Agregar
+                  </Button>
+                  {pausasDates.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {pausasDates.map((d, idx) => (
+                        <span
+                          key={`${d}-${idx}`}
+                          className="inline-flex items-center gap-1 rounded-md bg-background border px-2 py-1 text-sm"
+                        >
+                          {new Date(d + "T12:00:00").toLocaleDateString("es-PE")}
+                          <button
+                            type="button"
+                            onClick={() => removePausa(idx)}
+                            className="rounded hover:bg-muted p-0.5"
+                            aria-label="Quitar"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="pt-1">
+              <Label className="text-xs text-muted-foreground">Monto total periodo (auto)</Label>
+              <p className="text-lg font-semibold">S/ {form.monto_total}</p>
             </div>
           </section>
 

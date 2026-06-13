@@ -382,7 +382,7 @@ export default function PersonalPage() {
                     .slice((paginationHired.page - 1) * paginationHired.limit, paginationHired.page * paginationHired.limit)
                     .map((member) => (
                     <TableRow key={member.id}>
-                      <TableCell className="font-medium">{member.name}</TableCell>
+                      <TableCell className="font-medium uppercase">{member.name}</TableCell>
                       <TableCell>{member.position}</TableCell>
                       <TableCell>{member.department ?? "—"}</TableCell>
                       <TableCell>{member.hire_date ? formatDateOnly(member.hire_date) : "—"}</TableCell>
@@ -576,7 +576,7 @@ export default function PersonalPage() {
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="font-medium">{staffMember.name}</p>
+                          <p className="font-medium uppercase">{staffMember.name}</p>
                           <p className="text-sm text-gray-500">ID: {staffMember.id.slice(-8)}</p>
                         </div>
                       </div>

@@ -381,11 +381,11 @@ export default function CitasPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Fecha y Hora</TableHead>
+                <TableHead>Estado</TableHead>
                 <TableHead>Paciente</TableHead>
                 <TableHead>Doctor</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Ubicación</TableHead>
-                <TableHead>Estado</TableHead>
                 <TableHead className="whitespace-nowrap sticky right-0 bg-muted shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10 min-w-[100px]">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -396,6 +396,12 @@ export default function CitasPage() {
                     <div className="text-center">
                       <p className="font-medium">{formatDateOnly(appointment.date)}</p>
                       <p className="text-sm text-gray-500">{appointment.time} ({appointment.duration} min)</p>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center space-x-2">
+                      {getStatusIcon(appointment.status)}
+                      {getStatusBadge(appointment.status)}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -418,12 +424,6 @@ export default function CitasPage() {
                     <div className="flex items-center space-x-2">
                       <MapPin className="w-4 h-4 text-gray-400" />
                       <span className="text-sm">{appointment.location}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      {getStatusIcon(appointment.status)}
-                      {getStatusBadge(appointment.status)}
                     </div>
                   </TableCell>
                   <TableCell className="sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10">

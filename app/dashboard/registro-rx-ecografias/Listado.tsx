@@ -139,9 +139,9 @@ export default function ListadoRegistroRxEcografias() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Fecha</TableHead>
+                  <TableHead>Estado</TableHead>
                   <TableHead>Paciente</TableHead>
                   <TableHead>Tipo</TableHead>
-                  <TableHead>Estado</TableHead>
                   <TableHead>Técnico / Médico</TableHead>
                   <TableHead className="text-right">Ingreso (S/.)</TableHead>
                   <TableHead className="text-right">Costo (S/.)</TableHead>
@@ -161,8 +161,6 @@ export default function ListadoRegistroRxEcografias() {
                       <TableCell className="whitespace-nowrap">
                         {formatDateOnly(r.fecha)}
                       </TableCell>
-                      <TableCell>{r.patient_name ?? "—"}</TableCell>
-                      <TableCell>{tipo}</TableCell>
                       <TableCell>
                         <Badge
                           variant="secondary"
@@ -175,6 +173,8 @@ export default function ListadoRegistroRxEcografias() {
                           {estadoPago}
                         </Badge>
                       </TableCell>
+                      <TableCell>{r.patient_name ?? "—"}</TableCell>
+                      <TableCell>{tipo}</TableCell>
                       <TableCell>{r.doctor_name ?? "—"}</TableCell>
                       <TableCell className="text-right tabular-nums">{ingreso.toFixed(2)}</TableCell>
                       <TableCell className="text-right tabular-nums">{costo.toFixed(2)}</TableCell>

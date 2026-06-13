@@ -211,7 +211,7 @@ export default function PersonalDashboard() {
                     .slice((paginationHired.page - 1) * paginationHired.limit, paginationHired.page * paginationHired.limit)
                     .map((member) => (
                     <TableRow key={member.id}>
-                      <TableCell className="font-medium">{member.name}</TableCell>
+                      <TableCell className="font-medium uppercase">{member.name}</TableCell>
                       <TableCell>{member.position}</TableCell>
                       <TableCell>{member.department ?? "—"}</TableCell>
                       <TableCell>{member.hire_date ? formatDateOnly(member.hire_date) : "—"}</TableCell>

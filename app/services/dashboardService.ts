@@ -10,6 +10,9 @@ import { appointmentsService } from "~/services/appointmentsService";
 import { procedureService, type ProcedureRecord } from "~/services/procedureService";
 import labOrderService from "~/services/labOrderService";
 import { homeCareService } from "~/services/homeCareService";
+import { shiftCareService } from "~/services/shiftCareService";
+import { rxEcografiaRecordsService } from "~/services/rxEcografiaRecordsService";
+import { medicalAppointmentRecordsService } from "~/services/medicalAppointmentRecordsService";
 
 function sumRecordRevenue(r: ProcedureRecord): number {
   return (
@@ -98,8 +101,12 @@ export async function getDashboardData(): Promise<DashboardData> {
     todayLabOrdersRaw,
     procedureCatalog,
     procedureRecords,
-    labRevenue,
+    procedimientosReport,
+    labReport,
+    shiftCareReport,
     homeCareRevenue,
+    rxEcografiaReport,
+    medicalAppointmentReport,
   ] = await Promise.all([
     patientsService.getPatientStats().catch(() => ({ total: 0, thisMonth: 0 })),
     appointmentsService.list("medicina"),
@@ -112,8 +119,21 @@ export async function getDashboardData(): Promise<DashboardData> {
       toDate: monthTo,
       limit: 500,
     }),
-    labOrderService.getMonthlyRevenue(monthFrom, monthTo),
-    homeCareService.getMonthlyRevenue(monthFrom, monthTo),
+    // Ingresos del mes por fuente: se usan los RPC de reporte (agregan en BD,
+    // sin tope de filas) para que el card coincida con cada página de Reportes.
+    procedureService.getReportProcedimientos(monthFrom, monthTo),
+    labOrderService.getReportLaboratorio(monthFrom, monthTo),
+    shiftCareService.getReportCuidadosPorTurnos(monthFrom, monthTo),
+    // Cuidado en casa: se usa getPeriodsInRange (misma fuente que la página de
+    // Reportes), NO getMonthlyRevenue ni el RPC. fecha_pago puede traer varias
+    // fechas legacy (ej. "2026-06-15, 2026-06-30"); getPeriodsInRange parsea
+    // todas las fechas, mientras que el filtro de texto >=/<= se pierde pagos.
+    homeCareService
+      .getPeriodsInRange(monthFrom, monthTo)
+      .then((rows) => rows.reduce((s, p) => s + Number(p.monto_total ?? 0), 0))
+      .catch(() => 0),
+    rxEcografiaRecordsService.getReport(monthFrom, monthTo),
+    medicalAppointmentRecordsService.getReport(monthFrom, monthTo),
   ]);
 
   const labPatientIds = [...new Set(todayLabOrdersRaw.map((o) => o.patient_id))];
@@ -177,12 +197,22 @@ export async function getDashboardData(): Promise<DashboardData> {
     })),
   ].sort((a, b) => a.time.localeCompare(b.time));
 
-  // Solo procedimientos con pago registrado (ingreso > 0); los pendientes suman 0 y no se cuentan como "completados"
-  const procedureRevenue = procedureRecords.data.reduce(
-    (sum, r) => sum + sumRecordRevenue(r),
-    0
-  );
-  const monthlyRevenue = procedureRevenue + labRevenue + homeCareRevenue;
+  // Laboratorio: se excluyen las órdenes Canceladas, igual que la página de
+  // Reportes. El totals.total_revenue del RPC SÍ las incluye, por eso el
+  // ingreso se suma desde rows filtrando con isLabCancelado.
+  const labRevenue = (labReport.rows ?? [])
+    .filter((r) => !isLabCancelado(r.status))
+    .reduce((s, r) => s + Number(r.total_amount ?? 0), 0);
+
+  // Ingresos del mes = suma de las 6 fuentes (agregados en BD, sin tope de
+  // filas). Coincide con el total de las páginas de Reportes.
+  const monthlyRevenue =
+    Number(procedimientosReport.totals.total_ingreso || 0) +
+    labRevenue +
+    Number(shiftCareReport.totals.total_revenue || 0) +
+    Number(homeCareRevenue || 0) +
+    Number(rxEcografiaReport.totals.total_ingreso || 0) +
+    Number(medicalAppointmentReport.totals.total_ingreso || 0);
 
   const byProcedure = new Map<string, { count: number; revenue: number }>();
   procedureRecords.data.forEach((r) => {
@@ -266,6 +296,7 @@ export interface DashboardChartPoint {
   citasProcedimientos: number;
   citasRxEcografias: number;
   laboratorio: number;
+  cuidadosPorTurnos: number;
 }
 
 const CHART_DAYS = 14;
@@ -273,10 +304,13 @@ const CHART_DAYS = 14;
 /** Datos para el gráfico del dashboard: citas medicina, procedimientos, RX/Ecografías y laboratorio por día (últimos 14 días). */
 export async function getDashboardChartData(): Promise<DashboardChartPoint[]> {
   const dates = getLastDays(CHART_DAYS);
-  const [medicinaCitas, procedimientosCitas, rxEcografiasCitas, ...labOrdersByDay] = await Promise.all([
+  const [medicinaCitas, procedimientosCitas, rxEcografiasCitas, shifts, ...labOrdersByDay] = await Promise.all([
     appointmentsService.list("medicina"),
     appointmentsService.list("procedimientos"),
     appointmentsService.list("rx_ecografias"),
+    shiftCareService
+      .getShifts({ fecha_desde: dates[0], fecha_hasta: dates[dates.length - 1] })
+      .catch(() => []),
     ...dates.map((d) => labOrderService.getOrdersForSampleDate(d)),
   ]);
 
@@ -284,10 +318,16 @@ export async function getDashboardChartData(): Promise<DashboardChartPoint[]> {
   const medicinaByDate: Record<string, number> = {};
   const procedimientosByDate: Record<string, number> = {};
   const rxEcografiasByDate: Record<string, number> = {};
+  const cuidadosPorTurnosByDate: Record<string, number> = {};
   dates.forEach((d) => {
     medicinaByDate[d] = 0;
     procedimientosByDate[d] = 0;
     rxEcografiasByDate[d] = 0;
+    cuidadosPorTurnosByDate[d] = 0;
+  });
+  shifts.forEach((s) => {
+    const d = String(s.fecha ?? "").slice(0, 10);
+    if (dateSet.has(d)) cuidadosPorTurnosByDate[d] = (cuidadosPorTurnosByDate[d] ?? 0) + 1;
   });
   medicinaCitas.forEach((c) => {
     if (isAppointmentCancelado(c.status)) return;
@@ -316,6 +356,7 @@ export async function getDashboardChartData(): Promise<DashboardChartPoint[]> {
       citasProcedimientos: procedimientosByDate[date] ?? 0,
       citasRxEcografias: rxEcografiasByDate[date] ?? 0,
       laboratorio: labCount,
+      cuidadosPorTurnos: cuidadosPorTurnosByDate[date] ?? 0,
     };
   });
 }

@@ -217,12 +217,6 @@ export default function OrdenesLaboratorio() {
                   <TableHeader>
                     <TableRow>
                       <SortableTableHead
-                        label="ID"
-                        active={sortColumn === "id"}
-                        direction={sortDirection}
-                        onSort={() => handleSort("id")}
-                      />
-                      <SortableTableHead
                         label="Fecha toma muestra"
                         active={sortColumn === "sample_date"}
                         direction={sortDirection}
@@ -280,9 +274,6 @@ export default function OrdenesLaboratorio() {
                       const patient = patients[order.patient_id];
                       return (
                         <TableRow key={order.id}>
-                          <TableCell className="font-mono text-xs">
-                            {order.id.slice(0, 8)}...
-                          </TableCell>
                           <TableCell className="whitespace-nowrap">
                             {(() => {
                               const sd = order.sample_date ?? order.order_date;

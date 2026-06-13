@@ -182,10 +182,10 @@ export default function ListadoProcedimientos() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Fecha</TableHead>
+                  <TableHead>Estado Pago</TableHead>
                   <TableHead>Paciente</TableHead>
                   <TableHead>Procedimiento</TableHead>
                   <TableHead>Distrito</TableHead>
-                  <TableHead>Estado Pago</TableHead>
                   <TableHead className="text-right">Ingreso (S/.)</TableHead>
                   <TableHead className="text-right">Costo (S/.)</TableHead>
                   <TableHead className="text-right">Material extra</TableHead>
@@ -211,9 +211,6 @@ export default function ListadoProcedimientos() {
                       <TableCell className="whitespace-nowrap">
                         {formatDateOnly(r.fecha)}
                       </TableCell>
-                      <TableCell>{displayName}</TableCell>
-                      <TableCell>{procName}</TableCell>
-                      <TableCell>{displayDistrict}</TableCell>
                       <TableCell>
                         <Badge
                           variant="secondary"
@@ -222,6 +219,9 @@ export default function ListadoProcedimientos() {
                           {estadoPago}
                         </Badge>
                       </TableCell>
+                      <TableCell>{displayName}</TableCell>
+                      <TableCell>{procName}</TableCell>
+                      <TableCell>{displayDistrict}</TableCell>
                       <TableCell className="text-right">{ing.toFixed(2)}</TableCell>
                       <TableCell className="text-right tabular-nums">{costo.toFixed(2)}</TableCell>
                       <TableCell className="text-right">{Number(r.gastos_material || 0).toFixed(2)}</TableCell>
