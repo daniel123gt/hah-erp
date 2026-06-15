@@ -22,7 +22,7 @@ import {
 } from "~/components/ui/edit-home-care-contract-modal";
 import { Tooltip, TooltipContent, TooltipTrigger } from "~/components/ui/tooltip";
 import { formatDateOnly } from "~/lib/utils";
-import { getPrimaryColor, getLogoPath } from "~/lib/erpBranding";
+import { getPrimaryColor } from "~/lib/erpBranding";
 
 /** Convierte un color hex (#1F3666) a [r, g, b] para jsPDF. Fallback al azul de marca. */
 function hexToRgb(hex: string): [number, number, number] {
@@ -248,14 +248,14 @@ export default function CuidadosEnCasaDetalle() {
       const estadoContrato = contract.is_active ? "Activo" : "Inactivo";
       const nombrePaciente = getPatientName(contract);
 
-      // Azul de marca (mismo del menú) y logo del sistema.
+      // Azul de marca (mismo del menú) y logo específico para el PDF.
       const [br, bg, bb] = hexToRgb(getPrimaryColor());
-      const logo = await loadImageAsPng(getLogoPath());
+      const logo = await loadImageAsPng("/LOGOPDF.png");
 
       doc.setFillColor(br, bg, bb);
       doc.rect(0, 0, pageWidth, 80, "F");
 
-      // Logo arriba a la derecha (el mismo del menú).
+      // Logo arriba a la derecha (logo dedicado del PDF: public/LOGOPDF.png).
       let logoW = 0;
       if (logo) {
         const logoH = 56;
@@ -322,6 +322,12 @@ export default function CuidadosEnCasaDetalle() {
           fontSize: 8.5,
           cellPadding: 4,
           textColor: [31, 41, 55],
+        },
+        // Línea horizontal inferior en cada fila para separar mejor los ITEM
+        // (solo horizontal, sin bordes verticales).
+        bodyStyles: {
+          lineColor: [203, 213, 225],
+          lineWidth: { top: 0, right: 0, bottom: 0.5, left: 0 },
         },
         headStyles: {
           fillColor: [br, bg, bb],
