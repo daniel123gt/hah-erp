@@ -326,6 +326,7 @@ export async function getDashboardChartData(): Promise<DashboardChartPoint[]> {
     cuidadosPorTurnosByDate[d] = 0;
   });
   shifts.forEach((s) => {
+    if (s.estado === "Cancelado") return; // los turnos cancelados no son actividad
     const d = String(s.fecha ?? "").slice(0, 10);
     if (dateSet.has(d)) cuidadosPorTurnosByDate[d] = (cuidadosPorTurnosByDate[d] ?? 0) + 1;
   });

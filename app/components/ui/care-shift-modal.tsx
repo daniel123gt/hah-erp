@@ -83,6 +83,7 @@ export interface CareShiftFormData {
   familiar_responsable: string;
   distrito: string;
   turno: string;
+  estado: string;
   monto_a_pagar: string;
   forma_de_pago: string;
   numero_operacion: string;
@@ -91,6 +92,8 @@ export interface CareShiftFormData {
   observacion: string;
   utilidad: string;
 }
+
+const ESTADO_OPTIONS = ["Pendiente", "Completado", "Cancelado"] as const;
 
 function shiftToForm(s: CareShiftWithPatient | null): CareShiftFormData {
   if (!s) {
@@ -102,6 +105,7 @@ function shiftToForm(s: CareShiftWithPatient | null): CareShiftFormData {
       familiar_responsable: "",
       distrito: "",
       turno: "",
+      estado: "Pendiente",
       monto_a_pagar: "",
       forma_de_pago: "",
       numero_operacion: "",
@@ -120,6 +124,7 @@ function shiftToForm(s: CareShiftWithPatient | null): CareShiftFormData {
     familiar_responsable: s.familiar_responsable ?? "",
     distrito: s.distrito ?? "",
     turno: s.turno ?? "",
+    estado: s.estado ?? "Pendiente",
     monto_a_pagar: s.monto_a_pagar != null ? String(s.monto_a_pagar) : "",
     forma_de_pago: s.forma_de_pago ?? "",
     numero_operacion: s.numero_operacion ?? "",
@@ -320,6 +325,7 @@ export function CareShiftModal({
         familiar_responsable: form.familiar_responsable.trim() || null,
         distrito: form.distrito.trim() || null,
         turno: turnoValue || null,
+        estado: (form.estado as "Pendiente" | "Completado" | "Cancelado") || "Pendiente",
         monto_a_pagar: monto,
         forma_de_pago: form.forma_de_pago.trim() || null,
         numero_operacion: form.numero_operacion.trim() || null,
@@ -346,7 +352,7 @@ export function CareShiftModal({
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[1344px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{shift ? "Editar turno" : "Registrar turno eventual"}</DialogTitle>
           <DialogDescription>
@@ -572,6 +578,20 @@ export function CareShiftModal({
                 className="w-full"
               />
             </div>
+          </div>
+
+          <div>
+            <Label htmlFor="care-shift-estado">Estado</Label>
+            <select
+              id="care-shift-estado"
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              value={form.estado}
+              onChange={(e) => setForm((f) => ({ ...f, estado: e.target.value }))}
+            >
+              {ESTADO_OPTIONS.map((o) => (
+                <option key={o} value={o}>{o}</option>
+              ))}
+            </select>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

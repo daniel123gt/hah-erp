@@ -9,12 +9,18 @@ import {
   type ReactNode,
 } from "react";
 import { toast } from "sonner";
+import { playNotificationSound } from "~/lib/notificationSound";
 
 export type NotificationType =
   | "cita_programada"
   | "laboratorio_programado"
   | "recordatorio_cita"
   | "recordatorio_laboratorio";
+
+/** Un aviso/recordatorio (vs una notificación de creación). Estos son más llamativos. */
+export function isReminderType(type: NotificationType): boolean {
+  return type === "recordatorio_cita" || type === "recordatorio_laboratorio";
+}
 
 export interface AppNotification {
   id: string;
@@ -130,7 +136,23 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
       const showNative = options?.showNative !== false;
       if (showNative && permission === "granted") showNativeNotification(title, body);
-      toast.info(title, { description: body, duration: 5000 });
+
+      const isAviso = isReminderType(type);
+      // Sonido: sutil al crear, más potente en los avisos.
+      playNotificationSound(isAviso ? "alert" : "subtle");
+
+      if (isAviso) {
+        // Aviso (recordatorio): naranja, llamativo y NO se cierra solo
+        // (queda hasta que el usuario presione la X).
+        toast.warning(title, {
+          description: body,
+          duration: Infinity,
+          closeButton: true,
+          className: "border-orange-400 bg-orange-50 text-orange-900",
+        });
+      } else {
+        toast.info(title, { description: body, duration: 5000 });
+      }
     },
     [permission]
   );

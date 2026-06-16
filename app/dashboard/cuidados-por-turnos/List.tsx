@@ -4,6 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
+import { Badge } from "~/components/ui/badge";
+import { ESTADO_BADGE_CLASS } from "~/lib/estadoDisplay";
+import { TablePagination } from "~/components/ui/table-pagination";
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Loader2, Search, Pencil, Trash2, Clock, Calendar, DollarSign } from "lucide-react";
 import shiftCareService, { type CareShiftWithPatient, type CareShiftFilters } from "~/services/shiftCareService";
@@ -28,6 +31,9 @@ export default function CuidadosPorTurnosList() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [statsToday, setStatsToday] = useState({ count: 0, revenue: 0 });
   const [statsMonth, setStatsMonth] = useState({ count: 0, revenue: 0 });
+  const [estadoFilter, setEstadoFilter] = useState<"" | "Pendiente" | "Completado" | "Cancelado">("");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
 
   const loadShifts = async () => {
     try {
@@ -61,19 +67,26 @@ export default function CuidadosPorTurnosList() {
       shiftCareService.getShifts({ fecha_desde: monthFrom, fecha_hasta: monthTo }),
     ])
       .then(([todayList, monthList]) => {
+        // Ingresos = solo turnos Completado (pagados). Conteo = turnos no cancelados.
+        const isActive = (x: CareShiftWithPatient) => x.estado !== "Cancelado";
+        const paidSum = (list: CareShiftWithPatient[]) =>
+          list
+            .filter((x) => x.estado === "Completado")
+            .reduce((s, x) => s + (x.monto_a_pagar ?? 0), 0);
         setStatsToday({
-          count: todayList.length,
-          revenue: todayList.reduce((s, x) => s + (x.monto_a_pagar ?? 0), 0),
+          count: todayList.filter(isActive).length,
+          revenue: paidSum(todayList),
         });
         setStatsMonth({
-          count: monthList.length,
-          revenue: monthList.reduce((s, x) => s + (x.monto_a_pagar ?? 0), 0),
+          count: monthList.filter(isActive).length,
+          revenue: paidSum(monthList),
         });
       })
       .catch(() => {});
   }, []);
 
   const filteredShifts = shifts.filter((s) => {
+    if (estadoFilter && (s.estado ?? "Pendiente") !== estadoFilter) return false;
     if (!searchTerm.trim()) return true;
     const term = normalizeSearchText(searchTerm);
     const patient = normalizeSearchText(getPatientName(s));
@@ -87,6 +100,13 @@ export default function CuidadosPorTurnosList() {
       distrito.includes(term)
     );
   });
+
+  // Reinicia a la página 1 cuando cambian los filtros o la búsqueda.
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, estadoFilter, fechaDesde, fechaHasta]);
+
+  const pagedShifts = filteredShifts.slice((page - 1) * limit, page * limit);
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("¿Eliminar este registro de turno?")) return;
@@ -210,6 +230,19 @@ export default function CuidadosPorTurnosList() {
                   className="w-40"
                 />
               </div>
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Estado</label>
+                <select
+                  value={estadoFilter}
+                  onChange={(e) => setEstadoFilter(e.target.value as typeof estadoFilter)}
+                  className="w-40 h-10 rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="">Todos</option>
+                  <option value="Pendiente">Pendiente</option>
+                  <option value="Completado">Completado</option>
+                  <option value="Cancelado">Cancelado</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -238,10 +271,10 @@ export default function CuidadosPorTurnosList() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-12">#</TableHead>
                     <TableHead>Fecha</TableHead>
-                    <TableHead>Hora inicio</TableHead>
+                    <TableHead>Estado</TableHead>
                     <TableHead>Paciente</TableHead>
+                    <TableHead>Hora inicio</TableHead>
                     <TableHead>Familiar responsable</TableHead>
                     <TableHead>Distrito</TableHead>
                     <TableHead>Turno</TableHead>
@@ -253,12 +286,18 @@ export default function CuidadosPorTurnosList() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredShifts.map((shift, index) => (
+                  {pagedShifts.map((shift) => {
+                    const estado = shift.estado ?? "Pendiente";
+                    return (
                     <TableRow key={shift.id}>
-                      <TableCell className="text-muted-foreground">{index + 1}</TableCell>
                       <TableCell>{formatDateOnly(shift.fecha)}</TableCell>
-                      <TableCell>{shift.hora_inicio ?? "—"}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className={ESTADO_BADGE_CLASS[estado]}>
+                          {estado}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="font-medium">{getPatientName(shift)}</TableCell>
+                      <TableCell>{shift.hora_inicio ?? "—"}</TableCell>
                       <TableCell>{shift.familiar_responsable ?? "—"}</TableCell>
                       <TableCell>{shift.distrito ?? "—"}</TableCell>
                       <TableCell>{shift.turno ?? "—"}</TableCell>
@@ -298,10 +337,25 @@ export default function CuidadosPorTurnosList() {
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
+          )}
+
+          {!loading && filteredShifts.length > 0 && (
+            <TablePagination
+              page={page}
+              limit={limit}
+              total={filteredShifts.length}
+              onPageChange={setPage}
+              onLimitChange={(l) => {
+                setLimit(l);
+                setPage(1);
+              }}
+              itemLabel="turnos"
+            />
           )}
         </CardContent>
       </Card>

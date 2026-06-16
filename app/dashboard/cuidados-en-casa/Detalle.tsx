@@ -22,7 +22,7 @@ import {
 } from "~/components/ui/edit-home-care-contract-modal";
 import { Tooltip, TooltipContent, TooltipTrigger } from "~/components/ui/tooltip";
 import { formatDateOnly } from "~/lib/utils";
-import { getPrimaryColor } from "~/lib/erpBranding";
+import { getPrimaryColor, getShortName } from "~/lib/erpBranding";
 
 /** Convierte un color hex (#1F3666) a [r, g, b] para jsPDF. Fallback al azul de marca. */
 function hexToRgb(hex: string): [number, number, number] {
@@ -78,7 +78,7 @@ function formatDate(s: string | null): string {
 }
 
 function formatMoney(n: number): string {
-  return `S/. ${Number(n).toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `S/ ${Number(n).toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function sumAdicionales(adicionales: HomeCarePeriodAdicional[] | undefined): number {
@@ -248,6 +248,17 @@ export default function CuidadosEnCasaDetalle() {
       const estadoContrato = contract.is_active ? "Activo" : "Inactivo";
       const nombrePaciente = getPatientName(contract);
 
+      // Totales para el resumen y la fila de TOTALES de la tabla.
+      const totalMonto = periods.reduce((s, p) => s + Number(p.monto || 0), 0);
+      const totalFeriados = periods.reduce((s, p) => s + Number(p.m_feriados || 0), 0);
+      const totalAdicionales = periods.reduce((s, p) => s + sumAdicionales(p.adicionales), 0);
+      const totalGeneral = periods.reduce((s, p) => s + Number(p.monto_total || 0), 0);
+      const totalPagado = periods.reduce(
+        (s, p) => s + (getPeriodoEstado(p) === "Completado" ? Number(p.monto_total || 0) : 0),
+        0
+      );
+      const totalPendiente = Math.max(0, totalGeneral - totalPagado);
+
       // Azul de marca (mismo del menú) y logo específico para el PDF.
       const [br, bg, bb] = hexToRgb(getPrimaryColor());
       const logo = await loadImageAsPng("/LOGOPDF.png");
@@ -303,6 +314,9 @@ export default function CuidadosEnCasaDetalle() {
           ["Monto mensual", formatMoney(montoFinalVal)],
           ["Estado", estadoContrato],
           ["Total periodos", String(periods.length)],
+          ["Total facturado", formatMoney(totalGeneral)],
+          ["Total pagado", formatMoney(totalPagado)],
+          ["Pendiente", formatMoney(totalPendiente)],
         ],
       });
 
@@ -313,7 +327,7 @@ export default function CuidadosEnCasaDetalle() {
 
       autoTable(doc, {
         startY: detalleInicio + 42,
-        theme: "striped",
+        theme: "grid",
         // Si una fila no entra completa en la página actual, se pasa entera
         // a la siguiente (no se parte a la mitad entre páginas).
         rowPageBreak: "avoid",
@@ -322,12 +336,7 @@ export default function CuidadosEnCasaDetalle() {
           fontSize: 8.5,
           cellPadding: 4,
           textColor: [31, 41, 55],
-        },
-        // Línea horizontal inferior en cada fila para separar mejor los ITEM
-        // (solo horizontal, sin bordes verticales).
-        bodyStyles: {
-          lineColor: [203, 213, 225],
-          lineWidth: { top: 0, right: 0, bottom: 0.5, left: 0 },
+          lineColor: [148, 163, 184],
         },
         headStyles: {
           fillColor: [br, bg, bb],
@@ -337,43 +346,90 @@ export default function CuidadosEnCasaDetalle() {
         alternateRowStyles: {
           fillColor: [248, 250, 252],
         },
+        footStyles: {
+          fillColor: [241, 245, 249],
+          textColor: [17, 24, 39],
+          fontStyle: "bold",
+        },
+        columnStyles: {
+          0: { halign: "center", cellWidth: 30 }, // Ítem
+          1: { halign: "center" }, // Estado
+          4: { halign: "right" }, // Monto
+          5: { halign: "right" }, // Feriados
+          6: { halign: "right" }, // Adicionales
+          7: { halign: "right", fontStyle: "bold" }, // Total
+        },
+        // Solo bordes INTERNOS: línea derecha (separa columnas) e inferior
+        // (separa filas); los bordes externos de la tabla se dejan sin línea.
+        // La fila de TOTALES (foot) tampoco lleva línea inferior.
+        didParseCell: (data) => {
+          const isLastCol = data.column.index === data.table.columns.length - 1;
+          const bottomW =
+            data.section === "foot" ? 0 : data.section === "head" ? 0.5 : 0.8;
+          data.cell.styles.lineWidth = {
+            top: 0,
+            left: 0,
+            right: isLastCol ? 0 : 0.5,
+            bottom: bottomW,
+          };
+        },
         head: [[
-          "ITEM",
+          "Ítem",
           "Estado",
-          "F. Pago C.",
+          "Período",
           "Turno",
-          "F. Desde",
-          "F. Hasta",
           "Monto",
-          "F. Feriados",
-          "M. Feriados",
-          "P. Serv",
-          "F. Pausas",
+          "Feriados",
           "Adicionales",
-          "Monto Total",
-          "Fecha de Pago",
-          "Metodo Pago",
-          "N Operacion",
+          "Total",
+          "Pagado el",
+          "Método / Operación",
         ]],
-        body: periods.map((p) => [
-          p.item ?? "-",
-          getPeriodoEstado(p),
-          formatDate(p.fecha_pago_quincena),
-          p.turno ?? "-",
-          formatDate(p.f_desde),
-          formatDate(p.f_hasta),
-          formatMoney(p.monto),
-          p.f_feriados ?? "0",
-          formatMoney(p.m_feriados),
-          p.p_del_serv ?? "0",
-          p.f_pausas ?? "0",
-          formatAdicionalesText(p.adicionales),
-          formatMoney(p.monto_total),
-          formatDate(p.fecha_pago),
-          p.metodo_pago ?? "-",
-          p.numero_operacion ?? "-",
-        ]),
+        body: periods.map((p) => {
+          const adic = p.adicionales ?? [];
+          const adicTxt = adic.length
+            ? `(${adic.length}) ${formatMoney(sumAdicionales(adic))}`
+            : "—";
+          const feriadosTxt = Number(p.m_feriados) > 0 ? formatMoney(p.m_feriados) : "—";
+          const metodoOp =
+            [p.metodo_pago, p.numero_operacion].filter(Boolean).join(" · ") || "—";
+          return [
+            p.item ?? "—",
+            getPeriodoEstado(p),
+            `${formatDate(p.f_desde)} – ${formatDate(p.f_hasta)}`,
+            p.turno ?? "—",
+            formatMoney(p.monto),
+            feriadosTxt,
+            adicTxt,
+            formatMoney(p.monto_total),
+            p.fecha_pago ? formatDate(p.fecha_pago) : "—",
+            metodoOp,
+          ];
+        }),
+        foot: [[
+          { content: "TOTALES", colSpan: 4, styles: { halign: "right" } },
+          formatMoney(totalMonto),
+          formatMoney(totalFeriados),
+          formatMoney(totalAdicionales),
+          formatMoney(totalGeneral),
+          "",
+          "",
+        ]],
       });
+
+      // Pie de página en todas las páginas: nombre del ERP + numeración.
+      const pageCount = doc.getNumberOfPages();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(120, 120, 120);
+        doc.text(`${getShortName()} · Cuidados en casa`, 36, pageHeight - 18);
+        doc.text(`Página ${i} de ${pageCount}`, pageWidth - 36, pageHeight - 18, {
+          align: "right",
+        });
+      }
 
       const safePatientName = nombrePaciente
         .normalize("NFD")

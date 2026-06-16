@@ -1,5 +1,8 @@
 import supabase from "~/utils/supabase";
 
+/** Estado del turno, homologado con el resto de la app (Pendiente/Completado/Cancelado). */
+export type CareShiftEstado = "Pendiente" | "Completado" | "Cancelado";
+
 export interface CareShift {
   id: string;
   fecha: string;
@@ -8,6 +11,7 @@ export interface CareShift {
   familiar_responsable: string | null;
   distrito: string | null;
   turno: string | null;
+  estado: CareShiftEstado;
   monto_a_pagar: number;
   forma_de_pago: string | null;
   numero_operacion: string | null;
@@ -38,6 +42,7 @@ export interface CreateCareShiftData {
   familiar_responsable?: string | null;
   distrito?: string | null;
   turno?: string | null;
+  estado?: CareShiftEstado;
   monto_a_pagar: number;
   forma_de_pago?: string | null;
   numero_operacion?: string | null;
@@ -90,6 +95,7 @@ export const shiftCareService = {
       familiar_responsable: data.familiar_responsable ?? null,
       distrito: data.distrito ?? null,
       turno: data.turno ?? null,
+      estado: data.estado ?? "Pendiente",
       monto_a_pagar: Number(data.monto_a_pagar) || 0,
       forma_de_pago: data.forma_de_pago ?? null,
       numero_operacion: data.numero_operacion ?? null,
@@ -121,6 +127,7 @@ export const shiftCareService = {
     if (data.familiar_responsable !== undefined) payload.familiar_responsable = data.familiar_responsable;
     if (data.distrito !== undefined) payload.distrito = data.distrito;
     if (data.turno !== undefined) payload.turno = data.turno;
+    if (data.estado !== undefined) payload.estado = data.estado;
     if (data.monto_a_pagar !== undefined) payload.monto_a_pagar = Number(data.monto_a_pagar);
     if (data.forma_de_pago !== undefined) payload.forma_de_pago = data.forma_de_pago;
     if (data.numero_operacion !== undefined) payload.numero_operacion = data.numero_operacion;
