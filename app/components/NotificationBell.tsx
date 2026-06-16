@@ -69,8 +69,11 @@ function NotificationList({ items, accent }: { items: AppNotification[]; accent?
   );
 }
 
+/** Botón de prueba de avisos: ponlo en true para volver a mostrarlo (solo dev). */
+const SHOW_TEST_ALERT_BUTTON = false;
+
 export function NotificationBell() {
-  const { notifications, permission, requestPermission, clearNotifications } = useNotifications();
+  const { notifications, permission, requestPermission, clearNotifications, addNotification } = useNotifications();
   const [openBell, setOpenBell] = useState(false);
   const [openAlert, setOpenAlert] = useState(false);
 
@@ -84,6 +87,24 @@ export function NotificationBell() {
 
   return (
     <div className="flex items-center gap-1">
+      {/* Botón de prueba de avisos (oculto). Reactivar con SHOW_TEST_ALERT_BUTTON. */}
+      {SHOW_TEST_ALERT_BUTTON && import.meta.env.DEV && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-xs border-orange-400 text-orange-600"
+          onClick={() =>
+            addNotification(
+              "recordatorio_cita",
+              "Recordatorio: cita en 1 hora",
+              "PRUEBA — Juan Pérez · 10:30 · Consulta médica"
+            )
+          }
+        >
+          Probar aviso
+        </Button>
+      )}
+
       {/* Campana: notificaciones generales */}
       <Popover open={openBell} onOpenChange={setOpenBell}>
         <PopoverTrigger asChild>

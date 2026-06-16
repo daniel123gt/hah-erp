@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { toast } from "sonner";
+import { AlertTriangle, X } from "lucide-react";
 import { playNotificationSound } from "~/lib/notificationSound";
 
 export type NotificationType =
@@ -142,14 +143,30 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       playNotificationSound(isAviso ? "alert" : "subtle");
 
       if (isAviso) {
-        // Aviso (recordatorio): naranja, llamativo y NO se cierra solo
-        // (queda hasta que el usuario presione la X).
-        toast.warning(title, {
-          description: body,
-          duration: Infinity,
-          closeButton: true,
-          className: "border-orange-400 bg-orange-50 text-orange-900",
-        });
+        // Aviso (recordatorio): tarjeta naranja grande y llamativa que NO se
+        // cierra sola (queda hasta que el usuario presione la X).
+        toast.custom(
+          (t) => (
+            <div className="flex w-[min(94vw,480px)] items-start gap-3 rounded-xl border-2 border-orange-500 bg-orange-50 p-5 shadow-2xl">
+              <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-500">
+                <AlertTriangle className="h-6 w-6 text-white" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-lg font-bold leading-tight text-orange-900">{title}</p>
+                <p className="mt-1 text-base text-orange-800">{body}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => toast.dismiss(t)}
+                aria-label="Cerrar"
+                className="shrink-0 rounded-md p-1 text-orange-500 hover:bg-orange-200 hover:text-orange-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+          ),
+          { duration: Infinity }
+        );
       } else {
         toast.info(title, { description: body, duration: 5000 });
       }
