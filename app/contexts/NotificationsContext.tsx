@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { toast } from "sonner";
-import { AlertTriangle, X } from "lucide-react";
+import { Bell, FlaskConical, Scan, Stethoscope, Syringe, X } from "lucide-react";
 import { playNotificationSound } from "~/lib/notificationSound";
 import { useAuthStore } from "~/store/authStore";
 
@@ -19,6 +19,20 @@ export type NotificationType =
   | "laboratorio_programado"
   | "recordatorio_cita"
   | "recordatorio_laboratorio";
+
+/** Categoría para elegir el ícono del toast. */
+export type NotifCategory = "medicina" | "procedimientos" | "rx_ecografias" | "laboratorio";
+
+/** Ícono grande por categoría. */
+const CATEGORY_ICON: Record<NotifCategory, typeof Bell> = {
+  medicina: Stethoscope,
+  procedimientos: Syringe,
+  rx_ecografias: Scan,
+  laboratorio: FlaskConical,
+};
+function getCategoryIcon(category: NotifCategory | undefined): typeof Bell {
+  return (category && CATEGORY_ICON[category]) || Bell;
+}
 
 /** Un aviso/recordatorio (vs una notificación de creación). Estos son más llamativos. */
 export function isReminderType(type: NotificationType): boolean {
@@ -33,6 +47,8 @@ export interface AppNotification {
   createdAt: number;
   /** Para recordatorios: id del item (cita o orden) para no repetir */
   reminderKey?: string;
+  /** Categoría (para el ícono): medicina, procedimientos, rx_ecografias, laboratorio */
+  category?: NotifCategory;
 }
 
 type CreatedByMeType = "appointment" | "lab_order";
@@ -45,7 +61,7 @@ interface NotificationsContextValue {
     type: NotificationType,
     title: string,
     body: string,
-    options?: { showNative?: boolean; reminderKey?: string }
+    options?: { showNative?: boolean; reminderKey?: string; category?: NotifCategory }
   ) => void;
   requestPermission: () => Promise<boolean>;
   clearNotifications: () => void;
@@ -189,9 +205,15 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       type: NotificationType,
       title: string,
       body: string,
-      options?: { showNative?: boolean; reminderKey?: string }
+      options?: { showNative?: boolean; reminderKey?: string; category?: NotifCategory }
     ) => {
       const id = `n-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      // Categoría para el ícono: explícita, o "laboratorio" si el tipo lo implica.
+      const category: NotifCategory | undefined =
+        options?.category ??
+        (type === "laboratorio_programado" || type === "recordatorio_laboratorio"
+          ? "laboratorio"
+          : undefined);
       const item: AppNotification = {
         id,
         type,
@@ -199,6 +221,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         body,
         createdAt: Date.now(),
         reminderKey: options?.reminderKey,
+        category,
       };
       setNotifications((prev) => [item, ...prev].slice(0, MAX_NOTIFICATIONS));
 
@@ -209,41 +232,60 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       // Sonido: sutil al crear, más potente en los avisos.
       playNotificationSound(isAviso ? "alert" : "subtle");
 
+      const Icon = getCategoryIcon(category);
+      // Naranja para avisos, azul para notificaciones de creación.
+      const c = isAviso
+        ? {
+            border: "border-orange-500",
+            bg: "bg-orange-50",
+            circle: "bg-orange-500",
+            title: "text-orange-900",
+            body: "text-orange-800",
+            x: "text-orange-500 hover:bg-orange-200 hover:text-orange-700",
+          }
+        : {
+            border: "border-[#1F3666]",
+            bg: "bg-blue-50",
+            circle: "bg-[#1F3666]",
+            title: "text-[#1F3666]",
+            body: "text-slate-700",
+            x: "text-[#1F3666] hover:bg-blue-100",
+          };
+
+      const close = () => {
+        stopAvisoSound(id);
+        toast.dismiss(id);
+      };
+
+      const card = () => (
+        <div className={`flex w-[min(94vw,520px)] items-start gap-4 rounded-xl border-2 ${c.border} ${c.bg} p-5 shadow-2xl`}>
+          <div className={`flex h-24 w-24 shrink-0 items-center justify-center rounded-full ${c.circle}`}>
+            <Icon className="h-14 w-14 text-white" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className={`text-[21px] font-bold leading-tight ${c.title}`}>{title}</p>
+            <p className={`mt-1 whitespace-pre-line text-[17px] ${c.body}`}>{body}</p>
+          </div>
+          <button
+            type="button"
+            onClick={close}
+            aria-label="Cerrar"
+            className={`shrink-0 rounded-md p-1 ${c.x}`}
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+      );
+
       if (isAviso) {
-        // Aviso (recordatorio): tarjeta naranja grande y llamativa que NO se
-        // cierra sola (queda hasta que el usuario presione la X).
-        const close = () => {
-          stopAvisoSound(id);
-          toast.dismiss(id);
-        };
-        toast.custom(
-          () => (
-            <div className="flex w-[min(94vw,480px)] items-start gap-3 rounded-xl border-2 border-orange-500 bg-orange-50 p-5 shadow-2xl">
-              <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-500">
-                <AlertTriangle className="h-6 w-6 text-white" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-lg font-bold leading-tight text-orange-900">{title}</p>
-                <p className="mt-1 text-base text-orange-800">{body}</p>
-              </div>
-              <button
-                type="button"
-                onClick={close}
-                aria-label="Cerrar"
-                className="shrink-0 rounded-md p-1 text-orange-500 hover:bg-orange-200 hover:text-orange-700"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-          ),
-          { id, duration: Infinity, onDismiss: () => stopAvisoSound(id) }
-        );
-        // Mientras el toast siga abierto, vuelve a sonar cada 5 minutos.
+        // Aviso: NO se cierra solo (queda hasta la X) y vuelve a sonar c/5 min.
+        toast.custom(card, { id, duration: Infinity, onDismiss: () => stopAvisoSound(id) });
         stopAvisoSound(id); // por si ya existía uno con este id
         const iv = setInterval(() => playNotificationSound("alert"), RESOUND_AVISO_MS);
         avisoIntervalsRef.current.set(id, iv);
       } else {
-        toast.info(title, { description: body, duration: 5000 });
+        // Creación: misma tarjeta (azul), se cierra sola a los 8s.
+        toast.custom(card, { id, duration: 8000 });
       }
     },
     [permission, stopAvisoSound]

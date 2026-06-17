@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import supabase from "~/utils/supabase";
-import { useNotifications } from "~/contexts/NotificationsContext";
+import { useNotifications, type NotifCategory } from "~/contexts/NotificationsContext";
 
 /** Formatea fecha ISO o YYYY-MM-DD a dd/mm/yyyy para mostrar */
 function formatDate(s: string | null | undefined): string {
@@ -33,14 +33,31 @@ export function RealtimeNotificationsSubscriber() {
           const variant = (row?.variant as string) ?? "";
           const procedureName = (row?.procedure_name as string) ?? "";
           const doctorName = (row?.doctor_name as string) ?? "";
-          const subtitle = variant === "procedimientos" && procedureName
-            ? procedureName
-            : doctorName || "Cita";
-          addNotification(
-            "cita_programada",
-            "Nueva cita programada",
-            `${patientName} — ${date} ${time} · ${subtitle}`
-          );
+          const place = (row?.location as string) || (row?.district as string) || "";
+
+          const title =
+            variant === "procedimientos"
+              ? "Nuevo procedimiento programado"
+              : variant === "rx_ecografias"
+                ? "Nueva cita de RX / Ecografía"
+                : "Nueva cita médica";
+          const profLabel =
+            variant === "procedimientos"
+              ? "Enfermera"
+              : variant === "rx_ecografias"
+                ? "Téc./Méd."
+                : "Médico";
+
+          const lines = [`${patientName} · ${date} ${time}`.trim()];
+          if (variant === "procedimientos" && procedureName) lines.push(procedureName);
+          if (doctorName) lines.push(`${profLabel}: ${doctorName}`);
+          if (place) lines.push(`📍 ${place}`);
+
+          const category = (["medicina", "procedimientos", "rx_ecografias"].includes(variant)
+            ? variant
+            : undefined) as NotifCategory | undefined;
+
+          addNotification("cita_programada", title, lines.join("\n"), { category });
         }
       )
       .on(

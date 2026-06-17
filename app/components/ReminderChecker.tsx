@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { appointmentsService } from "~/services/appointmentsService";
 import labOrderService from "~/services/labOrderService";
 import { getTodayLocal } from "~/lib/dateUtils";
-import { useNotifications } from "~/contexts/NotificationsContext";
+import { useNotifications, type NotifCategory } from "~/contexts/NotificationsContext";
 
 const CHECK_INTERVAL_MS = 30 * 60 * 1000; // 30 min
 
@@ -56,20 +56,31 @@ export function ReminderChecker() {
       appointmentsService.list("procedimientos"),
       appointmentsService.list("rx_ecografias"),
     ]).then(([med, proc, rxEco]) => {
-      const all = [...med, ...proc, ...rxEco];
-      all.forEach((apt) => {
-        if (apt.date !== today) return;
-        const ts = parseAppointmentDateTime(apt.date, apt.time);
-        if (ts < now || ts > oneHourFromNow) return;
-        const key = `cita-${apt.id}-${apt.date}-${apt.time}`;
-        if (wasReminderSent(key)) return;
-        if (!markReminderSent(key)) return;
-        addNotification(
-          "recordatorio_cita",
-          "Recordatorio: cita en 1 hora",
-          `${apt.patientName} — ${apt.time}${apt.procedure_name ? ` · ${apt.procedure_name}` : ""}`,
-          { reminderKey: key }
-        );
+      const groups: Array<{ list: typeof med; cat: NotifCategory }> = [
+        { list: med, cat: "medicina" },
+        { list: proc, cat: "procedimientos" },
+        { list: rxEco, cat: "rx_ecografias" },
+      ];
+      groups.forEach(({ list, cat }) => {
+        list.forEach((apt) => {
+          if (apt.date !== today) return;
+          const ts = parseAppointmentDateTime(apt.date, apt.time);
+          if (ts < now || ts > oneHourFromNow) return;
+          const key = `cita-${apt.id}-${apt.date}-${apt.time}`;
+          if (wasReminderSent(key)) return;
+          if (!markReminderSent(key)) return;
+          const place = apt.location || apt.district || "";
+          const profLabel =
+            cat === "procedimientos" ? "Enfermera" : cat === "rx_ecografias" ? "Téc./Méd." : "Médico";
+          const lines = [`${apt.patientName} · ${apt.time}`];
+          if (cat === "procedimientos" && apt.procedure_name) lines.push(apt.procedure_name);
+          if (apt.doctorName) lines.push(`${profLabel}: ${apt.doctorName}`);
+          if (place) lines.push(`📍 ${place}`);
+          addNotification("recordatorio_cita", "Recordatorio: cita en 1 hora", lines.join("\n"), {
+            reminderKey: key,
+            category: cat,
+          });
+        });
       });
     }).catch(() => {});
 
