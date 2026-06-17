@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useRef,
   useState,
   type ReactNode,
@@ -11,6 +12,7 @@ import {
 import { toast } from "sonner";
 import { AlertTriangle, X } from "lucide-react";
 import { playNotificationSound } from "~/lib/notificationSound";
+import { useAuthStore } from "~/store/authStore";
 
 export type NotificationType =
   | "cita_programada"
@@ -57,6 +59,8 @@ interface NotificationsContextValue {
 const NotificationsContext = createContext<NotificationsContextValue | null>(null);
 
 const MAX_NOTIFICATIONS = 50;
+/** Cada cuánto vuelve a sonar un aviso mientras su toast siga sin cerrarse. */
+const RESOUND_AVISO_MS = 5 * 60 * 1000; // 5 minutos
 
 function showNativeNotification(title: string, body: string) {
   if (typeof window === "undefined" || !("Notification" in window)) return;
@@ -82,6 +86,69 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   );
   const remindedKeysRef = useRef<Set<string>>(new Set());
   const createdByMeRef = useRef<Map<string, number>>(new Map());
+  /** Intervalos de re-sonido por cada toast de aviso abierto (clave = id del toast). */
+  const avisoIntervalsRef = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
+
+  /** Detiene el re-sonido de un aviso (cuando se cierra su toast). */
+  const stopAvisoSound = useCallback((toastId: string) => {
+    const iv = avisoIntervalsRef.current.get(toastId);
+    if (iv) {
+      clearInterval(iv);
+      avisoIntervalsRef.current.delete(toastId);
+    }
+  }, []);
+
+  // Al desmontar, limpiar todos los intervalos pendientes.
+  useEffect(() => {
+    const intervals = avisoIntervalsRef.current;
+    return () => {
+      intervals.forEach((iv) => clearInterval(iv));
+      intervals.clear();
+    };
+  }, []);
+
+  // Persistencia POR USUARIO: cada usuario guarda su propia lista en su
+  // navegador (localStorage). Es independiente entre usuarios y sobrevive
+  // recargas. Limpiar solo afecta a ese usuario.
+  const user = useAuthStore((s) => s.user);
+  const storageKey = user?.id
+    ? `hah-notif:${user.id}`
+    : user?.email
+      ? `hah-notif:${user.email}`
+      : null;
+  /** Salta exactamente un guardado tras una carga (evita pisar lo guardado al montar). */
+  const skipSaveRef = useRef(false);
+
+  // Cargar las notificaciones guardadas del usuario actual.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    skipSaveRef.current = true;
+    if (!storageKey) {
+      setNotifications([]);
+      return;
+    }
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      const parsed = raw ? JSON.parse(raw) : [];
+      setNotifications(Array.isArray(parsed) ? (parsed as AppNotification[]) : []);
+    } catch {
+      setNotifications([]);
+    }
+  }, [storageKey]);
+
+  // Guardar al cambiar las notificaciones (omitiendo el guardado posterior a la carga).
+  useEffect(() => {
+    if (typeof window === "undefined" || !storageKey) return;
+    if (skipSaveRef.current) {
+      skipSaveRef.current = false;
+      return;
+    }
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify(notifications));
+    } catch {
+      // ignorar (cuota llena, modo privado, etc.)
+    }
+  }, [notifications, storageKey]);
 
   const markCreatedByMe = useCallback((type: CreatedByMeType, id: string) => {
     const key = `${type}:${id}`;
@@ -145,8 +212,12 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       if (isAviso) {
         // Aviso (recordatorio): tarjeta naranja grande y llamativa que NO se
         // cierra sola (queda hasta que el usuario presione la X).
+        const close = () => {
+          stopAvisoSound(id);
+          toast.dismiss(id);
+        };
         toast.custom(
-          (t) => (
+          () => (
             <div className="flex w-[min(94vw,480px)] items-start gap-3 rounded-xl border-2 border-orange-500 bg-orange-50 p-5 shadow-2xl">
               <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-500">
                 <AlertTriangle className="h-6 w-6 text-white" />
@@ -157,7 +228,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
               </div>
               <button
                 type="button"
-                onClick={() => toast.dismiss(t)}
+                onClick={close}
                 aria-label="Cerrar"
                 className="shrink-0 rounded-md p-1 text-orange-500 hover:bg-orange-200 hover:text-orange-700"
               >
@@ -165,16 +236,26 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
               </button>
             </div>
           ),
-          { duration: Infinity }
+          { id, duration: Infinity, onDismiss: () => stopAvisoSound(id) }
         );
+        // Mientras el toast siga abierto, vuelve a sonar cada 5 minutos.
+        stopAvisoSound(id); // por si ya existía uno con este id
+        const iv = setInterval(() => playNotificationSound("alert"), RESOUND_AVISO_MS);
+        avisoIntervalsRef.current.set(id, iv);
       } else {
         toast.info(title, { description: body, duration: 5000 });
       }
     },
-    [permission]
+    [permission, stopAvisoSound]
   );
 
-  const clearNotifications = useCallback(() => setNotifications([]), []);
+  const clearNotifications = useCallback(() => {
+    setNotifications([]);
+    // Detener todos los re-sonidos y cerrar los toasts abiertos.
+    avisoIntervalsRef.current.forEach((iv) => clearInterval(iv));
+    avisoIntervalsRef.current.clear();
+    toast.dismiss();
+  }, []);
 
   const value: NotificationsContextValue = {
     notifications,
