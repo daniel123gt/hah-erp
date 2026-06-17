@@ -55,7 +55,7 @@ interface Appointment {
   date: string;
   time: string;
   duration: number;
-  type: "consulta" | "examen" | "emergencia" | "seguimiento" | "procedimiento";
+  type: "consulta" | "examen" | "emergencia" | "seguimiento" | "procedimiento" | "rx" | "ecografia";
   status: "scheduled" | "confirmed" | "completed" | "cancelled" | "no-show";
   notes?: string;
   location: string;
@@ -68,6 +68,21 @@ interface Appointment {
   payment_method?: string | null;
   numero_operacion?: string | null;
 }
+
+/** Opciones de "Tipo de Cita" según la variante. */
+const MEDICINA_TYPE_OPTIONS = [
+  { value: "consulta", label: "Consulta" },
+  { value: "examen", label: "Examen" },
+  { value: "emergencia", label: "Emergencia" },
+  { value: "seguimiento", label: "Seguimiento" },
+];
+const RX_ECOGRAFIA_TYPE_OPTIONS = [
+  { value: "rx", label: "RX" },
+  { value: "ecografia", label: "Ecografía" },
+  { value: "consulta", label: "Consulta" },
+  { value: "examen", label: "Examen" },
+  { value: "seguimiento", label: "Seguimiento" },
+];
 
 interface AddAppointmentModalProps {
   onAppointmentAdded: (appointment: Appointment) => void | Promise<void>;
@@ -107,7 +122,7 @@ export function AddAppointmentModal({
     date: "",
     time: "",
     duration: 30,
-    type: "consulta" as "consulta" | "examen" | "emergencia" | "seguimiento" | "procedimiento",
+    type: "consulta" as "consulta" | "examen" | "emergencia" | "seguimiento" | "procedimiento" | "rx" | "ecografia",
     status: "scheduled" as Appointment["status"],
     notes: "",
     location: "",
@@ -174,6 +189,14 @@ export function AddAppointmentModal({
       )
       .catch(() => setProcedureCatalog([]))
       .finally(() => setLoadingCatalog(false));
+  }, [isOpen, variant]);
+
+  // En RX/Ecografías el tipo por defecto es "RX" (no "Consulta").
+  useEffect(() => {
+    if (!isOpen || variant !== "rx_ecografias") return;
+    setFormData((prev) =>
+      prev.type === "rx" || prev.type === "ecografia" ? prev : { ...prev, type: "rx" }
+    );
   }, [isOpen, variant]);
 
   const handleInputChange = (field: string, value: string | number) => {
@@ -324,6 +347,10 @@ export function AddAppointmentModal({
         return <Badge className="bg-red-100 text-red-800">Emergencia</Badge>;
       case "seguimiento":
         return <Badge className="bg-green-100 text-green-800">Seguimiento</Badge>;
+      case "rx":
+        return <Badge className="bg-cyan-100 text-cyan-800">RX</Badge>;
+      case "ecografia":
+        return <Badge className="bg-indigo-100 text-indigo-800">Ecografía</Badge>;
       default:
         return <Badge>{type}</Badge>;
     }
@@ -527,10 +554,9 @@ export function AddAppointmentModal({
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
                         required
                       >
-                        <option value="consulta">Consulta</option>
-                        <option value="examen">Examen</option>
-                        <option value="emergencia">Emergencia</option>
-                        <option value="seguimiento">Seguimiento</option>
+                        {(variant === "rx_ecografias" ? RX_ECOGRAFIA_TYPE_OPTIONS : MEDICINA_TYPE_OPTIONS).map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
                       </select>
                     )}
                   </div>
