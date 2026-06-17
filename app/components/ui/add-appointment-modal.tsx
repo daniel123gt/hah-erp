@@ -390,6 +390,7 @@ export function AddAppointmentModal({
                   Paciente *
                 </label>
                 <Combobox
+                  uppercase
                   options={patients.map((p) => ({ value: p.id, label: p.name }))}
                   value={formData.patientId}
                   onValueChange={handlePatientChange}
@@ -664,6 +665,7 @@ export function AddAppointmentModal({
                   {professionalLabel} *
                 </label>
                 <Combobox
+                  uppercase
                   options={professionals.map((p) => ({ value: p.name, label: p.name }))}
                   value={formData.doctorName}
                   onValueChange={handleDoctorChange}

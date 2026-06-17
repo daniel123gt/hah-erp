@@ -364,7 +364,7 @@ export default function ContratosPage() {
                       </TableCell>
                       <TableCell>
                         <div>
-                          <p className="font-medium">{contract.patient?.name}</p>
+                          <p className="font-medium uppercase">{contract.patient?.name}</p>
                           <p className="text-sm text-gray-500">{contract.patient?.emergency_contact_name}</p>
                         </div>
                       </TableCell>

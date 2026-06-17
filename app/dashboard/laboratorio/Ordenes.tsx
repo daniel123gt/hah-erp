@@ -287,7 +287,7 @@ export default function OrdenesLaboratorio() {
                               {getLabEstadoLabel(order.status)}
                             </Badge>
                           </TableCell>
-                          <TableCell className="font-medium">
+                          <TableCell className="font-medium uppercase">
                             {patient?.name || 'Paciente no encontrado'}
                           </TableCell>
                           <TableCell>

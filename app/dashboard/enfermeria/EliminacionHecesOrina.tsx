@@ -291,7 +291,7 @@ export default function EliminacionHecesOrina() {
           ) : (
             <div className="flex items-center justify-between bg-green-50 p-4 rounded-lg border border-green-200">
               <div>
-                <p className="font-semibold text-gray-900">Paciente seleccionado: {form.patient_name}</p>
+                <p className="font-semibold text-gray-900 uppercase">Paciente seleccionado: {form.patient_name}</p>
                 <p className="text-sm text-gray-600">{selectedPatient.dni || selectedPatient.email || selectedPatient.phone || 'Sin contacto'}</p>
               </div>
               <Button variant="outline" onClick={() => {

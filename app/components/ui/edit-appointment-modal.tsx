@@ -301,6 +301,7 @@ export function EditAppointmentModal({
                   Paciente *
                 </label>
                 <Combobox
+                  uppercase
                   options={patients.map((p) => ({ value: p.id, label: p.name }))}
                   value={selectedPatientId}
                   onValueChange={handlePatientChange}
@@ -568,6 +569,7 @@ export function EditAppointmentModal({
                       ? [{ value: formData.doctorName, label: formData.doctorName }, ...professionals.map((p) => ({ value: p.name, label: p.name }))]
                       : professionals.map((p) => ({ value: p.name, label: p.name }))
                   }
+                  uppercase
                   value={formData.doctorName}
                   onValueChange={handleDoctorChange}
                   placeholder={loadingProfessionals ? "Cargando..." : `Seleccionar ${professionalLabel.toLowerCase()}`}

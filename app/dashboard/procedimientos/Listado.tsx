@@ -219,7 +219,7 @@ export default function ListadoProcedimientos() {
                           {estadoPago}
                         </Badge>
                       </TableCell>
-                      <TableCell>{displayName}</TableCell>
+                      <TableCell className="uppercase">{displayName}</TableCell>
                       <TableCell>{procName}</TableCell>
                       <TableCell>{displayDistrict}</TableCell>
                       <TableCell className="text-right">{ing.toFixed(2)}</TableCell>

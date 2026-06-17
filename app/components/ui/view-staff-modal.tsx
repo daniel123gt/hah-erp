@@ -131,7 +131,7 @@ export function ViewStaffModal({ staff }: ViewStaffModalProps) {
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">{staff.name}</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 uppercase">{staff.name}</h2>
                   <p className="text-gray-600">ID: {staff.id}</p>
                   <p className="text-gray-600">{staff.position}</p>
                   <div className="mt-2">

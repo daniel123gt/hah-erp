@@ -232,6 +232,7 @@ export function AddHomeCarePatientModal({ onAdded }: AddHomeCarePatientModalProp
                 <div className="flex gap-2">
                   <Combobox
                     className="flex-1"
+                    uppercase
                     options={availablePatients.map((p) => ({
                       value: p.id,
                       label: p.dni ? `${p.name} (${p.dni})` : p.name,

@@ -185,7 +185,7 @@ export function ViewEmergencyModal({ emergency }: ViewEmergencyModalProps) {
                     <AlertTriangle className={`w-6 h-6 ${isUrgent() ? 'text-red-600' : 'text-blue-600'}`} />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900">
+                    <h3 className="text-xl font-bold text-gray-900 uppercase">
                       {emergency.patientName}
                     </h3>
                     <p className="text-gray-600">ID: {emergency.id}</p>
@@ -214,7 +214,7 @@ export function ViewEmergencyModal({ emergency }: ViewEmergencyModalProps) {
             <CardContent>
               <div className="space-y-4">
                 <div>
-                  <h4 className="text-lg font-semibold text-gray-900">
+                  <h4 className="text-lg font-semibold text-gray-900 uppercase">
                     {emergency.patientName}
                   </h4>
                   <div className="space-y-2 mt-2">

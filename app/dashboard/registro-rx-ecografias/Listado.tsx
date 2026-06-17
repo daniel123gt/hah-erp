@@ -173,9 +173,9 @@ export default function ListadoRegistroRxEcografias() {
                           {estadoPago}
                         </Badge>
                       </TableCell>
-                      <TableCell>{r.patient_name ?? "—"}</TableCell>
+                      <TableCell className="uppercase">{r.patient_name ?? "—"}</TableCell>
                       <TableCell>{tipo}</TableCell>
-                      <TableCell>{r.doctor_name ?? "—"}</TableCell>
+                      <TableCell className="uppercase">{r.doctor_name ?? "—"}</TableCell>
                       <TableCell className="text-right tabular-nums">{ingreso.toFixed(2)}</TableCell>
                       <TableCell className="text-right tabular-nums">{costo.toFixed(2)}</TableCell>
                       <TableCell className="text-right tabular-nums text-green-600">{utilidad.toFixed(2)}</TableCell>

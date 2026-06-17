@@ -197,7 +197,7 @@ export default function ProcedimientosDashboard() {
                     onClick={() => navigate("/procedimientos/listado")}
                   >
                     <TableCell>{r.fecha}</TableCell>
-                    <TableCell>{r.patient_name ?? r.patient?.name ?? "—"}</TableCell>
+                    <TableCell className="uppercase">{r.patient_name ?? r.patient?.name ?? "—"}</TableCell>
                     <TableCell>{r.procedure_name ?? "—"}</TableCell>
                     <TableCell>{r.district ?? "—"}</TableCell>
                     <TableCell className="text-right font-medium">

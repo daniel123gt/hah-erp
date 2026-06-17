@@ -769,7 +769,7 @@ export default function ReportesPage() {
                           <TableCell className="max-w-[280px] truncate" title={row.detalle}>
                             {row.detalle}
                           </TableCell>
-                          <TableCell>{row.paciente}</TableCell>
+                          <TableCell className="uppercase">{row.paciente}</TableCell>
                           <TableCell className="text-right tabular-nums font-medium">
                             {row.monto.toFixed(2)}
                           </TableCell>

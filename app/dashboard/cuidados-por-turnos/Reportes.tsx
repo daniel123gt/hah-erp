@@ -451,13 +451,13 @@ export default function CuidadosPorTurnosReportes() {
                           {formatDateOnly(r.fecha, "es-PE")}
                         </TableCell>
                         <TableCell>{r.hora_inicio ?? "—"}</TableCell>
-                        <TableCell>{r.patient_name || "—"}</TableCell>
+                        <TableCell className="uppercase">{r.patient_name || "—"}</TableCell>
                         <TableCell>{r.distrito ?? "—"}</TableCell>
                         <TableCell>{r.turno ?? "—"}</TableCell>
                         <TableCell className="text-right tabular-nums font-medium">
                           {Number(r.monto_a_pagar ?? 0).toFixed(2)}
                         </TableCell>
-                        <TableCell>{r.enfermera ?? "—"}</TableCell>
+                        <TableCell className="uppercase">{r.enfermera ?? "—"}</TableCell>
                         <TableCell>{r.forma_de_pago ?? "—"}</TableCell>
                       </TableRow>
                     ))}
@@ -495,13 +495,13 @@ export default function CuidadosPorTurnosReportes() {
                           {formatDateOnly(s.fecha, "es-PE")}
                         </TableCell>
                         <TableCell>{s.hora_inicio ?? "—"}</TableCell>
-                        <TableCell>{getPatientName(s)}</TableCell>
+                        <TableCell className="uppercase">{getPatientName(s)}</TableCell>
                         <TableCell>{s.distrito ?? "—"}</TableCell>
                         <TableCell>{s.turno ?? "—"}</TableCell>
                         <TableCell className="text-right tabular-nums font-medium">
                           {Number(s.monto_a_pagar ?? 0).toFixed(2)}
                         </TableCell>
-                        <TableCell>{s.enfermera ?? "—"}</TableCell>
+                        <TableCell className="uppercase">{s.enfermera ?? "—"}</TableCell>
                         <TableCell>{s.forma_de_pago ?? "—"}</TableCell>
                       </TableRow>
                     ))}

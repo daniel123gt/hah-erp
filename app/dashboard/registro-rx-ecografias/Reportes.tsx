@@ -442,9 +442,9 @@ export default function ReportesRegistroRxEcografias() {
                         <TableCell className="whitespace-nowrap">
                           {formatDateOnly(r.fecha, "es-PE")}
                         </TableCell>
-                        <TableCell>{r.patient_name}</TableCell>
+                        <TableCell className="uppercase">{r.patient_name}</TableCell>
                         <TableCell>{r.appointment_type}</TableCell>
-                        <TableCell>{r.doctor_name ?? "—"}</TableCell>
+                        <TableCell className="uppercase">{r.doctor_name ?? "—"}</TableCell>
                         <TableCell className="text-right tabular-nums">
                           {r.ingreso.toFixed(2)}
                         </TableCell>

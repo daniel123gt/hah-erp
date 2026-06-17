@@ -257,7 +257,7 @@ export default function ValoracionInicial() {
           ) : (
             <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg">
               <div>
-                <p className="font-semibold">Paciente seleccionado: {patient.name}</p>
+                <p className="font-semibold uppercase">Paciente seleccionado: {patient.name}</p>
                 <p className="text-sm text-gray-600">{patient.email || patient.phone || 'Sin contacto'}</p>
               </div>
               <Button variant="outline" onClick={() => setPatient(null)}>

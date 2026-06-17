@@ -370,7 +370,7 @@ export default function FacturacionPage() {
                   </TableCell>
                   <TableCell>
                     <div>
-                      <p className="font-medium">{invoice.patientName}</p>
+                      <p className="font-medium uppercase">{invoice.patientName}</p>
                       <p className="text-sm text-gray-500">{invoice.patientEmail}</p>
                     </div>
                   </TableCell>

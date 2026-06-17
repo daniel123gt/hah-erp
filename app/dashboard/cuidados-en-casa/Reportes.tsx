@@ -471,7 +471,7 @@ export default function CuidadosEnCasaReportes() {
                         <TableCell className="whitespace-nowrap">
                           {r.fecha_pago ? formatDateOnly(r.fecha_pago, "es-PE") : "—"}
                         </TableCell>
-                        <TableCell>{r.patient_name || "—"}</TableCell>
+                        <TableCell className="uppercase">{r.patient_name || "—"}</TableCell>
                         <TableCell>{r.turno ?? "—"}</TableCell>
                         <TableCell className="whitespace-nowrap">{r.f_desde ?? "—"}</TableCell>
                         <TableCell className="whitespace-nowrap">{r.f_hasta ?? "—"}</TableCell>
@@ -513,7 +513,7 @@ export default function CuidadosEnCasaReportes() {
                         <TableCell className="whitespace-nowrap">
                           {p.fecha_pago ? formatDateOnly(p.fecha_pago, "es-PE") : "—"}
                         </TableCell>
-                        <TableCell>{getPatientName(p)}</TableCell>
+                        <TableCell className="uppercase">{getPatientName(p)}</TableCell>
                         <TableCell>{p.turno ?? "—"}</TableCell>
                         <TableCell className="whitespace-nowrap">{p.f_desde ?? "—"}</TableCell>
                         <TableCell className="whitespace-nowrap">{p.f_hasta ?? "—"}</TableCell>

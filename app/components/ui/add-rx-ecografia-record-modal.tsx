@@ -177,6 +177,7 @@ export function AddRxEcografiaRecordModal({ onCreated }: AddRxEcografiaRecordMod
                     <Label>Paciente</Label>
                     <div className="flex gap-2 mt-1">
                       <Combobox
+                        uppercase
                         options={patients.map((p) => ({ value: p.id, label: p.name }))}
                         value={form.patient_id ?? ""}
                         onValueChange={(value) =>
@@ -221,6 +222,7 @@ export function AddRxEcografiaRecordModal({ onCreated }: AddRxEcografiaRecordMod
                   <div>
                     <Label>Técnico / Médico</Label>
                     <Combobox
+                      uppercase
                       options={doctors.map((d) => ({ value: d.name, label: d.name }))}
                       value={form.doctor_name}
                       onValueChange={(value) => setForm((f) => ({ ...f, doctor_name: value }))}

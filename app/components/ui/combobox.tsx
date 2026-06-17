@@ -35,6 +35,8 @@ interface ComboboxProps {
   className?: string;
   /** Texto cuando no hay resultados al filtrar */
   emptySearchText?: string;
+  /** Muestra el valor y las opciones en MAYÚSCULAS (para nombres de pacientes/personal) */
+  uppercase?: boolean;
 }
 
 export function Combobox({
@@ -47,6 +49,7 @@ export function Combobox({
   id,
   className,
   emptySearchText = "Sin resultados.",
+  uppercase = false,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false);
 
@@ -81,7 +84,7 @@ export function Combobox({
             className
           )}
         >
-          <span className="truncate">
+          <span className={cn("truncate", uppercase && selectedLabel && "uppercase")}>
             {selectedLabel ?? placeholder}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -104,6 +107,7 @@ export function Combobox({
                   key={opt.value}
                   value={`${opt.label} ${normalizeSearchText(opt.label)}`}
                   onSelect={() => handleSelect(opt.value)}
+                  className={cn(uppercase && opt.value !== emptyOption?.value && "uppercase")}
                 >
                   <Check
                     className={cn(

@@ -210,7 +210,7 @@ export default function CuidadosEnCasaList() {
                     const aplicaDescuento = descuento > 0 && montoFinal < montoOriginal;
                     return (
                     <TableRow key={contract.id}>
-                      <TableCell className="font-medium">
+                      <TableCell className="font-medium uppercase">
                         {getPatientName(contract)}
                       </TableCell>
                       <TableCell>{contract.familiar_encargado ?? "-"}</TableCell>

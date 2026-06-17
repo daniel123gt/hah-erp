@@ -609,7 +609,7 @@ export default function OrdenDetalle() {
               <CardContent className="space-y-2">
                 <div>
                   <span className="text-sm text-gray-500">Nombre:</span>
-                  <p className="font-medium">{patient.name}</p>
+                  <p className="font-medium uppercase">{patient.name}</p>
                 </div>
                 {patient.email && (
                   <div>

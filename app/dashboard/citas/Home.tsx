@@ -280,8 +280,8 @@ export default function CitasHome() {
                 {todayCitas.map((c) => (
                   <TableRow key={c.id}>
                     <TableCell className="font-medium">{c.hora || "—"}</TableCell>
-                    <TableCell>{c.paciente}</TableCell>
-                    <TableCell>{c.profesional}</TableCell>
+                    <TableCell className="uppercase">{c.paciente}</TableCell>
+                    <TableCell className="uppercase">{c.profesional}</TableCell>
                     <TableCell>{c.tipo}</TableCell>
                     <TableCell>
                       <Badge variant="secondary" className={getEstadoBadgeClass(c.estado)}>

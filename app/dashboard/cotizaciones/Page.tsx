@@ -335,14 +335,14 @@ export default function CotizacionesPage() {
                   <TableCell className="font-medium">{quote.id}</TableCell>
                   <TableCell>
                     <div>
-                      <p className="font-medium">{quote.patientName}</p>
+                      <p className="font-medium uppercase">{quote.patientName}</p>
                       <p className="text-sm text-gray-500">{quote.patientEmail}</p>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center space-x-2">
                       <User className="w-4 h-4 text-gray-400" />
-                      <span>{quote.doctorName}</span>
+                      <span className="uppercase">{quote.doctorName}</span>
                     </div>
                   </TableCell>
                   <TableCell>

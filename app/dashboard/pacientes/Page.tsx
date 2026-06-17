@@ -510,7 +510,7 @@ export default function PacientesPage() {
                     patients.map((patient) => (
                       <TableRow key={patient.id}>
                         <TableCell className="w-[100px]">{getStatusBadge(patient.status)}</TableCell>
-                        <TableCell className="font-medium">{patient.name}</TableCell>
+                        <TableCell className="font-medium uppercase">{patient.name}</TableCell>
                         <TableCell>
                           <span className="text-sm font-mono">{patient.dni || '-'}</span>
                         </TableCell>

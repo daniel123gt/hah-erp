@@ -387,6 +387,7 @@ export function CareShiftModal({
           <div className="space-y-2">
             <Label>Paciente</Label>
             <Combobox
+              uppercase
               options={patientOptions}
               value={form.patient_id}
               onValueChange={(v) => setForm((f) => ({ ...f, patient_id: v }))}
@@ -624,6 +625,7 @@ export function CareShiftModal({
             <Label htmlFor="care-shift-enfermera">Enfermera</Label>
             <Combobox
               id="care-shift-enfermera"
+              uppercase
               options={nurseOptions}
               value={form.enfermera}
               onValueChange={(v) => setForm((f) => ({ ...f, enfermera: v }))}

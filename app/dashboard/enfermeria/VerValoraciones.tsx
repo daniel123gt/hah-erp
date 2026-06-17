@@ -140,14 +140,14 @@ export default function VerValoraciones() {
                         <TableCell>
                           {new Date(assessment.assessment_date).toLocaleDateString('es-ES')}
                         </TableCell>
-                        <TableCell className="font-medium">
+                        <TableCell className="font-medium uppercase">
                           {patient?.name || 'Paciente no encontrado'}
                         </TableCell>
-                        <TableCell>{assessment.nurse_name}</TableCell>
+                        <TableCell className="uppercase">{assessment.nurse_name}</TableCell>
                         <TableCell className="max-w-xs truncate">
                           {assessment.medical_diagnosis || '-'}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="uppercase">
                           {assessment.attending_physician || '-'}
                         </TableCell>
                         <TableCell className="sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10">

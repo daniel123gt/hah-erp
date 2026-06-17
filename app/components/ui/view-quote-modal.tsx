@@ -153,7 +153,7 @@ export function ViewQuoteModal({ quote }: ViewQuoteModalProps) {
             <CardContent>
               <div className="space-y-4">
                 <div>
-                  <h4 className="text-lg font-semibold text-gray-900">
+                  <h4 className="text-lg font-semibold text-gray-900 uppercase">
                     {quote.patientName}
                   </h4>
                   <div className="space-y-2 mt-2">
@@ -185,7 +185,7 @@ export function ViewQuoteModal({ quote }: ViewQuoteModalProps) {
                   <Stethoscope className="w-6 h-6 text-green-600" />
                 </div>
                 <div>
-                  <h4 className="text-lg font-semibold text-gray-900">
+                  <h4 className="text-lg font-semibold text-gray-900 uppercase">
                     {quote.doctorName}
                   </h4>
                   <p className="text-gray-600">Médico Responsable</p>

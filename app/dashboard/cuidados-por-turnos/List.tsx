@@ -296,7 +296,7 @@ export default function CuidadosPorTurnosList() {
                           {estado}
                         </Badge>
                       </TableCell>
-                      <TableCell className="font-medium">{getPatientName(shift)}</TableCell>
+                      <TableCell className="font-medium uppercase">{getPatientName(shift)}</TableCell>
                       <TableCell>{shift.hora_inicio ?? "—"}</TableCell>
                       <TableCell>{shift.familiar_responsable ?? "—"}</TableCell>
                       <TableCell>{shift.distrito ?? "—"}</TableCell>
@@ -308,7 +308,7 @@ export default function CuidadosPorTurnosList() {
                       </TableCell>
                       <TableCell>{shift.forma_de_pago ?? "—"}</TableCell>
                       <TableCell className="font-mono text-xs">{shift.numero_operacion ?? "—"}</TableCell>
-                      <TableCell>{shift.enfermera ?? "—"}</TableCell>
+                      <TableCell className="uppercase">{shift.enfermera ?? "—"}</TableCell>
                       <TableCell className="sticky right-0 bg-background z-10">
                         <div className="flex items-center gap-1 justify-end">
                           <Button

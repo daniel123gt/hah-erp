@@ -197,7 +197,7 @@ export function ViewInvoiceModal({ invoice }: ViewInvoiceModalProps) {
             <CardContent>
               <div className="space-y-4">
                 <div>
-                  <h4 className="text-lg font-semibold text-gray-900">
+                  <h4 className="text-lg font-semibold text-gray-900 uppercase">
                     {invoice.patientName}
                   </h4>
                   <div className="space-y-2 mt-2">

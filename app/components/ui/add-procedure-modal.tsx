@@ -158,6 +158,7 @@ export function AddProcedureModal({ onCreated }: AddProcedureModalProps) {
                   <label className="block text-sm font-medium mb-1">Paciente</label>
                   <div className="mb-2">
                     <Combobox
+                      uppercase
                       options={patients.map((p) => ({ value: p.id, label: p.name }))}
                       value={form.patient_id ?? ""}
                       onValueChange={(v) => {

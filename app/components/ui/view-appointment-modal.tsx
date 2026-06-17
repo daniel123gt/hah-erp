@@ -163,7 +163,7 @@ export function ViewAppointmentModal({ appointment, professionalLabel = "Médico
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
-                  <h4 className="text-lg font-semibold text-gray-900">
+                  <h4 className="text-lg font-semibold text-gray-900 uppercase">
                     {appointment.patientName}
                   </h4>
                   <div className="space-y-2 mt-2">
@@ -198,7 +198,7 @@ export function ViewAppointmentModal({ appointment, professionalLabel = "Médico
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h4 className="text-lg font-semibold text-gray-900">
+                  <h4 className="text-lg font-semibold text-gray-900 uppercase">
                     {appointment.doctorName}
                   </h4>
                   <p className="text-gray-600">{appointment.doctorSpecialty}</p>

@@ -507,7 +507,7 @@ export default function CuidadosEnCasaDetalle() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 text-sm">
             <div>
               <span className="text-gray-500 block">PACIENTE</span>
-              <span className="font-medium">{getPatientName(contract)}</span>
+              <span className="font-medium uppercase">{getPatientName(contract)}</span>
             </div>
             <div>
               <span className="text-gray-500 block">FAMILIAR ENCARGADO</span>

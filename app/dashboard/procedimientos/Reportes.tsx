@@ -560,7 +560,7 @@ export default function ProcedimientosReportes() {
                           <TableCell className="whitespace-nowrap">
                             {formatDateOnly(r.fecha, "es-PE")}
                           </TableCell>
-                          <TableCell>{r.patient_name || "-"}</TableCell>
+                          <TableCell className="uppercase">{r.patient_name || "-"}</TableCell>
                           <TableCell>{r.procedure_name || "-"}</TableCell>
                           <TableCell>{r.district ?? "-"}</TableCell>
                           <TableCell className="text-right tabular-nums">{r.ingreso.toFixed(2)}</TableCell>
@@ -616,7 +616,7 @@ export default function ProcedimientosReportes() {
                             <TableCell className="whitespace-nowrap">
                               {formatDateOnly(r.fecha, "es-PE")}
                             </TableCell>
-                            <TableCell>{displayName}</TableCell>
+                            <TableCell className="uppercase">{displayName}</TableCell>
                             <TableCell>{procName}</TableCell>
                             <TableCell>{r.district ?? "-"}</TableCell>
                             <TableCell className="text-right tabular-nums">{ing.toFixed(2)}</TableCell>

@@ -160,7 +160,7 @@ export function ViewLabTestModal({ labTest }: ViewLabTestModalProps) {
             <CardContent>
               <div className="space-y-4">
                 <div>
-                  <h4 className="text-lg font-semibold text-gray-900">
+                  <h4 className="text-lg font-semibold text-gray-900 uppercase">
                     {labTest.patientName}
                   </h4>
                   <div className="space-y-2 mt-2">
@@ -216,7 +216,7 @@ export function ViewLabTestModal({ labTest }: ViewLabTestModalProps) {
                     </label>
                     <div className="flex items-center space-x-2">
                       <Stethoscope className="w-4 h-4 text-gray-400" />
-                      <span className="font-medium">{labTest.requestedBy}</span>
+                      <span className="font-medium uppercase">{labTest.requestedBy}</span>
                     </div>
                   </div>
                 </div>

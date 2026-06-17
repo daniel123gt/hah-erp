@@ -637,6 +637,7 @@ export function CreateOrderModal({ selectedExams, onOrderCreated }: CreateOrderM
                     <Label htmlFor="medicoSolicitante">Médico Solicitante</Label>
                     <Combobox
                       id="medicoSolicitante"
+                      uppercase
                       options={doctors.map((doc) => ({ value: doc.name, label: doc.name }))}
                       value={formData.medicoSolicitante || "__none__"}
                       onValueChange={(value) =>

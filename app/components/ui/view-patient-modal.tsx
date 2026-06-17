@@ -95,7 +95,7 @@ export function ViewPatientModal({ patient }: ViewPatientModalProps) {
                   {patient.name.split(' ').map(n => n[0]).join('')}
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">{patient.name}</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 uppercase">{patient.name}</h2>
                   <p className="text-gray-600">ID: {patient.id}</p>
                   <div className="mt-2">
                     {getStatusBadge(patient.status)}

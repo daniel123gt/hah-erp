@@ -382,8 +382,8 @@ export default function CitasMedicinaPage() {
                       <p className="text-sm text-gray-500">{appointment.duration} min</p>
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium">{appointment.patientName}</p>
-                      <p className="text-sm text-gray-500">
+                      <p className="font-medium uppercase">{appointment.patientName}</p>
+                      <p className="text-sm text-gray-500 uppercase">
                         {appointment.doctorName} – {appointment.doctorSpecialty}
                       </p>
                       <p className="text-sm text-gray-500">{appointment.location}</p>
@@ -497,7 +497,7 @@ export default function CitasMedicinaPage() {
                     </TableCell>
                     <TableCell>
                       <div>
-                        <p className="font-medium">{appointment.patientName}</p>
+                        <p className="font-medium uppercase">{appointment.patientName}</p>
                         <div className="flex items-center space-x-2 text-sm text-gray-500">
                           <Phone className="w-3 h-3" />
                           <span>{appointment.patientPhone}</span>
@@ -515,7 +515,7 @@ export default function CitasMedicinaPage() {
                     </TableCell>
                     <TableCell>
                       <div>
-                        <p className="font-medium">{appointment.doctorName}</p>
+                        <p className="font-medium uppercase">{appointment.doctorName}</p>
                         <p className="text-sm text-gray-500">{appointment.doctorSpecialty}</p>
                       </div>
                     </TableCell>

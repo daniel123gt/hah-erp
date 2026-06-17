@@ -187,7 +187,7 @@ export default function SignosVitales() {
           ) : (
             <div className="flex items-center justify-between bg-green-50 p-4 rounded-lg border border-green-200">
               <div>
-                <p className="font-semibold text-gray-900">
+                <p className="font-semibold text-gray-900 uppercase">
                   Paciente seleccionado: {selectedPatient.name || [selectedPatient.nombre, selectedPatient.apellido_paterno, selectedPatient.apellido_materno].filter(Boolean).join(' ').trim()}
                 </p>
                 <p className="text-sm text-gray-600">{selectedPatient.dni || selectedPatient.email || selectedPatient.phone || 'Sin contacto'}</p>

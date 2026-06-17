@@ -372,7 +372,7 @@ export default function EmergenciasPage() {
                   <TableCell className="font-medium">{emergency.id}</TableCell>
                   <TableCell>
                     <div>
-                      <p className="font-medium">{emergency.patientName}</p>
+                      <p className="font-medium uppercase">{emergency.patientName}</p>
                       <p className="text-sm text-gray-500">{emergency.patientAge} años</p>
                       <div className="flex items-center space-x-2 text-sm text-gray-500">
                         <Phone className="w-3 h-3" />
