@@ -7,6 +7,7 @@ export const OFFICIAL_POSITIONS = [
   "Supervisor",
   "Secretaria",
   "Medico General",
+  "Radiólogo",
   "Administrador",
   "Chofer",
 ] as const;
