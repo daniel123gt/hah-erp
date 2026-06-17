@@ -534,3 +534,109 @@ export async function getCalendarEvents(fromDate: string, toDate: string): Promi
 
   return events.sort((a, b) => a.start.getTime() - b.start.getTime());
 }
+
+export type AgendaKind = "medicina" | "procedimientos" | "rx_ecografias" | "laboratorio" | "turno";
+
+export interface AgendaItem {
+  id: string;
+  kind: AgendaKind;
+  time: string;
+  patientName: string;
+  /** Tipo de cita / procedimiento / "Laboratorio" / turno */
+  detail: string;
+  address: string;
+  district: string;
+  /** Mejor texto para ubicar en el mapa (dirección o, si no hay, distrito). "" si no hay. */
+  mapQuery: string;
+}
+
+/**
+ * Agenda del día (para la card Home con mapa): citas (medicina/procedimientos/
+ * RX) + órdenes de laboratorio + turnos de cuidado, con su mejor ubicación.
+ */
+export async function getDayAgenda(dateYMD: string): Promise<AgendaItem[]> {
+  const [med, proc, rx, labOrders, shifts] = await Promise.all([
+    appointmentsService.list("medicina").catch(() => []),
+    appointmentsService.list("procedimientos").catch(() => []),
+    appointmentsService.list("rx_ecografias").catch(() => []),
+    labOrderService.getOrdersForSampleDate(dateYMD).catch(() => []),
+    shiftCareService.getShifts({ fecha_desde: dateYMD, fecha_hasta: dateYMD }).catch(() => []),
+  ]);
+
+  const items: AgendaItem[] = [];
+
+  const pushCitas = (list: typeof med, kind: AgendaKind) => {
+    list
+      .filter((c) => c.date === dateYMD && !isAppointmentCancelado(c.status))
+      .forEach((c) => {
+        const address = c.location ?? "";
+        const district = c.district ?? "";
+        items.push({
+          id: `${kind}-${c.id}`,
+          kind,
+          time: c.time ?? "",
+          patientName: c.patientName ?? "Paciente",
+          detail:
+            kind === "procedimientos"
+              ? c.procedure_name || c.type || "Procedimiento"
+              : c.type || "Cita",
+          address,
+          district,
+          mapQuery: address || district || "",
+        });
+      });
+  };
+  pushCitas(med, "medicina");
+  pushCitas(proc, "procedimientos");
+  pushCitas(rx, "rx_ecografias");
+
+  // Laboratorio: nombre y dirección vienen del paciente.
+  const labActive = labOrders.filter((o) => !isLabCancelado(o.status));
+  const labPatientIds = [...new Set(labActive.map((o) => o.patient_id))];
+  const patientInfo: Record<string, { name: string; address: string; district: string }> = {};
+  await Promise.all(
+    labPatientIds.map(async (pid) => {
+      const p = await patientsService.getPatientById(pid).catch(() => null);
+      if (p) patientInfo[pid] = { name: p.name, address: p.address ?? "", district: p.district ?? "" };
+    })
+  );
+  labActive.forEach((o) => {
+    const p = patientInfo[o.patient_id];
+    const sd = o.sample_date ?? o.order_date;
+    const time = sd && String(sd).includes("T") ? String(sd).slice(11, 16) : "";
+    const address = p?.address ?? "";
+    const district = p?.district ?? "";
+    items.push({
+      id: `laboratorio-${o.id}`,
+      kind: "laboratorio",
+      time,
+      patientName: p?.name ?? "Paciente",
+      detail: `Laboratorio · ${o.items?.length ?? 0} examen(es)`,
+      address,
+      district,
+      mapQuery: address || district || "",
+    });
+  });
+
+  // Turnos (solo distrito disponible como ubicación).
+  shifts.forEach((s) => {
+    if (s.estado === "Cancelado") return;
+    const pt = s.patient;
+    const patientName = Array.isArray(pt)
+      ? pt[0]?.name ?? "Turno"
+      : pt?.name ?? s.familiar_responsable ?? "Turno";
+    const district = s.distrito ?? "";
+    items.push({
+      id: `turno-${s.id}`,
+      kind: "turno",
+      time: s.hora_inicio ?? "",
+      patientName,
+      detail: `Turno${s.turno ? ` · ${s.turno}` : ""}`,
+      address: "",
+      district,
+      mapQuery: district || "",
+    });
+  });
+
+  return items.sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+}

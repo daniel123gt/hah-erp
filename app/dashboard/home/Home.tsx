@@ -45,6 +45,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import HomeCalendar from "~/dashboard/home/HomeCalendar";
+import HomeAgendaMap from "~/dashboard/home/HomeAgendaMap";
 
 const ACTIVITY_ICON = { procedimiento: Stethoscope };
 const ACTIVITY_COLOR = { procedimiento: "text-purple-600" };
@@ -576,6 +577,9 @@ ${data.citasDelDia.map((cita: any) =>
           </CardContent>
         </Card>
       )}
+
+      {/* Agenda del día + mapa de ubicación (debajo de la gráfica, encima del calendario) */}
+      <HomeAgendaMap />
 
       {/* Contenido Principal */}
       {!loading && (
