@@ -41,6 +41,15 @@ function formatSampleTimeLocal(sampleDate: string | null | undefined): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
+/** Texto del tiempo restante para el aviso (ej. "en 10 minutos", "en 1 hora"). */
+function relativeWhen(ms: number): string {
+  const mins = Math.round(ms / 60000);
+  if (mins <= 0) return "ahora";
+  if (mins === 1) return "en 1 minuto";
+  if (mins < 60) return `en ${mins} minutos`;
+  return "en 1 hora";
+}
+
 export function ReminderChecker() {
   const { addNotification, markReminderSent, wasReminderSent } = useNotifications();
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -76,7 +85,7 @@ export function ReminderChecker() {
           if (cat === "procedimientos" && apt.procedure_name) lines.push(apt.procedure_name);
           if (apt.doctorName) lines.push(`${profLabel}: ${apt.doctorName}`);
           if (place) lines.push(`📍 ${place}`);
-          addNotification("recordatorio_cita", "Recordatorio: cita en 1 hora", lines.join("\n"), {
+          addNotification("recordatorio_cita", `Recordatorio: cita ${relativeWhen(ts - now)}`, lines.join("\n"), {
             reminderKey: key,
             category: cat,
           });
@@ -96,7 +105,7 @@ export function ReminderChecker() {
         const timePart = formatSampleTimeLocal(sampleStr);
         addNotification(
           "recordatorio_laboratorio",
-          "Recordatorio: toma de muestra en 1 hora",
+          `Recordatorio: toma de muestra ${relativeWhen(ts - now)}`,
           `Orden con ${order.items?.length ?? 0} examen(es) — ${timePart}`,
           { reminderKey: key }
         );

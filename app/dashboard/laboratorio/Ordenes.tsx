@@ -277,9 +277,20 @@ export default function OrdenesLaboratorio() {
                           <TableCell className="whitespace-nowrap">
                             {(() => {
                               const sd = order.sample_date ?? order.order_date;
-                              const dateStr = formatDateOnly(sd);
-                              const timeStr = sd && String(sd).includes("T") ? String(sd).slice(11, 16) : null;
-                              return timeStr ? `${dateStr} ${timeStr}` : dateStr;
+                              if (!sd) return "—";
+                              // Con hora: convertir a hora local de Perú (igual que el detalle),
+                              // no cortar el string ISO (que está en UTC).
+                              if (String(sd).includes("T")) {
+                                const dt = new Date(sd);
+                                if (!isNaN(dt.getTime())) {
+                                  const dd = String(dt.getDate()).padStart(2, "0");
+                                  const mm = String(dt.getMonth() + 1).padStart(2, "0");
+                                  const hh = String(dt.getHours()).padStart(2, "0");
+                                  const mi = String(dt.getMinutes()).padStart(2, "0");
+                                  return `${dd}/${mm}/${dt.getFullYear()} ${hh}:${mi}`;
+                                }
+                              }
+                              return formatDateOnly(sd);
                             })()}
                           </TableCell>
                           <TableCell>
