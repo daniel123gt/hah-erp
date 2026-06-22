@@ -177,11 +177,13 @@ const GESTOR_ALLOWED_TITLES: string[] = [
   "Enfermería",
   "Laboratorio",
   "Citas",
+  "Cuidados por turnos",
 ];
 
 /** Subrutas que el gestor no puede ver (por sección). */
 const GESTOR_HIDDEN_CHILDREN: Record<string, string[]> = {
   Laboratorio: ["/laboratorio/reportes"],
+  "Cuidados por turnos": ["/cuidados-por-turnos/reportes"],
 };
 
 function filterItemsByRole(items: NavItem[], role: AppRole): NavItem[] {

@@ -49,6 +49,8 @@ export interface AppNotification {
   reminderKey?: string;
   /** Categoría (para el ícono): medicina, procedimientos, rx_ecografias, laboratorio */
   category?: NotifCategory;
+  /** Marcada como leída (no se borra, queda en el historial). */
+  read?: boolean;
 }
 
 type CreatedByMeType = "appointment" | "lab_order";
@@ -64,7 +66,8 @@ interface NotificationsContextValue {
     options?: { showNative?: boolean; reminderKey?: string; category?: NotifCategory }
   ) => void;
   requestPermission: () => Promise<boolean>;
-  clearNotifications: () => void;
+  /** Marca como leídas (sin borrar) las notificaciones del tipo indicado. */
+  markAllRead: (scope: "regular" | "avisos") => void;
   markReminderSent: (key: string) => boolean;
   wasReminderSent: (key: string) => boolean;
   /** Para no mostrar por Realtime la acción que acabo de hacer en esta pestaña */
@@ -222,6 +225,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         createdAt: Date.now(),
         reminderKey: options?.reminderKey,
         category,
+        read: false,
       };
       setNotifications((prev) => [item, ...prev].slice(0, MAX_NOTIFICATIONS));
 
@@ -291,12 +295,17 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     [permission, stopAvisoSound]
   );
 
-  const clearNotifications = useCallback(() => {
-    setNotifications([]);
-    // Detener todos los re-sonidos y cerrar los toasts abiertos.
-    avisoIntervalsRef.current.forEach((iv) => clearInterval(iv));
-    avisoIntervalsRef.current.clear();
-    toast.dismiss();
+  const markAllRead = useCallback((scope: "regular" | "avisos") => {
+    // Marca como leídas (NO borra) solo las del tipo indicado.
+    setNotifications((prev) =>
+      prev.map((n) => (isReminderType(n.type) === (scope === "avisos") ? { ...n, read: true } : n))
+    );
+    // Al marcar leídos los avisos, además se detiene su re-sonido y se cierran sus toasts.
+    if (scope === "avisos") {
+      avisoIntervalsRef.current.forEach((iv) => clearInterval(iv));
+      avisoIntervalsRef.current.clear();
+      toast.dismiss();
+    }
   }, []);
 
   const value: NotificationsContextValue = {
@@ -304,7 +313,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     permission,
     addNotification,
     requestPermission,
-    clearNotifications,
+    markAllRead,
     markReminderSent,
     wasReminderSent,
     markCreatedByMe,

@@ -12,9 +12,9 @@ import Loading from "~/components/root/Loading/Loading";
 import { getPrimaryColor } from "~/lib/erpBranding";
 
 /** Rutas que el rol gestor puede acceder (prefijos o ruta exacta). /reportes (Reportes general) solo admin. */
-const GESTOR_ALLOWED_PATHS = ["/", "/pacientes", "/enfermeria", "/laboratorio", "/citas"];
+const GESTOR_ALLOWED_PATHS = ["/", "/pacientes", "/enfermeria", "/laboratorio", "/citas", "/cuidados-por-turnos"];
 /** Prefijos prohibidos para gestor (aunque esté dentro de una ruta permitida). */
-const GESTOR_FORBIDDEN_PATHS: string[] = [];
+const GESTOR_FORBIDDEN_PATHS: string[] = ["/cuidados-por-turnos/reportes"];
 
 function gestorCanAccessPath(pathname: string): boolean {
   if (GESTOR_FORBIDDEN_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/")))

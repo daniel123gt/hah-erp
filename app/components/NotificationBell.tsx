@@ -53,7 +53,11 @@ function NotificationList({ items, accent }: { items: AppNotification[]; accent?
       {items.map((n) => (
         <li
           key={n.id}
-          className={cn("px-3 py-2.5 hover:bg-gray-50", accent && "border-l-4 border-orange-400 bg-orange-50/40")}
+          className={cn(
+            "px-3 py-2.5 hover:bg-gray-50",
+            accent && !n.read && "border-l-4 border-orange-400 bg-orange-50/40",
+            n.read && "opacity-55"
+          )}
         >
           <div className="flex gap-2">
             {accent ? <AlertTriangle className="w-4 h-4 text-orange-500 shrink-0" /> : getIcon(n.type)}
@@ -62,6 +66,7 @@ function NotificationList({ items, accent }: { items: AppNotification[]; accent?
               <p className="text-xs text-gray-600 line-clamp-2">{n.body}</p>
               <p className="text-xs text-gray-400 mt-0.5">{formatTime(n.createdAt)}</p>
             </div>
+            {!n.read && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary-blue" aria-label="No leída" />}
           </div>
         </li>
       ))}
@@ -73,12 +78,14 @@ function NotificationList({ items, accent }: { items: AppNotification[]; accent?
 const SHOW_TEST_ALERT_BUTTON = false;
 
 export function NotificationBell() {
-  const { notifications, permission, requestPermission, clearNotifications, addNotification } = useNotifications();
+  const { notifications, permission, requestPermission, markAllRead, addNotification } = useNotifications();
   const [openBell, setOpenBell] = useState(false);
   const [openAlert, setOpenAlert] = useState(false);
 
   const reminders = notifications.filter((n) => isReminderType(n.type));
   const regular = notifications.filter((n) => !isReminderType(n.type));
+  const unreadRegular = regular.filter((n) => !n.read).length;
+  const unreadAvisos = reminders.filter((n) => !n.read).length;
 
   const handleRequestPermission = async () => {
     const granted = await requestPermission();
@@ -110,9 +117,9 @@ export function NotificationBell() {
         <PopoverTrigger asChild>
           <Button variant="ghost" size="icon" className="relative h-11 w-11 text-primary-blue hover:bg-primary-blue/10">
             <Bell className="w-7 h-7" />
-            {regular.length > 0 && (
+            {unreadRegular > 0 && (
               <span className="absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary-blue text-[10px] font-medium text-white">
-                {regular.length > 99 ? "99+" : regular.length}
+                {unreadRegular > 99 ? "99+" : unreadRegular}
               </span>
             )}
           </Button>
@@ -120,9 +127,9 @@ export function NotificationBell() {
         <PopoverContent align="end" className="w-80 p-0">
           <div className="border-b px-3 py-2 flex items-center justify-between">
             <h3 className="font-semibold text-gray-900">Notificaciones</h3>
-            {notifications.length > 0 && (
-              <Button variant="ghost" size="sm" className="text-xs" onClick={clearNotifications}>
-                Limpiar
+            {unreadRegular > 0 && (
+              <Button variant="ghost" size="sm" className="text-xs" onClick={() => markAllRead("regular")}>
+                Marcar leídas
               </Button>
             )}
           </div>
@@ -150,14 +157,14 @@ export function NotificationBell() {
             size="icon"
             className={cn(
               "relative h-11 w-11",
-              reminders.length > 0 ? "text-orange-500 hover:bg-orange-100" : "text-gray-400 hover:bg-gray-100"
+              unreadAvisos > 0 ? "text-orange-500 hover:bg-orange-100" : "text-gray-400 hover:bg-gray-100"
             )}
             aria-label="Avisos"
           >
-            <AlertTriangle className={cn("w-7 h-7", reminders.length > 0 && "animate-pulse")} />
-            {reminders.length > 0 && (
+            <AlertTriangle className={cn("w-7 h-7", unreadAvisos > 0 && "animate-pulse")} />
+            {unreadAvisos > 0 && (
               <span className="absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-[10px] font-bold text-white">
-                {reminders.length > 99 ? "99+" : reminders.length}
+                {unreadAvisos > 99 ? "99+" : unreadAvisos}
               </span>
             )}
           </Button>
@@ -168,9 +175,9 @@ export function NotificationBell() {
               <AlertTriangle className="w-4 h-4 text-orange-500" />
               Avisos
             </h3>
-            {reminders.length > 0 && (
-              <Button variant="ghost" size="sm" className="text-xs" onClick={clearNotifications}>
-                Limpiar
+            {unreadAvisos > 0 && (
+              <Button variant="ghost" size="sm" className="text-xs" onClick={() => markAllRead("avisos")}>
+                Marcar leídas
               </Button>
             )}
           </div>
