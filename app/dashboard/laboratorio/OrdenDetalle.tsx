@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { toast } from "sonner";
 import { ArrowLeft, Loader2, FileText, User, Calendar, Edit, Plus, X, Search, Trash2, KeyRound, Copy } from "lucide-react";
 import { formatDateOnly } from "~/lib/utils";
+import { formatTimeOnlyLocal } from "~/lib/dateUtils";
 import { getLabEstadoBadgeClassName, getLabEstadoLabel } from "~/lib/estadoDisplay";
 import labOrderService, {
   type LabExamOrder,
@@ -172,8 +173,13 @@ export default function OrdenDetalle() {
     const timePart = newTime.trim() || "08:00";
     const value = new Date(`${datePart}T${timePart}:00`).toISOString();
     const cur = order.sample_date ?? order.order_date;
-    const curDate = cur ? String(cur).slice(0, 10) : "";
-    const curTime = cur && String(cur).includes("T") ? String(cur).slice(11, 16) : "08:00";
+    const curDt = cur ? new Date(cur) : null;
+    // En local (igual que los inputs), para que el guardado "sin cambios" no
+    // dispare por culpa de comparar contra la hora en UTC.
+    const curDate = curDt && !isNaN(curDt.getTime())
+      ? `${curDt.getFullYear()}-${String(curDt.getMonth() + 1).padStart(2, "0")}-${String(curDt.getDate()).padStart(2, "0")}`
+      : "";
+    const curTime = formatTimeOnlyLocal(cur) || "08:00";
     if (datePart === curDate && timePart === curTime) return;
     try {
       setUpdatingSampleDate(true);

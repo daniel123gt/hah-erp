@@ -31,9 +31,9 @@ import {
   Calendar,
   MapPin,
   FileText,
-  Loader2,
   X
 } from "lucide-react";
+import { TableSkeleton } from "~/components/ui/table-skeleton";
 
 // Interfaz para los modales (compatible con la UI existente)
 interface ModalPatient {
@@ -479,10 +479,7 @@ export default function PacientesPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-8 h-8 animate-spin text-primary-blue" />
-              <span className="ml-2 text-gray-600">Cargando pacientes...</span>
-            </div>
+            <TableSkeleton rows={8} cols={6} />
           ) : (
             <div className="overflow-x-auto">
               <Table>

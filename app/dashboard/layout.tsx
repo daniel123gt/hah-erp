@@ -3,6 +3,7 @@ import { AppSidebar } from "~/components/ui/app-sidebar";
 import { RightSidebar } from "~/components/ui/right-sidebar";
 import { NotificationsProvider } from "~/contexts/NotificationsContext";
 import { NotificationBell } from "~/components/NotificationBell";
+import { GlobalSearch } from "~/components/GlobalSearch";
 import { ReminderChecker } from "~/components/ReminderChecker";
 import { RealtimeNotificationsSubscriber } from "~/components/RealtimeNotificationsSubscriber";
 import { useAuthStore, getAppRole } from "~/store/authStore";
@@ -51,7 +52,8 @@ export default function Layout() {
         <AppSidebar />
         <main className="py-12 px-8 text-primary-blue flex-1 max-w-full overflow-hidden">
           <div className="max-w-7xl mx-auto flex flex-col gap-4">
-            <div className="flex justify-end">
+            <div className="flex justify-between items-center gap-4">
+              <GlobalSearch />
               <NotificationBell />
             </div>
             <Outlet />

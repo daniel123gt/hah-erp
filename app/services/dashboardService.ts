@@ -3,7 +3,7 @@
  * Usa pacientes, citas y procedimientos para métricas reales.
  */
 
-import { getTodayLocal } from "~/lib/dateUtils";
+import { getTodayLocal, formatTimeOnlyLocal } from "~/lib/dateUtils";
 import { isAppointmentCancelado, isLabCancelado } from "~/lib/estadoDisplay";
 import patientsService from "~/services/patientsService";
 import { appointmentsService } from "~/services/appointmentsService";
@@ -603,7 +603,7 @@ export async function getDayAgenda(dateYMD: string): Promise<AgendaItem[]> {
   labActive.forEach((o) => {
     const p = patientInfo[o.patient_id];
     const sd = o.sample_date ?? o.order_date;
-    const time = sd && String(sd).includes("T") ? String(sd).slice(11, 16) : "";
+    const time = formatTimeOnlyLocal(sd ? String(sd) : "");
     const address = p?.address ?? "";
     const district = p?.district ?? "";
     items.push({

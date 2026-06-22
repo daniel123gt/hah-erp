@@ -7,7 +7,8 @@ import { Input } from "~/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { SortableTableHead, type SortDirection } from "~/components/ui/sortable-table-head";
 import { toast } from "sonner";
-import { ArrowLeft, Eye, Calendar, FileText, Loader2 } from "lucide-react";
+import { ArrowLeft, Eye, Calendar, FileText } from "lucide-react";
+import { TableSkeleton } from "~/components/ui/table-skeleton";
 import labOrderService, { type LabExamOrder } from "~/services/labOrderService";
 import patientsService, { type Patient } from "~/services/patientsService";
 import { formatDateOnly } from "~/lib/utils";
@@ -198,10 +199,7 @@ export default function OrdenesLaboratorio() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-8 h-8 animate-spin text-primary-blue" />
-              <span className="ml-2 text-gray-600">Cargando órdenes...</span>
-            </div>
+            <TableSkeleton rows={8} cols={7} />
           ) : orders.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <Calendar className="w-12 h-12 mx-auto mb-2 text-gray-300" />

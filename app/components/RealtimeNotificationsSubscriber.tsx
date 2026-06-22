@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import supabase from "~/utils/supabase";
 import { useNotifications, type NotifCategory } from "~/contexts/NotificationsContext";
+import { formatTimeOnlyLocal } from "~/lib/dateUtils";
 
 /** Formatea fecha ISO o YYYY-MM-DD a dd/mm/yyyy para mostrar */
 function formatDate(s: string | null | undefined): string {
@@ -69,7 +70,7 @@ export function RealtimeNotificationsSubscriber() {
           if (!id || isCreatedByMe("lab_order", id)) return;
           const sampleDate = (row?.sample_date as string) ?? row?.order_date ?? "";
           const dateStr = sampleDate ? formatDate(String(sampleDate).slice(0, 10)) : "";
-          const timeStr = String(sampleDate).includes("T") ? String(sampleDate).slice(11, 16) : "";
+          const timeStr = formatTimeOnlyLocal(String(sampleDate));
           const when = dateStr && timeStr ? `${dateStr} ${timeStr}` : dateStr || "Programada";
           addNotification(
             "laboratorio_programado",

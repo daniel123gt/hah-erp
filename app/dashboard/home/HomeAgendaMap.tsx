@@ -8,12 +8,12 @@ import {
   Scan,
   FlaskConical,
   Clock,
-  Loader2,
   MapPin,
 } from "lucide-react";
 import { getDayAgenda, type AgendaItem, type AgendaKind } from "~/services/dashboardService";
 import { getTodayLocal } from "~/lib/dateUtils";
 import { cn } from "~/lib/utils";
+import { TableSkeleton } from "~/components/ui/table-skeleton";
 
 const KIND_META: Record<AgendaKind, { icon: typeof Calendar; label: string; color: string }> = {
   medicina: { icon: Stethoscope, label: "Cita médica", color: "text-blue-600 bg-blue-100" },
@@ -82,9 +82,7 @@ export default function HomeAgendaMap() {
           {/* Lista (izquierda) */}
           <div className="max-h-[440px] overflow-y-auto pr-1 space-y-2">
             {loading ? (
-              <div className="flex items-center justify-center py-12 text-gray-500">
-                <Loader2 className="w-6 h-6 animate-spin" />
-              </div>
+              <TableSkeleton rows={6} cols={2} />
             ) : items.length === 0 ? (
               <div className="text-center py-12 text-sm text-gray-500">
                 <Calendar className="w-10 h-10 mx-auto mb-2 text-gray-300" />

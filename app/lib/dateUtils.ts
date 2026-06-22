@@ -68,6 +68,20 @@ export function getTodayLocal(): string {
   return `${y}-${m}-${day}`;
 }
 
+/**
+ * Hora local (HH:mm) de un valor con fecha+hora (timestamp ISO con o sin zona).
+ * Convierte a hora de Perú (zona del navegador). Devuelve "" si no tiene hora.
+ * Úsala en vez de cortar el string ISO (que está en UTC y muestra +5h de más).
+ */
+export function formatTimeOnlyLocal(value: string | null | undefined): string {
+  if (!value) return "";
+  const s = String(value).trim();
+  if (!s.includes("T")) return "";
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return "";
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
 /** Convierte hora guardada (ej. "8:00 AM", "09:00") a "HH:mm" para input type="time". */
 export function toTimeInputValue(h: string | null | undefined): string {
   if (!h || !String(h).trim()) return "";

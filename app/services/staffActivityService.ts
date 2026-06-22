@@ -5,6 +5,7 @@
 import supabase from "~/utils/supabase";
 import { appointmentsService } from "~/services/appointmentsService";
 import { shiftCareService } from "~/services/shiftCareService";
+import { formatTimeOnlyLocal } from "~/lib/dateUtils";
 
 export interface StaffActivityItem {
   id: string;
@@ -171,7 +172,7 @@ export async function getStaffActivity(staffName: string): Promise<StaffActivity
     (vitalSigns as { id: string; assessment_datetime: string }[]).forEach((r) => {
       const dt = r.assessment_datetime || "";
       const date = dt.slice(0, 10);
-      const time = dt.length >= 16 ? dt.slice(11, 16) : "";
+      const time = formatTimeOnlyLocal(dt);
       items.push({
         id: `vs-${r.id}`,
         type: "signos_vitales",
