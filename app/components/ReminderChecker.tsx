@@ -6,7 +6,7 @@ import labOrderService from "~/services/labOrderService";
 import { getTodayLocal } from "~/lib/dateUtils";
 import { useNotifications, type NotifCategory } from "~/contexts/NotificationsContext";
 
-const CHECK_INTERVAL_MS = 30 * 60 * 1000; // 30 min
+const CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5 min (para que las alertas lleguen a tiempo)
 
 /** Convierte date (YYYY-MM-DD) + time (HH:mm o H:mm) a timestamp local (mediodía del día + time). */
 function parseAppointmentDateTime(dateStr: string, timeStr: string): number {
@@ -109,6 +109,23 @@ export function ReminderChecker() {
           `Orden con ${order.items?.length ?? 0} examen(es) — ${timePart}`,
           { reminderKey: key }
         );
+      });
+    }).catch(() => {});
+
+    // Alertas de resultado: revisar el resultado y enviarlo al paciente (a la hora configurada).
+    labOrderService.getDueResultReminders().then((due) => {
+      due.forEach((r) => {
+        const key = `result-${r.id}-${r.result_reminder_at}`;
+        if (wasReminderSent(key)) return;
+        if (!markReminderSent(key)) return;
+        addNotification(
+          "recordatorio_laboratorio",
+          "Revisar resultado de laboratorio",
+          `${r.patientName} — revisa el resultado y envíalo al paciente`,
+          { reminderKey: key, category: "laboratorio" }
+        );
+        // Una sola vez: limpiar la alerta para que no vuelva a sonar.
+        labOrderService.updateResultReminder(r.id, null).catch(() => {});
       });
     }).catch(() => {});
   };

@@ -8,7 +8,7 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "~/components/ui/dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, FileText, User, Calendar, Edit, Plus, X, Search, Trash2, KeyRound, Copy } from "lucide-react";
+import { ArrowLeft, Loader2, FileText, User, Calendar, Edit, Plus, X, Search, Trash2, KeyRound, Copy, BellRing } from "lucide-react";
 import { formatDateOnly } from "~/lib/utils";
 import { formatTimeOnlyLocal } from "~/lib/dateUtils";
 import { getLabEstadoBadgeClassName, getLabEstadoLabel } from "~/lib/estadoDisplay";
@@ -57,6 +57,9 @@ export default function OrdenDetalle() {
   const [updatingSampleDate, setUpdatingSampleDate] = useState(false);
   const [discountPercent, setDiscountPercent] = useState<string>("0");
   const [updatingDiscount, setUpdatingDiscount] = useState(false);
+  const [reminderDate, setReminderDate] = useState("");
+  const [reminderTime, setReminderTime] = useState("");
+  const [savingReminder, setSavingReminder] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -86,6 +89,21 @@ export default function OrdenDetalle() {
     else if (ratio >= 0.025) setDiscountPercent("5");
     else setDiscountPercent("0");
   }, [order?.id, order?.discount_amount, order?.total_amount]);
+
+  // Precarga la alerta de resultado guardada (en hora local).
+  useEffect(() => {
+    const at = order?.result_reminder_at;
+    if (!at) {
+      setReminderDate("");
+      setReminderTime("");
+      return;
+    }
+    const d = new Date(at);
+    if (isNaN(d.getTime())) return;
+    const pad = (n: number) => String(n).padStart(2, "0");
+    setReminderDate(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
+    setReminderTime(`${pad(d.getHours())}:${pad(d.getMinutes())}`);
+  }, [order?.id, order?.result_reminder_at]);
 
   const loadOrder = async () => {
     try {
@@ -164,6 +182,38 @@ export default function OrdenDetalle() {
       toast.error(error?.message || "Error al aplicar descuento");
     } finally {
       setUpdatingDiscount(false);
+    }
+  };
+
+  const handleSaveReminder = async () => {
+    if (!order || !reminderDate || !reminderTime) {
+      toast.error("Indica fecha y hora para la alerta");
+      return;
+    }
+    const iso = new Date(`${reminderDate}T${reminderTime}:00`).toISOString();
+    try {
+      setSavingReminder(true);
+      await labOrderService.updateResultReminder(order.id, iso);
+      toast.success("Alerta programada");
+      loadOrder();
+    } catch (error: any) {
+      toast.error(error?.message || "No se pudo programar la alerta");
+    } finally {
+      setSavingReminder(false);
+    }
+  };
+
+  const handleClearReminder = async () => {
+    if (!order) return;
+    try {
+      setSavingReminder(true);
+      await labOrderService.updateResultReminder(order.id, null);
+      toast.success("Alerta quitada");
+      loadOrder();
+    } catch (error: any) {
+      toast.error(error?.message || "No se pudo quitar la alerta");
+    } finally {
+      setSavingReminder(false);
     }
   };
 
@@ -731,7 +781,67 @@ export default function OrdenDetalle() {
         </div>
 
         {/* Columna derecha - Exámenes */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-6">
+          {/* Alerta para revisar resultado y enviar al paciente */}
+          <Card className="border-orange-300">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BellRing className="w-5 h-5 text-orange-500" />
+                Alerta de resultado
+              </CardTitle>
+              <p className="text-sm text-gray-500">
+                Programa un recordatorio para revisar el resultado y enviarlo al paciente. Sonará a la fecha y hora indicadas.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap items-end gap-3">
+                <div>
+                  <Label className="text-xs text-gray-500">Fecha</Label>
+                  <Input
+                    type="date"
+                    value={reminderDate}
+                    onChange={(e) => setReminderDate(e.target.value)}
+                    className="w-44"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-500">Hora</Label>
+                  <Input
+                    type="time"
+                    value={reminderTime}
+                    onChange={(e) => setReminderTime(e.target.value)}
+                    className="w-32"
+                  />
+                </div>
+                <Button onClick={handleSaveReminder} disabled={savingReminder}>
+                  {savingReminder ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <BellRing className="w-4 h-4 mr-2" />
+                  )}
+                  {order.result_reminder_at ? "Actualizar alerta" : "Crear alerta"}
+                </Button>
+                {order.result_reminder_at && (
+                  <Button
+                    variant="outline"
+                    onClick={handleClearReminder}
+                    disabled={savingReminder}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    Quitar
+                  </Button>
+                )}
+              </div>
+              {order.result_reminder_at && (
+                <p className="mt-3 text-sm text-orange-700 flex items-center gap-1.5">
+                  <BellRing className="w-4 h-4 shrink-0" />
+                  Alerta programada para el {formatDateOnly(order.result_reminder_at)}{" "}
+                  {new Date(order.result_reminder_at).toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" })}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">

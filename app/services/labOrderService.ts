@@ -44,6 +44,8 @@ export interface LabExamOrder {
   result_pdf_url?: string;
   result_date?: string;
   result_notes?: string;
+  /** Fecha/hora (ISO) para alertar que hay que revisar el resultado y enviarlo al paciente. */
+  result_reminder_at?: string | null;
   items: LabExamOrderItem[];
   created_at: string;
   updated_at: string;
@@ -391,6 +393,41 @@ export const labOrderService = {
     } catch (error: any) {
       console.error('Error al actualizar fecha de toma de muestra:', error);
       throw new Error(error?.message || 'Error al actualizar la fecha de toma de muestra');
+    }
+  },
+
+  /** Define (o quita, con null) la alerta para revisar el resultado y enviarlo al paciente. */
+  async updateResultReminder(orderId: string, atIso: string | null): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('lab_exam_orders')
+        .update({ result_reminder_at: atIso, updated_at: new Date().toISOString() })
+        .eq('id', orderId);
+      if (error) throw error;
+    } catch (error: any) {
+      console.error('Error al actualizar la alerta de resultado:', error);
+      throw new Error(error?.message || 'Error al actualizar la alerta');
+    }
+  },
+
+  /** Órdenes cuya alerta de resultado ya venció (result_reminder_at <= ahora). Para el ReminderChecker. */
+  async getDueResultReminders(): Promise<Array<{ id: string; result_reminder_at: string; patientName: string }>> {
+    try {
+      const nowIso = new Date().toISOString();
+      const { data, error } = await supabase
+        .from('lab_exam_orders')
+        .select('id, result_reminder_at, patient:patients(name)')
+        .not('result_reminder_at', 'is', null)
+        .lte('result_reminder_at', nowIso);
+      if (error) throw error;
+      return (data ?? []).map((r: Record<string, unknown>) => {
+        const p = r.patient as { name?: string } | { name?: string }[] | null;
+        const patientName = Array.isArray(p) ? p[0]?.name ?? 'Paciente' : p?.name ?? 'Paciente';
+        return { id: String(r.id), result_reminder_at: String(r.result_reminder_at), patientName };
+      });
+    } catch (error) {
+      console.error('Error al obtener alertas de resultado:', error);
+      return [];
     }
   },
 
