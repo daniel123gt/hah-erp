@@ -52,6 +52,7 @@ export interface RxEcografiaReportRow {
   ingreso: number;
   costo: number;
   utility: number;
+  payment_method: string | null;
 }
 
 export interface RxEcografiaReportResult {
@@ -195,6 +196,18 @@ export const rxEcografiaRecordsService = {
       const raw = (data as { totals?: unknown; rows?: unknown }) ?? {};
       const totals = (raw.totals as Record<string, number>) ?? {};
       const rows = (raw.rows as Array<Record<string, unknown>>) ?? [];
+      // Método de pago por id (el RPC no lo devuelve): consulta liviana a los registros.
+      const ids = rows.map((r) => String(r.id ?? "")).filter(Boolean);
+      const methodById: Record<string, string | null> = {};
+      if (ids.length) {
+        const { data: recs } = await supabase
+          .from("rx_ecografia_records")
+          .select("id, payment_method")
+          .in("id", ids);
+        (recs ?? []).forEach((rec: { id: string; payment_method: string | null }) => {
+          methodById[String(rec.id)] = rec.payment_method ?? null;
+        });
+      }
       return {
         totals: {
           total_records: Number(totals.total_records ?? 0),
@@ -211,6 +224,7 @@ export const rxEcografiaRecordsService = {
           ingreso: Number(r.ingreso ?? 0),
           costo: Number(r.costo ?? 0),
           utility: Number(r.utility ?? 0),
+          payment_method: methodById[String(r.id ?? "")] ?? null,
         })),
       };
     } catch (e) {

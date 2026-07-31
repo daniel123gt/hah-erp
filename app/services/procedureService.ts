@@ -32,6 +32,7 @@ export interface ProcedureRecord {
   procedure_catalog_id: string | null;
   procedure_name: string | null;
   district: string | null;
+  enfermera_name: string | null;
   yape: number;
   plin: number;
   transfer_deposito: number;
@@ -60,6 +61,7 @@ export interface CreateProcedureRecordData {
   procedure_catalog_id?: string | null;
   procedure_name?: string | null;
   district?: string | null;
+  enfermera_name?: string | null;
   yape?: number;
   plin?: number;
   transfer_deposito?: number;
@@ -467,6 +469,7 @@ export const procedureService = {
           procedure_catalog_id: data.procedure_catalog_id ?? null,
           procedure_name: data.procedure_name ?? null,
           district: data.district ?? null,
+          enfermera_name: data.enfermera_name != null && data.enfermera_name !== "" ? String(data.enfermera_name).trim().toUpperCase() : null,
           yape: data.yape ?? 0,
           plin: data.plin ?? 0,
           transfer_deposito: data.transfer_deposito ?? 0,
@@ -511,6 +514,12 @@ export const procedureService = {
     const updatePayload: Record<string, unknown> = { ...rest, utilidad, updated_at: new Date().toISOString() };
     if (rest.patient_name != null && rest.patient_name !== "") {
       updatePayload.patient_name = String(rest.patient_name).trim().toUpperCase();
+    }
+    if (rest.enfermera_name !== undefined) {
+      updatePayload.enfermera_name =
+        rest.enfermera_name != null && rest.enfermera_name !== ""
+          ? String(rest.enfermera_name).trim().toUpperCase()
+          : null;
     }
     const { data: row, error } = await supabase
       .from("procedure_records")
@@ -587,6 +596,8 @@ export const procedureService = {
       ingreso: number;
       costo: number;
       utility: number;
+      payment_method: string | null;
+      enfermera_name: string | null;
     }>;
   }> {
     try {
@@ -598,6 +609,28 @@ export const procedureService = {
       const raw = (data as { totals?: unknown; rows?: unknown }) ?? {};
       const totals = (raw.totals as Record<string, number>) ?? {};
       const rows = (raw.rows as Array<Record<string, unknown>>) ?? [];
+      // Método dominante por id: el pago se reparte en 5 columnas; toma la de mayor monto.
+      const ids = rows.map((r) => String(r.id ?? "")).filter(Boolean);
+      const methodById: Record<string, string | null> = {};
+      const enfermeraById: Record<string, string | null> = {};
+      if (ids.length) {
+        const { data: recs } = await supabase
+          .from("procedure_records")
+          .select("id, yape, plin, transfer_deposito, tarjeta_link_pos, efectivo, enfermera_name")
+          .in("id", ids);
+        (recs ?? []).forEach((rec: Record<string, unknown>) => {
+          const candidates: Array<[string, number]> = [
+            ["yape", Number(rec.yape ?? 0)],
+            ["plin", Number(rec.plin ?? 0)],
+            ["transfer_deposito", Number(rec.transfer_deposito ?? 0)],
+            ["tarjeta_link_pos", Number(rec.tarjeta_link_pos ?? 0)],
+            ["efectivo", Number(rec.efectivo ?? 0)],
+          ];
+          const best = candidates.reduce((a, b) => (b[1] > a[1] ? b : a), ["", 0] as [string, number]);
+          methodById[String(rec.id)] = best[1] > 0 ? best[0] : null;
+          enfermeraById[String(rec.id)] = rec.enfermera_name != null ? String(rec.enfermera_name) : null;
+        });
+      }
       return {
         totals: {
           total_records: Number(totals.total_records ?? 0),
@@ -616,6 +649,8 @@ export const procedureService = {
           ingreso: Number(r.ingreso ?? 0),
           costo: Number(r.costo ?? 0),
           utility: Number(r.utility ?? 0),
+          payment_method: methodById[String(r.id ?? "")] ?? null,
+          enfermera_name: enfermeraById[String(r.id ?? "")] ?? null,
         })),
       };
     } catch (e) {

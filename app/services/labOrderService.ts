@@ -885,7 +885,7 @@ export const labOrderService = {
    */
   async getReportLaboratorio(fromDate: string, toDate: string): Promise<{
     totals: { total_orders: number; total_revenue: number; total_exams: number; total_cost: number; total_utility: number };
-    rows: Array<{ id: string; order_date: string; physician_name: string | null; patient_name: string | null; status: string; n_items: number; total_amount: number; cost: number; utility: number }>;
+    rows: Array<{ id: string; order_date: string; physician_name: string | null; patient_name: string | null; status: string; n_items: number; total_amount: number; cost: number; utility: number; payment_method: string | null }>;
   }> {
     try {
       const { data, error } = await supabase.rpc('get_report_laboratorio', {
@@ -896,6 +896,18 @@ export const labOrderService = {
       const raw = (data as { totals?: unknown; rows?: unknown }) ?? {};
       const totals = (raw.totals as Record<string, number>) ?? {};
       const rows = (raw.rows as Array<Record<string, unknown>>) ?? [];
+      // Método de pago por id (el RPC no lo devuelve): consulta liviana a las órdenes.
+      const ids = rows.map((r) => String(r.id ?? '')).filter(Boolean);
+      const methodById: Record<string, string | null> = {};
+      if (ids.length) {
+        const { data: recs } = await supabase
+          .from('lab_exam_orders')
+          .select('id, payment_method')
+          .in('id', ids);
+        (recs ?? []).forEach((rec: { id: string; payment_method: string | null }) => {
+          methodById[String(rec.id)] = rec.payment_method ?? null;
+        });
+      }
       return {
         totals: {
           total_orders: Number(totals.total_orders ?? 0),
@@ -914,6 +926,7 @@ export const labOrderService = {
           total_amount: Number(r.total_amount ?? 0),
           cost: Number(r.cost ?? 0),
           utility: Number(r.utility ?? 0),
+          payment_method: methodById[String(r.id ?? '')] ?? null,
         })),
       };
     } catch (e) {

@@ -14,6 +14,7 @@ import {
 } from "~/components/ui/table";
 import shiftCareService, { type CareShiftWithPatient } from "~/services/shiftCareService";
 import { formatDateOnly } from "~/lib/utils";
+import { matchesPaymentFilter, PAYMENT_METHOD_FILTER_OPTIONS, type PaymentMethodKey } from "~/lib/paymentMethod";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -58,6 +59,7 @@ export default function CuidadosPorTurnosReportes() {
   const now = new Date();
   const [startDate, setStartDate] = useState(() => firstDayOfMonth(now.getFullYear(), now.getMonth() + 1));
   const [endDate, setEndDate] = useState(() => now.toISOString().split("T")[0]);
+  const [metodoFilter, setMetodoFilter] = useState<PaymentMethodKey | "todos">("todos");
   const [dbReport, setDbReport] = useState<{
     totals: { total_revenue: number; total_shifts: number; promedio: number };
     rows: Array<{
@@ -93,12 +95,14 @@ export default function CuidadosPorTurnosReportes() {
       .finally(() => setLoading(false));
   }, [startDate, endDate]);
 
-  const totals = dbReport?.totals ?? null;
-  const totalRevenue = totals ? totals.total_revenue : shifts.reduce((s, x) => s + (x.monto_a_pagar ?? 0), 0);
-  const totalShifts = totals ? totals.total_shifts : shifts.length;
-  const promedio = totals ? totals.promedio : (totalShifts ? totalRevenue / totalShifts : 0);
-
-  const reportRows = dbReport?.rows ?? [];
+  // Filas del reporte, filtradas por método de pago (normalizado).
+  const reportRows = (dbReport?.rows ?? []).filter((r) => matchesPaymentFilter(r.forma_de_pago, metodoFilter));
+  const totalRevenue = reportRows.reduce((s, r) => s + Number(r.monto_a_pagar ?? 0), 0);
+  const totalShifts = reportRows.length;
+  const promedio = totalShifts ? totalRevenue / totalShifts : 0;
+  // Fallback (si el RPC no devolvió filas): lista cruda, también filtrada por método.
+  const filteredShifts = shifts.filter((s) => matchesPaymentFilter(s.forma_de_pago, metodoFilter));
+  const displayCount = dbReport ? reportRows.length : filteredShifts.length;
 
   type ChartTabId = "distribucion" | "evolucion" | "pacientes" | "turnos";
   const [chartTab, setChartTab] = useState<ChartTabId>("distribucion");
@@ -146,13 +150,13 @@ export default function CuidadosPorTurnosReportes() {
     try {
       const headers = "Fecha,Hora,Paciente,Distrito,Turno,Monto (S/.),Enfermera,Forma de pago\n";
       let rows: string[];
-      if (dbReport?.rows?.length) {
-        rows = dbReport.rows.map((r) => {
+      if (dbReport) {
+        rows = reportRows.map((r) => {
           const fecha = formatDateOnly(r.fecha, "es-PE");
           return `"${fecha}","${r.hora_inicio ?? ""}","${r.patient_name ?? ""}","${r.distrito ?? ""}","${r.turno ?? ""}",${Number(r.monto_a_pagar ?? 0).toFixed(2)},"${r.enfermera ?? ""}","${r.forma_de_pago ?? ""}"`;
         });
       } else {
-        rows = shifts.map((s) => {
+        rows = filteredShifts.map((s) => {
           const patient = getPatientName(s);
           const fecha = formatDateOnly(s.fecha, "es-PE");
           return `"${fecha}","${s.hora_inicio ?? ""}","${patient}","${s.distrito ?? ""}","${s.turno ?? ""}",${Number(s.monto_a_pagar ?? 0).toFixed(2)},"${s.enfermera ?? ""}","${s.forma_de_pago ?? ""}"`;
@@ -202,6 +206,18 @@ export default function CuidadosPorTurnosReportes() {
             <div>
               <Label>Fecha Fin</Label>
               <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            </div>
+            <div>
+              <Label>Método de pago</Label>
+              <select
+                value={metodoFilter}
+                onChange={(e) => setMetodoFilter(e.target.value as PaymentMethodKey | "todos")}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              >
+                {PAYMENT_METHOD_FILTER_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
             </div>
           </div>
         </CardContent>
@@ -278,7 +294,7 @@ export default function CuidadosPorTurnosReportes() {
         </div>
       )}
 
-      {!loading && (dbReport?.rows?.length ?? shifts.length) > 0 && (
+      {!loading && displayCount > 0 && (
         <div className="flex justify-end">
           <Button onClick={handleExportCSV} disabled={exportingCSV}>
             {exportingCSV ? (
@@ -421,15 +437,15 @@ export default function CuidadosPorTurnosReportes() {
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>Turnos del período ({(dbReport?.rows?.length ?? shifts.length)})</CardTitle>
+            <CardTitle>Turnos del período ({displayCount})</CardTitle>
           </CardHeader>
           <CardContent>
-            {(dbReport?.rows?.length ?? shifts.length) === 0 ? (
+            {displayCount === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 <FileText className="w-12 h-12 mx-auto mb-2 text-gray-300" />
                 <p>No hay turnos registrados en este período.</p>
               </div>
-            ) : dbReport?.rows?.length ? (
+            ) : dbReport ? (
               <div className="overflow-x-auto rounded-md border border-gray-200">
                 <Table>
                   <TableHeader>
@@ -445,7 +461,7 @@ export default function CuidadosPorTurnosReportes() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {dbReport.rows.map((r) => (
+                    {reportRows.map((r) => (
                       <TableRow key={r.id}>
                         <TableCell className="whitespace-nowrap">
                           {formatDateOnly(r.fecha, "es-PE")}
@@ -489,7 +505,7 @@ export default function CuidadosPorTurnosReportes() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {shifts.map((s) => (
+                    {filteredShifts.map((s) => (
                       <TableRow key={s.id}>
                         <TableCell className="whitespace-nowrap">
                           {formatDateOnly(s.fecha, "es-PE")}

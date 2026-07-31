@@ -28,6 +28,8 @@ import {
   XCircle,
   ArrowLeft,
   HeartPulse,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { procedureService, recordToPaymentPayload, type PaymentMethodKey } from "~/services/procedureService";
@@ -57,6 +59,8 @@ export default function CitasProcedimientosPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<Record<string, Patient>>({});
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   useEffect(() => {
     setLoading(true);
@@ -104,6 +108,18 @@ export default function CitasProcedimientosPage() {
     return matchesSearch && matchesDate && matchesStatus && matchesType;
   });
 
+  // Volver a página 1 cuando cambian filtros/búsqueda o la lista
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, filterDate, filterStatus, filterType, appointments.length]);
+
+  const totalPages = Math.ceil(filteredAppointments.length / PAGE_SIZE) || 1;
+  const currentPage = Math.min(page, totalPages);
+  const pagedAppointments = filteredAppointments.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
   const createProcedureRecordFromAppointment = (apt: Appointment) => {
     if (!apt.procedure_catalog_id || !apt.procedure_name) return;
     procedureService
@@ -124,6 +140,7 @@ export default function CitasProcedimientosPage() {
           procedure_catalog_id: apt.procedure_catalog_id,
           procedure_name: apt.procedure_name,
           district: null,
+          enfermera_name: apt.doctorName ?? null,
           ...payment,
           numero_operacion: apt.numero_operacion ?? null,
           gastos_material: 0,
@@ -467,7 +484,7 @@ export default function CitasProcedimientosPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                filteredAppointments.map((appointment) => (
+                pagedAppointments.map((appointment) => (
                   <TableRow key={appointment.id}>
                     <TableCell>
                       <div className="text-center">
@@ -526,6 +543,36 @@ export default function CitasProcedimientosPage() {
               </TableBody>
             </Table>
           </div>
+          {!loading && filteredAppointments.length > 0 && totalPages > 1 && (
+            <div className="flex items-center justify-between pt-4">
+              <span className="text-sm text-gray-600">
+                Página {currentPage} de {totalPages} ({filteredAppointments.length} citas)
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+          {!loading && filteredAppointments.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              No hay citas que coincidan con los filtros.
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

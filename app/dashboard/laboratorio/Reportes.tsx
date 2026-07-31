@@ -22,6 +22,7 @@ import {
   normalizeLabEstado,
 } from "~/lib/estadoDisplay";
 import { getExams } from "~/services/labService";
+import { matchesPaymentFilter, paymentMethodLabel, PAYMENT_METHOD_FILTER_OPTIONS, type PaymentMethodKey } from "~/lib/paymentMethod";
 import { toast } from "sonner";
 
 const TOMA_DE_MUESTRA_NAME = "toma de muestra";
@@ -78,6 +79,7 @@ export default function LaboratorioReportes() {
   const [startDate, setStartDate] = useState(new Date(new Date().setDate(1)).toISOString().split('T')[0]); // Primer día del mes
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]); // Hoy
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [metodoFilter, setMetodoFilter] = useState<PaymentMethodKey | "todos">("todos");
   const [isLoading, setIsLoading] = useState(false);
   const [orders, setOrders] = useState<LabExamOrder[]>([]);
   const [stats, setStats] = useState<ReportStats>({
@@ -90,7 +92,7 @@ export default function LaboratorioReportes() {
   const [examStats, setExamStats] = useState<ExamStats[]>([]);
   const [dbReport, setDbReport] = useState<{
     totals: { total_orders: number; total_revenue: number; total_exams: number; total_cost: number; total_utility: number };
-    rows: Array<{ id: string; order_date: string; physician_name: string | null; status: string; n_items: number; total_amount: number; cost: number; utility: number }>;
+    rows: Array<{ id: string; order_date: string; physician_name: string | null; patient_name: string | null; status: string; n_items: number; total_amount: number; cost: number; utility: number; payment_method: string | null }>;
   } | null>(null);
   const [tomaMuestraProcedure, setTomaMuestraProcedure] = useState<{ base_price_soles: number; total_cost_soles: number } | null>(null);
   type ChartTabId = 'distribucion' | 'evolucion' | 'examenes' | 'ordenes';
@@ -100,8 +102,9 @@ export default function LaboratorioReportes() {
   /** Reporte de BD filtrado por estado (Resumen y Órdenes detalladas usan esto) */
   const filteredReport = useMemo(() => {
     if (!dbReport) return null;
-    if (statusFilter === 'all') return dbReport;
-    const rows = dbReport.rows.filter((r) => matchesLabEstadoFilter(r.status, statusFilter));
+    const rows = dbReport.rows
+      .filter((r) => (statusFilter === 'all' ? true : matchesLabEstadoFilter(r.status, statusFilter)))
+      .filter((r) => matchesPaymentFilter(r.payment_method, metodoFilter));
     return {
       totals: {
         total_orders: rows.length,
@@ -112,7 +115,7 @@ export default function LaboratorioReportes() {
       },
       rows,
     };
-  }, [dbReport, statusFilter]);
+  }, [dbReport, statusFilter, metodoFilter]);
 
   /** Datos agregados por fecha (para gráficas y sparklines) */
   const chartDataByDate = useMemo(() => {
@@ -169,7 +172,11 @@ export default function LaboratorioReportes() {
 
       const filteredOrders = result.data.filter(order => {
         const orderDateStr = String(order.order_date).trim().slice(0, 10);
-        return orderDateStr >= startDate && orderDateStr <= endDate;
+        return (
+          orderDateStr >= startDate &&
+          orderDateStr <= endDate &&
+          matchesPaymentFilter(order.payment_method, metodoFilter)
+        );
       });
 
       setOrders(filteredOrders);
@@ -221,7 +228,7 @@ export default function LaboratorioReportes() {
   useEffect(() => {
     loadReportData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reportType, startDate, endDate, statusFilter]);
+  }, [reportType, startDate, endDate, statusFilter, metodoFilter]);
 
   const handleExportCSV = () => {
     if (exportingCSV) return;
@@ -231,18 +238,18 @@ export default function LaboratorioReportes() {
 
       if (reportType === 'summary') {
       if (filteredReport?.rows?.length) {
-        csvContent = 'ID, Fecha, Médico, Estado, Exámenes, Total (S/.), Costo (S/.), Utilidad (S/.)\n';
+        csvContent = 'ID, Fecha, Médico, Estado, Método, Exámenes, Total (S/.), Costo (S/.), Utilidad (S/.)\n';
         filteredReport.rows.forEach(row => {
-          csvContent += `${row.id.slice(0, 8)}, ${row.order_date}, ${row.physician_name || 'N/A'}, ${row.status}, ${row.n_items}, ${row.total_amount.toFixed(2)}, ${row.cost.toFixed(2)}, ${row.utility.toFixed(2)}\n`;
+          csvContent += `${row.id.slice(0, 8)}, ${row.order_date}, ${row.physician_name || 'N/A'}, ${row.status}, ${paymentMethodLabel(row.payment_method)}, ${row.n_items}, ${row.total_amount.toFixed(2)}, ${row.cost.toFixed(2)}, ${row.utility.toFixed(2)}\n`;
         });
       } else {
         const recargo = tomaMuestraProcedure?.base_price_soles ?? 0;
         const costoToma = tomaMuestraProcedure?.total_cost_soles ?? 0;
-        csvContent = 'ID, Fecha, Paciente ID, Médico, Estado, Prioridad, Total (S/.), Costo (S/.), Utilidad (S/.), # Exámenes\n';
+        csvContent = 'ID, Fecha, Paciente ID, Médico, Estado, Método, Prioridad, Total (S/.), Costo (S/.), Utilidad (S/.), # Exámenes\n';
         orders.forEach(order => {
           const cost = order.items.length > 0 ? (order.total_amount - recargo) / 1.2 + costoToma : 0;
           const utility = order.total_amount - cost;
-          csvContent += `${order.id.slice(0, 8)}, ${order.order_date}, ${order.patient_id.slice(0, 8)}, ${order.physician_name || 'N/A'}, ${order.status}, ${order.priority}, ${order.total_amount.toFixed(2)}, ${cost.toFixed(2)}, ${utility.toFixed(2)}, ${order.items.length}\n`;
+          csvContent += `${order.id.slice(0, 8)}, ${order.order_date}, ${order.patient_id.slice(0, 8)}, ${order.physician_name || 'N/A'}, ${order.status}, ${paymentMethodLabel(order.payment_method)}, ${order.priority}, ${order.total_amount.toFixed(2)}, ${cost.toFixed(2)}, ${utility.toFixed(2)}, ${order.items.length}\n`;
         });
       }
     } else if (reportType === 'exams') {
@@ -292,7 +299,7 @@ export default function LaboratorioReportes() {
           <CardTitle>Filtros del Reporte</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>
               <Label>Tipo de Reporte</Label>
               <Select value={reportType} onValueChange={(value: any) => setReportType(value)}>
@@ -332,6 +339,19 @@ export default function LaboratorioReportes() {
                   <SelectItem value="Pendiente">Pendiente</SelectItem>
                   <SelectItem value="Completado">Completado</SelectItem>
                   <SelectItem value="Cancelado">Cancelado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Método de pago</Label>
+              <Select value={metodoFilter} onValueChange={(v: any) => setMetodoFilter(v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_METHOD_FILTER_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -610,6 +630,7 @@ export default function LaboratorioReportes() {
                           <th className="text-left p-2">Fecha</th>
                           <th className="text-left p-2">Médico</th>
                           <th className="text-left p-2">Estado</th>
+                          <th className="text-left p-2">Método</th>
                           <th className="text-right p-2">Exámenes</th>
                           <th className="text-right p-2">Total (S/.)</th>
                           <th className="text-right p-2">Costo (S/.)</th>
@@ -627,6 +648,7 @@ export default function LaboratorioReportes() {
                                 {getLabEstadoLabel(row.status)}
                               </Badge>
                             </td>
+                            <td className="p-2">{paymentMethodLabel(row.payment_method)}</td>
                             <td className="p-2 text-right">{row.n_items}</td>
                             <td className="p-2 text-right">S/ {row.total_amount.toFixed(2)}</td>
                             <td className="p-2 text-right text-gray-600">S/ {row.cost.toFixed(2)}</td>
@@ -636,7 +658,7 @@ export default function LaboratorioReportes() {
                       </tbody>
                       <tfoot>
                         <tr className="border-t-2 font-bold">
-                          <td colSpan={5} className="p-2 text-right">Total:</td>
+                          <td colSpan={6} className="p-2 text-right">Total:</td>
                           <td className="p-2 text-right">S/ {(filteredReport.totals.total_revenue ?? 0).toFixed(2)}</td>
                           <td className="p-2 text-right">S/ {(filteredReport.totals.total_cost ?? 0).toFixed(2)}</td>
                           <td className="p-2 text-right text-green-600">S/ {(filteredReport.totals.total_utility ?? 0).toFixed(2)}</td>
@@ -664,6 +686,7 @@ export default function LaboratorioReportes() {
                             <th className="text-left p-2">Fecha</th>
                             <th className="text-left p-2">Médico</th>
                             <th className="text-left p-2">Estado</th>
+                            <th className="text-left p-2">Método</th>
                             <th className="text-left p-2">Prioridad</th>
                             <th className="text-right p-2">Exámenes</th>
                             <th className="text-right p-2">Total (S/.)</th>
@@ -682,6 +705,7 @@ export default function LaboratorioReportes() {
                                   {getLabEstadoLabel(order.status)}
                                 </Badge>
                               </td>
+                              <td className="p-2">{paymentMethodLabel(order.payment_method)}</td>
                               <td className="p-2">
                                 <Badge variant={order.priority === 'urgente' ? 'destructive' : 'secondary'}>
                                   {order.priority}
@@ -696,7 +720,7 @@ export default function LaboratorioReportes() {
                         </tbody>
                         <tfoot>
                           <tr className="border-t-2 font-bold">
-                            <td colSpan={6} className="p-2 text-right">Total:</td>
+                            <td colSpan={7} className="p-2 text-right">Total:</td>
                             <td className="p-2 text-right">S/ {stats.totalRevenue.toFixed(2)}</td>
                             <td className="p-2 text-right">S/ {totalCost.toFixed(2)}</td>
                             <td className="p-2 text-right text-green-600">S/ {totalUtility.toFixed(2)}</td>

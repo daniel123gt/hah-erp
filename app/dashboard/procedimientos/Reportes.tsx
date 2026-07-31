@@ -14,6 +14,7 @@ import {
 } from "~/components/ui/table";
 import { procedureService, type ProcedureRecordWithDetails, type ProcedureCatalogItem } from "~/services/procedureService";
 import { formatDateOnly } from "~/lib/utils";
+import { matchesPaymentFilter, paymentMethodLabel, PAYMENT_METHOD_FILTER_OPTIONS, type PaymentMethodKey } from "~/lib/paymentMethod";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -51,6 +52,19 @@ function totalIngreso(r: ProcedureRecordWithDetails): number {
     Number(r.tarjeta_link_pos || 0) +
     Number(r.efectivo || 0)
   );
+}
+
+/** Método de pago dominante (mayor monto) de un registro de procedimiento, normalizado a texto crudo. */
+function recordPaymentMethodRaw(r: ProcedureRecordWithDetails): string | null {
+  const cols: [string, number][] = [
+    ["yape", Number(r.yape || 0)],
+    ["plin", Number(r.plin || 0)],
+    ["transferencia", Number(r.transfer_deposito || 0)],
+    ["tarjeta", Number(r.tarjeta_link_pos || 0)],
+    ["efectivo", Number(r.efectivo || 0)],
+  ];
+  const best = cols.reduce((a, b) => (b[1] > a[1] ? b : a));
+  return best[1] > 0 ? best[0] : null;
 }
 
 function firstDayOfMonth(year: number, month: number): string {
@@ -91,6 +105,8 @@ export default function ProcedimientosReportes() {
       ingreso: number;
       costo: number;
       utility: number;
+      payment_method: string | null;
+      enfermera_name: string | null;
     }>;
   } | null>(null);
   const [records, setRecords] = useState<ProcedureRecordWithDetails[]>([]);
@@ -98,8 +114,11 @@ export default function ProcedimientosReportes() {
   type ChartTabId = "distribucion" | "evolucion" | "procedimientos" | "registros";
   const [chartTab, setChartTab] = useState<ChartTabId>("distribucion");
   const [exportingCSV, setExportingCSV] = useState(false);
+  const [metodoFilter, setMetodoFilter] = useState<PaymentMethodKey | "todos">("todos");
 
-  const reportRows = dbReport?.rows ?? [];
+  const reportRows = (dbReport?.rows ?? []).filter((r) =>
+    matchesPaymentFilter(r.payment_method, metodoFilter)
+  );
 
   /** Datos agregados por fecha (para gráficas y sparklines) */
   const chartDataByDate = useMemo(() => {
@@ -162,38 +181,43 @@ export default function ProcedimientosReportes() {
       .finally(() => setLoading(false));
   }, [startDate, endDate]);
 
-  const totals = dbReport?.totals ?? null;
-  const fallbackIngreso = records.reduce((s, r) => s + totalIngreso(r), 0);
-  const fallbackMateriales = records.reduce((s, r) => s + Number(r.gastos_material ?? 0), 0);
-  const fallbackMovilidad = records.reduce((s, r) => s + Number(r.combustible ?? 0), 0);
-  const fallbackUtilidad = records.reduce((s, r) => {
+  // Con filtro de método activo no usamos los totales del RPC (no distinguen método):
+  // recalculamos desde los registros filtrados por método dominante.
+  const filteredRecords = records.filter((r) =>
+    matchesPaymentFilter(recordPaymentMethodRaw(r), metodoFilter)
+  );
+  const totals = metodoFilter === "todos" ? dbReport?.totals ?? null : null;
+  const fallbackIngreso = filteredRecords.reduce((s, r) => s + totalIngreso(r), 0);
+  const fallbackMateriales = filteredRecords.reduce((s, r) => s + Number(r.gastos_material ?? 0), 0);
+  const fallbackMovilidad = filteredRecords.reduce((s, r) => s + Number(r.combustible ?? 0), 0);
+  const fallbackUtilidad = filteredRecords.reduce((s, r) => {
     const ing = totalIngreso(r);
     const proc = r.procedure_catalog as ProcedureCatalogItem | null;
     const costo = proc ? Number(proc.total_cost_soles ?? 0) : 0;
     return s + (ing - costo - Number(r.gastos_material ?? 0) - Number(r.combustible ?? 0));
   }, 0);
-  const fallbackCosto = records.reduce((s, r) => {
+  const fallbackCosto = filteredRecords.reduce((s, r) => {
     const proc = r.procedure_catalog as ProcedureCatalogItem | null;
     const costoCat = proc ? Number(proc.total_cost_soles ?? 0) : 0;
     return s + costoCat + Number(r.gastos_material ?? 0) + Number(r.combustible ?? 0) + Number(r.costo_adicional_servicio ?? 0);
   }, 0);
   const totalEgresos = totals ? (totals.total_materiales + totals.total_movilidad) : (fallbackMateriales + fallbackMovilidad);
   const saldoFinal = totals ? Number(totals.total_utilidad ?? 0) : fallbackUtilidad;
-  const displayRecordsCount = totals?.total_records ?? records.length;
+  const displayRecordsCount = totals?.total_records ?? (metodoFilter === "todos" ? records.length : reportRows.length);
 
   const handleExportCSV = () => {
     if (exportingCSV) return;
     setExportingCSV(true);
     try {
-      const headers = "Fecha,Paciente,Procedimiento,Distrito,Ingreso (S/.),Costo (S/.),Utilidad (S/.)\n";
+      const headers = "Fecha,Paciente,Enfermera,Procedimiento,Distrito,Método,Ingreso (S/.),Costo (S/.),Utilidad (S/.)\n";
       let rows: string[];
-      if (dbReport?.rows?.length) {
-        rows = dbReport.rows.map((r) => {
+      if (reportRows.length) {
+        rows = reportRows.map((r) => {
           const fecha = formatDateOnly(r.fecha, "es-PE");
-          return `"${fecha}","${r.patient_name ?? ""}","${r.procedure_name ?? ""}","${r.district ?? ""}",${r.ingreso.toFixed(2)},${r.costo.toFixed(2)},${r.utility.toFixed(2)}`;
+          return `"${fecha}","${r.patient_name ?? ""}","${r.enfermera_name ?? ""}","${r.procedure_name ?? ""}","${r.district ?? ""}","${paymentMethodLabel(r.payment_method)}",${r.ingreso.toFixed(2)},${r.costo.toFixed(2)},${r.utility.toFixed(2)}`;
         });
       } else {
-        rows = records.map((r) => {
+        rows = filteredRecords.map((r) => {
           const ing = totalIngreso(r);
           const proc = r.procedure_catalog as ProcedureCatalogItem | null;
           const costo = proc ? Number(proc.total_cost_soles ?? 0) : 0;
@@ -203,7 +227,7 @@ export default function ProcedimientosReportes() {
           const displayName = (r.patient as { name?: string } | null)?.name ?? r.patient_name ?? "-";
           const procName = proc?.name ?? r.procedure_name ?? "-";
           const fecha = formatDateOnly(r.fecha, "es-PE");
-          return `"${fecha}","${displayName}","${procName}","${r.district ?? ""}",${ing.toFixed(2)},${costo.toFixed(2)},${util.toFixed(2)}`;
+          return `"${fecha}","${displayName}","${r.enfermera_name ?? ""}","${procName}","${r.district ?? ""}","${paymentMethodLabel(recordPaymentMethodRaw(r))}",${ing.toFixed(2)},${costo.toFixed(2)},${util.toFixed(2)}`;
         });
       }
       const csvContent = headers + rows.join("\n");
@@ -261,6 +285,18 @@ export default function ProcedimientosReportes() {
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
               />
+            </div>
+            <div>
+              <Label>Método de pago</Label>
+              <select
+                value={metodoFilter}
+                onChange={(e) => setMetodoFilter(e.target.value as PaymentMethodKey | "todos")}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              >
+                {PAYMENT_METHOD_FILTER_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
             </div>
           </div>
         </CardContent>
@@ -534,35 +570,39 @@ export default function ProcedimientosReportes() {
 
             {/* Listado de procedimientos del período */}
             <div className="pt-6 border-t border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-800 mb-3">Procedimientos del período ({dbReport?.rows?.length ?? records.length})</h3>
-              {(dbReport?.rows?.length ?? records.length) === 0 ? (
+              <h3 className="text-lg font-semibold text-gray-800 mb-3">Procedimientos del período ({reportRows.length || filteredRecords.length})</h3>
+              {(reportRows.length || filteredRecords.length) === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <FileText className="w-12 h-12 mx-auto mb-2 text-gray-300" />
                   <p>No hay registros en este período.</p>
                 </div>
-              ) : dbReport?.rows?.length ? (
+              ) : reportRows.length ? (
                 <div className="overflow-x-auto rounded-md border border-gray-200">
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Fecha</TableHead>
                         <TableHead>Paciente</TableHead>
+                        <TableHead>Enfermera</TableHead>
                         <TableHead>Procedimiento</TableHead>
                         <TableHead>Distrito</TableHead>
+                        <TableHead>Método</TableHead>
                         <TableHead className="text-right">Ingreso (S/.)</TableHead>
                         <TableHead className="text-right">Costo (S/.)</TableHead>
                         <TableHead className="text-right">Utilidad (S/.)</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {dbReport.rows.map((r) => (
+                      {reportRows.map((r) => (
                         <TableRow key={r.id}>
                           <TableCell className="whitespace-nowrap">
                             {formatDateOnly(r.fecha, "es-PE")}
                           </TableCell>
                           <TableCell className="uppercase">{r.patient_name || "-"}</TableCell>
+                          <TableCell className="uppercase">{r.enfermera_name || "-"}</TableCell>
                           <TableCell>{r.procedure_name || "-"}</TableCell>
                           <TableCell>{r.district ?? "-"}</TableCell>
+                          <TableCell className="whitespace-nowrap text-sm">{paymentMethodLabel(r.payment_method)}</TableCell>
                           <TableCell className="text-right tabular-nums">{r.ingreso.toFixed(2)}</TableCell>
                           <TableCell className="text-right tabular-nums">{r.costo.toFixed(2)}</TableCell>
                           <TableCell className="text-right tabular-nums text-green-600">{r.utility.toFixed(2)}</TableCell>
@@ -571,17 +611,17 @@ export default function ProcedimientosReportes() {
                     </TableBody>
                     <tfoot>
                       <TableRow className="border-t-2 font-bold bg-gray-50">
-                        <TableCell colSpan={4} className="text-right">
+                        <TableCell colSpan={6} className="text-right">
                           Total:
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
-                          S/ {(dbReport.totals.total_ingreso ?? 0).toFixed(2)}
+                          S/ {reportRows.reduce((s, r) => s + r.ingreso, 0).toFixed(2)}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
-                          S/ {(dbReport.totals.total_costo ?? 0).toFixed(2)}
+                          S/ {reportRows.reduce((s, r) => s + r.costo, 0).toFixed(2)}
                         </TableCell>
                         <TableCell className="text-right tabular-nums text-green-600">
-                          S/ {(dbReport.totals.total_utilidad ?? 0).toFixed(2)}
+                          S/ {reportRows.reduce((s, r) => s + r.utility, 0).toFixed(2)}
                         </TableCell>
                       </TableRow>
                     </tfoot>
@@ -594,15 +634,17 @@ export default function ProcedimientosReportes() {
                       <TableRow>
                         <TableHead>Fecha</TableHead>
                         <TableHead>Paciente</TableHead>
+                        <TableHead>Enfermera</TableHead>
                         <TableHead>Procedimiento</TableHead>
                         <TableHead>Distrito</TableHead>
+                        <TableHead>Método</TableHead>
                         <TableHead className="text-right">Ingreso (S/.)</TableHead>
                         <TableHead className="text-right">Costo (S/.)</TableHead>
                         <TableHead className="text-right">Utilidad (S/.)</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {records.map((r) => {
+                      {filteredRecords.map((r) => {
                         const ing = totalIngreso(r);
                         const proc = r.procedure_catalog as ProcedureCatalogItem | null;
                         const costo = proc ? Number(proc.total_cost_soles ?? 0) : 0;
@@ -617,8 +659,10 @@ export default function ProcedimientosReportes() {
                               {formatDateOnly(r.fecha, "es-PE")}
                             </TableCell>
                             <TableCell className="uppercase">{displayName}</TableCell>
+                            <TableCell className="uppercase">{r.enfermera_name || "-"}</TableCell>
                             <TableCell>{procName}</TableCell>
                             <TableCell>{r.district ?? "-"}</TableCell>
+                            <TableCell className="whitespace-nowrap text-sm">{paymentMethodLabel(recordPaymentMethodRaw(r))}</TableCell>
                             <TableCell className="text-right tabular-nums">{ing.toFixed(2)}</TableCell>
                             <TableCell className="text-right tabular-nums">{costo.toFixed(2)}</TableCell>
                             <TableCell className="text-right tabular-nums text-green-600">{util.toFixed(2)}</TableCell>
@@ -628,14 +672,14 @@ export default function ProcedimientosReportes() {
                     </TableBody>
                     <tfoot>
                       <TableRow className="border-t-2 font-bold bg-gray-50">
-                        <TableCell colSpan={4} className="text-right">
+                        <TableCell colSpan={6} className="text-right">
                           Total:
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
-                          S/ {records.reduce((s, r) => s + totalIngreso(r), 0).toFixed(2)}
+                          S/ {filteredRecords.reduce((s, r) => s + totalIngreso(r), 0).toFixed(2)}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
-                          S/ {records.reduce((s, r) => {
+                          S/ {filteredRecords.reduce((s, r) => {
                             const proc = r.procedure_catalog as ProcedureCatalogItem | null;
                             const costo = proc ? Number(proc.total_cost_soles ?? 0) : 0;
                             return s + costo;

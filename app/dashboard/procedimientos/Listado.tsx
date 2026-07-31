@@ -184,6 +184,7 @@ export default function ListadoProcedimientos() {
                   <TableHead>Fecha</TableHead>
                   <TableHead>Estado Pago</TableHead>
                   <TableHead>Paciente</TableHead>
+                  <TableHead>Enfermera</TableHead>
                   <TableHead>Procedimiento</TableHead>
                   <TableHead>Distrito</TableHead>
                   <TableHead className="text-right">Ingreso (S/.)</TableHead>
@@ -220,6 +221,7 @@ export default function ListadoProcedimientos() {
                         </Badge>
                       </TableCell>
                       <TableCell className="uppercase">{displayName}</TableCell>
+                      <TableCell className="uppercase">{r.enfermera_name ?? "-"}</TableCell>
                       <TableCell>{procName}</TableCell>
                       <TableCell>{displayDistrict}</TableCell>
                       <TableCell className="text-right">{ing.toFixed(2)}</TableCell>

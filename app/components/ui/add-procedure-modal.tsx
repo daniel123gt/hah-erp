@@ -13,6 +13,8 @@ import {
 import { Combobox } from "~/components/ui/combobox";
 import { procedureService, type ProcedureCatalogItem, PAYMENT_METHOD_OPTIONS, type PaymentMethodKey, recordToPaymentPayload } from "~/services/procedureService";
 import { patientsService, type Patient } from "~/services/patientsService";
+import { staffService } from "~/services/staffService";
+import { getDepartmentForCategory } from "~/dashboard/personal/categories";
 import { CreatePatientSubmodal } from "~/components/ui/create-patient-submodal";
 import { toast } from "sonner";
 import { Plus, User, FileText, DollarSign, MapPin, Loader2, UserPlus } from "lucide-react";
@@ -32,6 +34,7 @@ const emptyFormBase = {
   procedure_catalog_id: "" as string | null,
   procedure_name: "",
   district: "",
+  enfermera_name: "",
   paymentMethod: "efectivo" as PaymentMethodKey,
   paymentAmount: 0,
   numero_operacion: "",
@@ -52,6 +55,7 @@ export function AddProcedureModal({ onCreated }: AddProcedureModalProps) {
   const [patients, setPatients] = useState<Array<{ id: string; name: string }>>([]);
   const [catalog, setCatalog] = useState<ProcedureCatalogItem[]>([]);
   const [districts, setDistricts] = useState<Array<{ name: string }>>([]);
+  const [nurses, setNurses] = useState<Array<{ name: string }>>([]);
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
 
@@ -60,14 +64,19 @@ export function AddProcedureModal({ onCreated }: AddProcedureModalProps) {
     (async () => {
       setLoadingData(true);
       try {
-        const [pRes, cList, dList] = await Promise.all([
+        const department = getDepartmentForCategory("enfermeria");
+        const [pRes, cList, dList, nRes] = await Promise.all([
           patientsService.getPatients({ limit: 500 }),
           procedureService.getCatalog(false),
           patientsService.getDistricts(),
+          department
+            ? staffService.getStaff({ limit: 200, department, status: "Activo" })
+            : Promise.resolve({ data: [] as Array<{ name: string }> }),
         ]);
         setPatients(pRes.data.map((p) => ({ id: p.id, name: p.name })));
         setCatalog(cList);
         setDistricts(dList.map((d) => ({ name: d.name })));
+        setNurses((nRes.data ?? []).map((s: { name: string }) => ({ name: s.name })));
       } catch (e) {
         console.error(e);
       } finally {
@@ -101,6 +110,7 @@ export function AddProcedureModal({ onCreated }: AddProcedureModalProps) {
         procedure_catalog_id: form.procedure_catalog_id || null,
         procedure_name: form.procedure_name || null,
         district: form.district || null,
+        enfermera_name: form.enfermera_name || null,
         ...payment,
         numero_operacion: form.numero_operacion || null,
         gastos_material: form.gastos_material,
@@ -207,6 +217,18 @@ export function AddProcedureModal({ onCreated }: AddProcedureModalProps) {
                     }
                     placeholder="Seleccionar procedimiento"
                     emptyOption={{ value: "", label: "Seleccionar..." }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Enfermera / Profesional</label>
+                  <Combobox
+                    uppercase
+                    options={nurses.map((n) => ({ value: n.name, label: n.name }))}
+                    value={form.enfermera_name}
+                    onValueChange={(value) => setForm((f) => ({ ...f, enfermera_name: value }))}
+                    placeholder="Seleccionar enfermera"
+                    emptyOption={{ value: "", label: "Sin asignar" }}
+                    emptySearchText="Sin enfermeras."
                   />
                 </div>
                 <div className="md:col-span-2">

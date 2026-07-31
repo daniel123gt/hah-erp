@@ -19,6 +19,7 @@ import shiftCareService from "~/services/shiftCareService";
 import { rxEcografiaRecordsService } from "~/services/rxEcografiaRecordsService";
 import { medicalAppointmentRecordsService } from "~/services/medicalAppointmentRecordsService";
 import { formatDateOnly } from "~/lib/utils";
+import { matchesPaymentFilter, paymentMethodLabel, PAYMENT_METHOD_FILTER_OPTIONS, type PaymentMethodKey } from "~/lib/paymentMethod";
 import { downloadCsv, downloadWorkbook } from "~/lib/exportSpreadsheet";
 import {
   Select,
@@ -68,6 +69,7 @@ export interface ReportConsolidatedRow {
   origen: ReportRowOrigin;
   detalle: string;
   paciente: string;
+  metodo: string;
   monto: number;
   egresos: number;
   utilidad: number;
@@ -79,11 +81,11 @@ function firstDayOfMonth(year: number, month: number): string {
 }
 
 function buildConsolidatedRowsFromReports(
-  labRows: Array<{ id: string; order_date: string; physician_name: string | null; patient_name: string | null; n_items: number; total_amount: number; cost: number; utility: number }>,
-  procRows: Array<{ id: string; fecha: string; patient_name: string; procedure_name: string; ingreso: number; costo: number; utility: number }>,
-  rxRows: Array<{ id: string; fecha: string; patient_name: string; appointment_type: string; ingreso: number; costo: number; utility: number }>,
-  medRows: Array<{ id: string; fecha: string; patient_name: string; appointment_type: string; doctor_name: string | null; ingreso: number; costo: number; utility: number }>,
-  shiftRows: Array<{ id: string; fecha: string; patient_name: string; turno: string | null; monto_a_pagar: number }>
+  labRows: Array<{ id: string; order_date: string; physician_name: string | null; patient_name: string | null; n_items: number; total_amount: number; cost: number; utility: number; payment_method: string | null }>,
+  procRows: Array<{ id: string; fecha: string; patient_name: string; procedure_name: string; ingreso: number; costo: number; utility: number; payment_method: string | null }>,
+  rxRows: Array<{ id: string; fecha: string; patient_name: string; appointment_type: string; ingreso: number; costo: number; utility: number; payment_method: string | null }>,
+  medRows: Array<{ id: string; fecha: string; patient_name: string; appointment_type: string; doctor_name: string | null; ingreso: number; costo: number; utility: number; payment_method: string | null }>,
+  shiftRows: Array<{ id: string; fecha: string; patient_name: string; turno: string | null; monto_a_pagar: number; forma_de_pago: string | null }>
 ): ReportConsolidatedRow[] {
   const rows: ReportConsolidatedRow[] = [];
 
@@ -96,6 +98,7 @@ function buildConsolidatedRowsFromReports(
       origen: "Laboratorio",
       detalle: `Orden ${r.id.slice(0, 8)} · ${r.n_items} exám.${r.physician_name ? ` · ${r.physician_name}` : ""}`,
       paciente: pacienteLab,
+      metodo: paymentMethodLabel(r.payment_method),
       monto: Number(r.total_amount ?? 0),
       egresos: Number(r.cost ?? 0),
       utilidad: Number(r.utility ?? 0),
@@ -109,6 +112,7 @@ function buildConsolidatedRowsFromReports(
       origen: "Procedimientos",
       detalle: r.procedure_name ?? "Procedimiento",
       paciente: r.patient_name ?? "—",
+      metodo: paymentMethodLabel(r.payment_method),
       monto: Number(r.ingreso ?? 0),
       egresos: Number(r.costo ?? 0),
       utilidad: Number(r.utility ?? 0),
@@ -122,6 +126,7 @@ function buildConsolidatedRowsFromReports(
       origen: "RX / Ecografías",
       detalle: r.appointment_type ?? "RX/Ecografía",
       paciente: r.patient_name ?? "—",
+      metodo: paymentMethodLabel(r.payment_method),
       monto: Number(r.ingreso ?? 0),
       egresos: Number(r.costo ?? 0),
       utilidad: Number(r.utility ?? 0),
@@ -137,6 +142,7 @@ function buildConsolidatedRowsFromReports(
         ? `${r.appointment_type}${r.doctor_name ? ` · ${r.doctor_name}` : ""}`
         : "Cita médica",
       paciente: r.patient_name ?? "—",
+      metodo: paymentMethodLabel(r.payment_method),
       monto: Number(r.ingreso ?? 0),
       egresos: Number(r.costo ?? 0),
       utilidad: Number(r.utility ?? 0),
@@ -150,6 +156,7 @@ function buildConsolidatedRowsFromReports(
       origen: "Cuidados por turnos",
       detalle: r.turno ? `Turno ${r.turno}` : "Turno",
       paciente: r.patient_name ?? "—",
+      metodo: paymentMethodLabel(r.forma_de_pago),
       monto: Number(r.monto_a_pagar ?? 0),
       egresos: 0,
       utilidad: Number(r.monto_a_pagar ?? 0),
@@ -165,10 +172,10 @@ function buildConsolidatedRowsFromReports(
 
 const LAB_STATUS_PENDIENTES = ["Pendiente", "En toma de muestra", "En Proceso"];
 
-function filterLabRowsByEstado(
-  rows: Array<{ status: string }>,
+function filterLabRowsByEstado<T extends { status: string }>(
+  rows: T[],
   estado: EstadoFilterValue
-): typeof rows {
+): T[] {
   const sinCancelado = rows.filter((r) => r.status !== "Cancelado");
   if (estado === "todos") return sinCancelado;
   if (estado === "pendientes") return sinCancelado.filter((r) => LAB_STATUS_PENDIENTES.includes(r.status));
@@ -176,10 +183,10 @@ function filterLabRowsByEstado(
   return sinCancelado;
 }
 
-function filterProcRowsByEstado(
-  rows: Array<{ ingreso: number }>,
+function filterProcRowsByEstado<T extends { ingreso: number }>(
+  rows: T[],
   estado: EstadoFilterValue
-): typeof rows {
+): T[] {
   if (estado === "todos") return rows;
   if (estado === "pendientes") return rows.filter((r) => Number(r.ingreso ?? 0) === 0);
   if (estado === "completados") return rows.filter((r) => Number(r.ingreso ?? 0) > 0);
@@ -191,6 +198,7 @@ export default function ReportesPage() {
   const [startDate, setStartDate] = useState(() => firstDayOfMonth(now.getFullYear(), now.getMonth() + 1));
   const [endDate, setEndDate] = useState(() => now.toISOString().split("T")[0]);
   const [estadoFilter, setEstadoFilter] = useState<EstadoFilterValue>("todos");
+  const [metodoFilter, setMetodoFilter] = useState<PaymentMethodKey | "todos">("todos");
   const [loading, setLoading] = useState(true);
   const [labReport, setLabReport] = useState<Awaited<ReturnType<typeof labOrderService.getReportLaboratorio>> | null>(null);
   const [procReport, setProcReport] = useState<Awaited<ReturnType<typeof procedureService.getReportProcedimientos>> | null>(null);
@@ -236,11 +244,22 @@ export default function ReportesPage() {
   const rxRowsRaw = rxReport?.rows ?? [];
   const medRowsRaw = medReport?.rows ?? [];
   const shiftRowsRaw = shiftReport?.rows ?? [];
-  const filteredLabRows = filterLabRowsByEstado(labRowsRaw, estadoFilter);
-  const filteredProcRows = filterProcRowsByEstado(procRowsRaw, estadoFilter);
+  // Filtro por estado + método de pago (normalizado) sobre cada fuente.
+  // El método se filtra sobre las filas crudas (tienen payment_method) antes del estado.
+  const filteredLabRows = filterLabRowsByEstado(
+    labRowsRaw.filter((r) => matchesPaymentFilter(r.payment_method, metodoFilter)),
+    estadoFilter
+  );
+  const filteredProcRows = filterProcRowsByEstado(
+    procRowsRaw.filter((r) => matchesPaymentFilter(r.payment_method, metodoFilter)),
+    estadoFilter
+  );
+  const filteredRxRows = rxRowsRaw.filter((r) => matchesPaymentFilter(r.payment_method, metodoFilter));
+  const filteredMedRows = medRowsRaw.filter((r) => matchesPaymentFilter(r.payment_method, metodoFilter));
+  const filteredShiftRows = shiftRowsRaw.filter((r) => matchesPaymentFilter(r.forma_de_pago, metodoFilter));
   const displayRows =
     labReport && procReport && rxReport && medReport && shiftReport
-      ? buildConsolidatedRowsFromReports(filteredLabRows, filteredProcRows, rxRowsRaw, medRowsRaw, shiftRowsRaw)
+      ? buildConsolidatedRowsFromReports(filteredLabRows, filteredProcRows, filteredRxRows, filteredMedRows, filteredShiftRows)
       : tableRows;
 
   const labRevenue = filteredLabRows.reduce((s, r) => s + Number(r.total_amount ?? 0), 0);
@@ -249,13 +268,13 @@ export default function ReportesPage() {
   const procedureRevenue = filteredProcRows.reduce((s, r) => s + Number(r.ingreso ?? 0), 0);
   const procedureCost = filteredProcRows.reduce((s, r) => s + Number(r.costo ?? 0), 0);
   const procedureUtility = filteredProcRows.reduce((s, r) => s + Number(r.utility ?? 0), 0);
-  const rxRevenue = rxRowsRaw.reduce((s, r) => s + Number(r.ingreso ?? 0), 0);
-  const rxCost = rxRowsRaw.reduce((s, r) => s + Number(r.costo ?? 0), 0);
-  const rxUtility = rxRowsRaw.reduce((s, r) => s + Number(r.utility ?? 0), 0);
-  const medRevenue = medRowsRaw.reduce((s, r) => s + Number(r.ingreso ?? 0), 0);
-  const medCost = medRowsRaw.reduce((s, r) => s + Number(r.costo ?? 0), 0);
-  const medUtility = medRowsRaw.reduce((s, r) => s + Number(r.utility ?? 0), 0);
-  const shiftRevenue = shiftRowsRaw.reduce((s, r) => s + Number(r.monto_a_pagar ?? 0), 0);
+  const rxRevenue = filteredRxRows.reduce((s, r) => s + Number(r.ingreso ?? 0), 0);
+  const rxCost = filteredRxRows.reduce((s, r) => s + Number(r.costo ?? 0), 0);
+  const rxUtility = filteredRxRows.reduce((s, r) => s + Number(r.utility ?? 0), 0);
+  const medRevenue = filteredMedRows.reduce((s, r) => s + Number(r.ingreso ?? 0), 0);
+  const medCost = filteredMedRows.reduce((s, r) => s + Number(r.costo ?? 0), 0);
+  const medUtility = filteredMedRows.reduce((s, r) => s + Number(r.utility ?? 0), 0);
+  const shiftRevenue = filteredShiftRows.reduce((s, r) => s + Number(r.monto_a_pagar ?? 0), 0);
   const shiftCost = 0;
   const shiftUtility = shiftRevenue;
 
@@ -379,19 +398,21 @@ export default function ReportesPage() {
       Origen: r.origen,
       Detalle: r.detalle,
       "Paciente / Referente": r.paciente,
+      "Método": r.metodo,
       "Monto (S/.)": Number(r.monto.toFixed(2)),
       "Egresos (S/.)": Number(r.egresos.toFixed(2)),
       "Utilidad (S/.)": Number(r.utilidad.toFixed(2)),
     }));
 
   const handleExportCSV = () => {
-    const headers = "Fecha,Origen,Detalle,Paciente,Monto (S/.),Egresos (S/.),Utilidad (S/.)\n";
+    const headers = "Fecha,Origen,Detalle,Paciente,Método,Monto (S/.),Egresos (S/.),Utilidad (S/.)\n";
     const csvRows = displayRows.map((r) =>
       [
         `"${formatDateOnly(r.fecha, "es-PE")}"`,
         `"${r.origen}"`,
         `"${String(r.detalle).replace(/"/g, '""')}"`,
         `"${String(r.paciente).replace(/"/g, '""')}"`,
+        `"${r.metodo}"`,
         r.monto.toFixed(2),
         r.egresos.toFixed(2),
         r.utilidad.toFixed(2),
@@ -485,6 +506,18 @@ export default function ReportesPage() {
                   <SelectItem value="completados">Completados</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label>Método de pago</Label>
+              <select
+                value={metodoFilter}
+                onChange={(e) => setMetodoFilter(e.target.value as PaymentMethodKey | "todos")}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              >
+                {PAYMENT_METHOD_FILTER_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
             </div>
           </div>
         </CardContent>
@@ -818,6 +851,7 @@ export default function ReportesPage() {
                         <TableHead>Origen</TableHead>
                         <TableHead>Detalle</TableHead>
                         <TableHead>Paciente / Referente</TableHead>
+                        <TableHead>Método</TableHead>
                         <TableHead className="text-right">Monto (S/.)</TableHead>
                         <TableHead className="text-right">Egresos (S/.)</TableHead>
                         <TableHead className="text-right">Utilidad (S/.)</TableHead>
@@ -838,6 +872,7 @@ export default function ReportesPage() {
                             {row.detalle}
                           </TableCell>
                           <TableCell className="uppercase">{row.paciente}</TableCell>
+                          <TableCell className="whitespace-nowrap text-sm">{row.metodo}</TableCell>
                           <TableCell className="text-right tabular-nums font-medium">
                             {row.monto.toFixed(2)}
                           </TableCell>

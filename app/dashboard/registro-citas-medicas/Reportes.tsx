@@ -14,6 +14,7 @@ import {
 import { Label } from "~/components/ui/label";
 import { medicalAppointmentRecordsService, type ReportResult } from "~/services/medicalAppointmentRecordsService";
 import { formatDateOnly } from "~/lib/utils";
+import { matchesPaymentFilter, paymentMethodLabel, PAYMENT_METHOD_FILTER_OPTIONS, type PaymentMethodKey } from "~/lib/paymentMethod";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -65,6 +66,7 @@ export default function ReportesRegistroCitasMedicas() {
   });
   const [report, setReport] = useState<ReportResult | null>(null);
   const [loading, setLoading] = useState(true);
+  const [metodoFilter, setMetodoFilter] = useState<PaymentMethodKey | "todos">("todos");
 
   useEffect(() => {
     setLoading(true);
@@ -75,8 +77,15 @@ export default function ReportesRegistroCitasMedicas() {
       .finally(() => setLoading(false));
   }, [startDate, endDate]);
 
-  const totals = report?.totals ?? null;
-  const rows = report?.rows ?? [];
+  const rows = (report?.rows ?? []).filter((r) =>
+    matchesPaymentFilter(r.payment_method, metodoFilter)
+  );
+  const totals = {
+    total_records: rows.length,
+    total_ingreso: rows.reduce((s, r) => s + Number(r.ingreso ?? 0), 0),
+    total_costo: rows.reduce((s, r) => s + Number(r.costo ?? 0), 0),
+    total_utilidad: rows.reduce((s, r) => s + Number(r.utility ?? 0), 0),
+  };
 
   type ChartTabId = "distribucion" | "evolucion" | "tipo_cita" | "registros";
   const [chartTab, setChartTab] = useState<ChartTabId>("distribucion");
@@ -127,13 +136,14 @@ export default function ReportesRegistroCitasMedicas() {
     if (exportingCSV) return;
     setExportingCSV(true);
     try {
-      const headers = "Fecha,Paciente,Tipo cita,Médico,Ingreso (S/.),Costo (S/.),Utilidad (S/.)\n";
+      const headers = "Fecha,Paciente,Tipo cita,Médico,Método,Ingreso (S/.),Costo (S/.),Utilidad (S/.)\n";
       const csvRows = rows.map((r) =>
         [
           formatDateOnly(r.fecha, "es-PE"),
           `"${(r.patient_name ?? "").replace(/"/g, '""')}"`,
           `"${(r.appointment_type ?? "").replace(/"/g, '""')}"`,
           `"${(r.doctor_name ?? "").replace(/"/g, '""')}"`,
+          `"${paymentMethodLabel(r.payment_method)}"`,
           r.ingreso.toFixed(2),
           r.costo.toFixed(2),
           r.utility.toFixed(2),
@@ -192,6 +202,18 @@ export default function ReportesRegistroCitasMedicas() {
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
               />
+            </div>
+            <div>
+              <Label>Método de pago</Label>
+              <select
+                value={metodoFilter}
+                onChange={(e) => setMetodoFilter(e.target.value as PaymentMethodKey | "todos")}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              >
+                {PAYMENT_METHOD_FILTER_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
             </div>
           </div>
         </CardContent>
@@ -431,6 +453,7 @@ export default function ReportesRegistroCitasMedicas() {
                       <TableHead>Paciente</TableHead>
                       <TableHead>Tipo cita</TableHead>
                       <TableHead>Médico</TableHead>
+                      <TableHead>Método</TableHead>
                       <TableHead className="text-right">Ingreso (S/.)</TableHead>
                       <TableHead className="text-right">Costo (S/.)</TableHead>
                       <TableHead className="text-right">Utilidad (S/.)</TableHead>
@@ -445,6 +468,7 @@ export default function ReportesRegistroCitasMedicas() {
                         <TableCell className="uppercase">{r.patient_name}</TableCell>
                         <TableCell>{r.appointment_type}</TableCell>
                         <TableCell className="uppercase">{r.doctor_name ?? "—"}</TableCell>
+                        <TableCell className="whitespace-nowrap text-sm">{paymentMethodLabel(r.payment_method)}</TableCell>
                         <TableCell className="text-right tabular-nums">
                           {r.ingreso.toFixed(2)}
                         </TableCell>

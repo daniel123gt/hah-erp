@@ -14,6 +14,7 @@ import {
 } from "~/components/ui/table";
 import homeCareService, { type HomeCarePeriod } from "~/services/homeCareService";
 import { formatDateOnly } from "~/lib/utils";
+import { matchesPaymentFilter, PAYMENT_METHOD_FILTER_OPTIONS, type PaymentMethodKey } from "~/lib/paymentMethod";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -80,6 +81,7 @@ export default function CuidadosEnCasaReportes() {
   const [periods, setPeriods] = useState<PeriodWithContract[]>([]);
   const [loading, setLoading] = useState(true);
   const [exportingCSV, setExportingCSV] = useState(false);
+  const [metodoFilter, setMetodoFilter] = useState<PaymentMethodKey | "todos">("todos");
 
   useEffect(() => {
     setLoading(true);
@@ -98,9 +100,13 @@ export default function CuidadosEnCasaReportes() {
       .finally(() => setLoading(false));
   }, [startDate, endDate]);
 
-  const totals = dbReport?.totals ?? null;
   const hasDbRows = (dbReport?.rows?.length ?? 0) > 0;
-  const reportRows = hasDbRows ? (dbReport?.rows ?? []) : [];
+  // Filas filtradas por método de pago (normalizado) en la fuente que aplique.
+  const reportRows = (hasDbRows ? (dbReport?.rows ?? []) : []).filter((r) =>
+    matchesPaymentFilter(r.metodo_pago, metodoFilter)
+  );
+  const filteredPeriods = periods.filter((p) => matchesPaymentFilter(p.metodo_pago, metodoFilter));
+  const displayCount = hasDbRows ? reportRows.length : filteredPeriods.length;
   const chartSourceRows = hasDbRows
     ? reportRows.map((r) => ({
         fecha_pago: r.fecha_pago,
@@ -108,19 +114,17 @@ export default function CuidadosEnCasaReportes() {
         patient_name: r.patient_name,
         monto_total: Number(r.monto_total ?? 0),
       }))
-    : periods.map((p) => ({
+    : filteredPeriods.map((p) => ({
         fecha_pago: p.fecha_pago,
         f_desde: p.f_desde,
         patient_name: getPatientName(p),
         monto_total: Number(p.monto_total ?? 0),
       }));
   const revenue = hasDbRows
-    ? Number(totals?.total_revenue ?? 0)
-    : periods.reduce((s, p) => s + Number(p.monto_total ?? 0), 0);
-  const totalPeriods = hasDbRows ? Number(totals?.total_periods ?? reportRows.length) : periods.length;
-  const promedio = hasDbRows
-    ? Number(totals?.promedio ?? (totalPeriods ? revenue / totalPeriods : 0))
-    : (totalPeriods ? revenue / totalPeriods : 0);
+    ? reportRows.reduce((s, r) => s + Number(r.monto_total ?? 0), 0)
+    : filteredPeriods.reduce((s, p) => s + Number(p.monto_total ?? 0), 0);
+  const totalPeriods = displayCount;
+  const promedio = totalPeriods ? revenue / totalPeriods : 0;
 
   type ChartTabId = "distribucion" | "evolucion" | "pacientes" | "pagos";
   const [chartTab, setChartTab] = useState<ChartTabId>("distribucion");
@@ -168,13 +172,13 @@ export default function CuidadosEnCasaReportes() {
     try {
       const headers = "Fecha pago,Paciente,Quincena,F.Desde,F.Hasta,Monto total,Método pago\n";
       let rows: string[];
-      if (dbReport?.rows?.length) {
-        rows = dbReport.rows.map((r) => {
+      if (hasDbRows) {
+        rows = reportRows.map((r) => {
           const fechaPago = r.fecha_pago ? formatDateOnly(r.fecha_pago, "es-PE") : "";
           return `"${fechaPago}","${r.patient_name ?? ""}","${r.turno ?? ""}","${r.f_desde ?? ""}","${r.f_hasta ?? ""}",${Number(r.monto_total ?? 0).toFixed(2)},"${r.metodo_pago ?? ""}"`;
         });
       } else {
-        rows = periods.map((p) => {
+        rows = filteredPeriods.map((p) => {
           const patient = getPatientName(p);
           const fechaPago = p.fecha_pago ? formatDateOnly(p.fecha_pago, "es-PE") : "";
           return `"${fechaPago}","${patient}","${p.turno ?? ""}","${p.f_desde ?? ""}","${p.f_hasta ?? ""}",${Number(p.monto_total ?? 0).toFixed(2)},"${p.metodo_pago ?? ""}"`;
@@ -224,6 +228,18 @@ export default function CuidadosEnCasaReportes() {
             <div>
               <Label>Fecha Fin</Label>
               <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            </div>
+            <div>
+              <Label>Método de pago</Label>
+              <select
+                value={metodoFilter}
+                onChange={(e) => setMetodoFilter(e.target.value as PaymentMethodKey | "todos")}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              >
+                {PAYMENT_METHOD_FILTER_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
             </div>
           </div>
         </CardContent>
@@ -300,7 +316,7 @@ export default function CuidadosEnCasaReportes() {
         </div>
       )}
 
-      {!loading && (hasDbRows ? reportRows.length : periods.length) > 0 && (
+      {!loading && displayCount > 0 && (
         <div className="flex justify-end">
           <Button onClick={handleExportCSV} disabled={exportingCSV}>
             {exportingCSV ? (
@@ -446,7 +462,7 @@ export default function CuidadosEnCasaReportes() {
             <CardTitle>Pagos del período ({hasDbRows ? reportRows.length : periods.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            {(hasDbRows ? reportRows.length : periods.length) === 0 ? (
+            {displayCount === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 <FileText className="w-12 h-12 mx-auto mb-2 text-gray-300" />
                 <p>No hay pagos registrados en este período.</p>
@@ -466,7 +482,7 @@ export default function CuidadosEnCasaReportes() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {dbReport.rows.map((r) => (
+                    {reportRows.map((r) => (
                       <TableRow key={r.id}>
                         <TableCell className="whitespace-nowrap">
                           {r.fecha_pago ? formatDateOnly(r.fecha_pago, "es-PE") : "—"}
@@ -486,7 +502,7 @@ export default function CuidadosEnCasaReportes() {
                     <TableRow className="border-t-2 font-bold bg-gray-50">
                       <TableCell colSpan={5} className="text-right">Total:</TableCell>
                       <TableCell className="text-right tabular-nums">
-                        S/ {(dbReport.totals.total_revenue ?? 0).toFixed(2)}
+                        S/ {revenue.toFixed(2)}
                       </TableCell>
                       <TableCell />
                     </TableRow>
@@ -508,7 +524,7 @@ export default function CuidadosEnCasaReportes() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {periods.map((p) => (
+                    {filteredPeriods.map((p) => (
                       <TableRow key={p.id}>
                         <TableCell className="whitespace-nowrap">
                           {p.fecha_pago ? formatDateOnly(p.fecha_pago, "es-PE") : "—"}
