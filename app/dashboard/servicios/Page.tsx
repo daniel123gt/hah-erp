@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import { TablePagination } from "~/components/ui/table-pagination";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
   Table,
@@ -107,6 +108,8 @@ export default function ServiciosPage() {
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [services, setServices] = useState<Service[]>(mockServices);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
 
   const filteredServices = services.filter(service => {
     const matchesSearch = service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -117,6 +120,12 @@ export default function ServiciosPage() {
     
     return matchesSearch && matchesCategory && matchesStatus;
   });
+
+  useEffect(() => { setPage(1); }, [searchTerm, filterCategory, filterStatus, services.length]);
+  const totalItems = filteredServices.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / limit));
+  const currentPage = Math.min(page, totalPages);
+  const pagedServices = filteredServices.slice((currentPage - 1) * limit, currentPage * limit);
 
   const handleServiceAdded = (newService: Service) => {
     setServices(prev => [newService, ...prev]);
@@ -316,7 +325,7 @@ export default function ServiciosPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredServices.map((service) => (
+              {pagedServices.map((service) => (
                 <TableRow key={service.id}>
                   <TableCell>
                     <div>
@@ -365,6 +374,14 @@ export default function ServiciosPage() {
             </TableBody>
             </Table>
           </div>
+          <TablePagination
+            page={currentPage}
+            limit={limit}
+            total={totalItems}
+            onPageChange={setPage}
+            onLimitChange={(n) => { setLimit(n); setPage(1); }}
+            itemLabel="servicios"
+          />
         </CardContent>
       </Card>
     </div>

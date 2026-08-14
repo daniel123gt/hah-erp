@@ -15,6 +15,7 @@ import { Badge } from "~/components/ui/badge";
 import { AddAppointmentModal } from "~/components/ui/add-appointment-modal";
 import { ViewAppointmentModal } from "~/components/ui/view-appointment-modal";
 import { EditAppointmentModal } from "~/components/ui/edit-appointment-modal";
+import { TablePagination } from "~/components/ui/table-pagination";
 import { useNotifications } from "~/contexts/NotificationsContext";
 import {
   Search,
@@ -28,8 +29,6 @@ import {
   XCircle,
   ArrowLeft,
   HeartPulse,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { procedureService, recordToPaymentPayload, type PaymentMethodKey } from "~/services/procedureService";
@@ -60,7 +59,7 @@ export default function CitasProcedimientosPage() {
   const [patients, setPatients] = useState<Record<string, Patient>>({});
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const PAGE_SIZE = 10;
+  const [limit, setLimit] = useState(10);
 
   useEffect(() => {
     setLoading(true);
@@ -113,11 +112,11 @@ export default function CitasProcedimientosPage() {
     setPage(1);
   }, [searchTerm, filterDate, filterStatus, filterType, appointments.length]);
 
-  const totalPages = Math.ceil(filteredAppointments.length / PAGE_SIZE) || 1;
+  const totalPages = Math.max(1, Math.ceil(filteredAppointments.length / limit));
   const currentPage = Math.min(page, totalPages);
   const pagedAppointments = filteredAppointments.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
+    (currentPage - 1) * limit,
+    currentPage * limit
   );
 
   const createProcedureRecordFromAppointment = (apt: Appointment) => {
@@ -543,30 +542,15 @@ export default function CitasProcedimientosPage() {
               </TableBody>
             </Table>
           </div>
-          {!loading && filteredAppointments.length > 0 && totalPages > 1 && (
-            <div className="flex items-center justify-between pt-4">
-              <span className="text-sm text-gray-600">
-                Página {currentPage} de {totalPages} ({filteredAppointments.length} citas)
-              </span>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={currentPage <= 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={currentPage >= totalPages}
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
+          {!loading && filteredAppointments.length > 0 && (
+            <TablePagination
+              page={currentPage}
+              limit={limit}
+              total={filteredAppointments.length}
+              onPageChange={setPage}
+              onLimitChange={(n) => { setLimit(n); setPage(1); }}
+              itemLabel="citas"
+            />
           )}
           {!loading && filteredAppointments.length === 0 && (
             <div className="text-center py-8 text-gray-500">

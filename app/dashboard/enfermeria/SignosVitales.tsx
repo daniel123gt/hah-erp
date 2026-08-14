@@ -6,6 +6,7 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Combobox } from "~/components/ui/combobox";
+import { TablePagination } from "~/components/ui/table-pagination";
 import { toast } from "sonner";
 import { ArrowLeft, Search, Loader2, UserPlus } from "lucide-react";
 import { CreatePatientSubmodal } from "~/components/ui/create-patient-submodal";
@@ -26,6 +27,8 @@ export default function SignosVitales() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [recentEntries, setRecentEntries] = useState<NursingVitalSignEntry[]>([]);
   const [loadingEntries, setLoadingEntries] = useState(false);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
 
   const [form, setForm] = useState<CreateNursingVitalSignEntry>({
     patient_id: "",
@@ -119,6 +122,14 @@ export default function SignosVitales() {
       setIsSubmitting(false);
     }
   };
+
+  useEffect(() => {
+    setPage(1);
+  }, [selectedPatient?.id, recentEntries.length]);
+  const totalItems = recentEntries.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / limit));
+  const currentPage = Math.min(page, totalPages);
+  const pagedEntries = recentEntries.slice((currentPage - 1) * limit, currentPage * limit);
 
   return (
     <div className="p-6 space-y-6">
@@ -282,6 +293,7 @@ export default function SignosVitales() {
               No hay registros para este paciente
             </div>
           ) : (
+            <>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -298,7 +310,7 @@ export default function SignosVitales() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {recentEntries.map((r) => {
+                  {pagedEntries.map((r) => {
                     const d = new Date(r.assessment_datetime);
                     const fecha = d.toLocaleDateString('es-ES');
                     const hora = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
@@ -319,6 +331,17 @@ export default function SignosVitales() {
                 </TableBody>
               </Table>
             </div>
+            {!loadingEntries && (
+              <TablePagination
+                page={currentPage}
+                limit={limit}
+                total={totalItems}
+                onPageChange={setPage}
+                onLimitChange={(n) => { setLimit(n); setPage(1); }}
+                itemLabel="registros"
+              />
+            )}
+            </>
           )}
         </CardContent>
       </Card>

@@ -16,14 +16,13 @@ import {
   type MedicalAppointmentRecord,
 } from "~/services/medicalAppointmentRecordsService";
 import { formatDateOnly } from "~/lib/utils";
+import { TablePagination } from "~/components/ui/table-pagination";
 import { toast } from "sonner";
 import {
   ArrowLeft,
   Search,
   Loader2,
   Pencil,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 import { EditMedicalRecordModal } from "~/components/ui/edit-medical-record-modal";
 import { AddMedicalRecordModal } from "~/components/ui/add-medical-record-modal";
@@ -37,7 +36,7 @@ export default function ListadoRegistroCitasMedicas() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [page, setPage] = useState(1);
-  const limit = 10;
+  const [limit, setLimit] = useState(10);
   const [editRecord, setEditRecord] = useState<MedicalAppointmentRecord | null>(null);
 
   const loadRecords = useCallback(async () => {
@@ -59,7 +58,7 @@ export default function ListadoRegistroCitasMedicas() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, fromDate, toDate]);
+  }, [page, limit, search, fromDate, toDate]);
 
   // Volver a página 1 cuando cambien filtros o búsqueda
   useEffect(() => {
@@ -79,7 +78,6 @@ export default function ListadoRegistroCitasMedicas() {
     loadRecords();
   };
 
-  const totalPages = Math.ceil(total / limit) || 1;
 
   return (
     <div className="space-y-6">
@@ -182,30 +180,15 @@ export default function ListadoRegistroCitasMedicas() {
           </div>
         )}
 
-        {totalPages > 1 && (
-          <div className="flex justify-between items-center px-4 py-3 border-t">
-            <span className="text-sm text-gray-600">
-              Página {page} de {totalPages} ({total} registros)
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+        {!loading && (
+          <TablePagination
+            page={page}
+            limit={limit}
+            total={total}
+            onPageChange={setPage}
+            onLimitChange={(n) => { setLimit(n); setPage(1); }}
+            itemLabel="registros"
+          />
         )}
       </Card>
 

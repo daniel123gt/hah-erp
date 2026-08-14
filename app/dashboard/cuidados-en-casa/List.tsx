@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Eye, Loader2, Building2, Search, Users, FileText, DollarSign } from "lucide-react";
 import homeCareService, { type HomeCareContractWithPatient } from "~/services/homeCareService";
 import { AddHomeCarePatientModal } from "~/components/ui/add-home-care-patient-modal";
+import { TablePagination } from "~/components/ui/table-pagination";
 import { normalizeSearchText, formatDateOnly } from "~/lib/utils";
 
 function getPatientName(contract: HomeCareContractWithPatient): string {
@@ -26,6 +27,8 @@ export default function CuidadosEnCasaList() {
   const [estadoFilter, setEstadoFilter] = useState<EstadoFilter>("activos");
   const [plansCount, setPlansCount] = useState(0);
   const [revenueThisMonth, setRevenueThisMonth] = useState(0);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
 
   useEffect(() => {
     loadContracts();
@@ -69,6 +72,14 @@ export default function CuidadosEnCasaList() {
     const plan = normalizeSearchText(c.plan_nombre ?? "");
     return name.includes(term) || familiar.includes(term) || plan.includes(term);
   });
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, estadoFilter, contracts.length]);
+  const totalItems = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / limit));
+  const currentPage = Math.min(page, totalPages);
+  const pagedItems = filtered.slice((currentPage - 1) * limit, currentPage * limit);
 
   return (
     <div className="p-6 space-y-6">
@@ -186,6 +197,7 @@ export default function CuidadosEnCasaList() {
               </p>
             </div>
           ) : (
+            <>
             <div className="overflow-x-auto rounded-md border">
               <Table>
                 <TableHeader>
@@ -201,7 +213,7 @@ export default function CuidadosEnCasaList() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((contract) => {
+                  {pagedItems.map((contract) => {
                     const descuento = Number(contract.descuento) || 0;
                     const montoOriginal = Number(contract.plan_monto_mensual) || 0;
                     const montoFinal = contract.plan_monto_mensual_final != null
@@ -262,6 +274,17 @@ export default function CuidadosEnCasaList() {
                 </TableBody>
               </Table>
             </div>
+            {!loading && (
+              <TablePagination
+                page={currentPage}
+                limit={limit}
+                total={totalItems}
+                onPageChange={setPage}
+                onLimitChange={(n) => { setLimit(n); setPage(1); }}
+                itemLabel="contratos"
+              />
+            )}
+            </>
           )}
         </CardContent>
       </Card>

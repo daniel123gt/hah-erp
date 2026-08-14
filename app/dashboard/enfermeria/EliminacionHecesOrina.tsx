@@ -6,6 +6,7 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Combobox } from "~/components/ui/combobox";
+import { TablePagination } from "~/components/ui/table-pagination";
 import { toast } from "sonner";
 import { ArrowLeft, Search, Loader2, Save, Trash2, UserPlus } from "lucide-react";
 import { CreatePatientSubmodal } from "~/components/ui/create-patient-submodal";
@@ -33,6 +34,8 @@ export default function EliminacionHecesOrina() {
   const [historyRecords, setHistoryRecords] = useState<EliminationRecord[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
 
   const [form, setForm] = useState<CreateEliminationRecordData>({
     patient_id: "",
@@ -223,6 +226,14 @@ export default function EliminacionHecesOrina() {
       setIsSaving(false);
     }
   };
+
+  useEffect(() => {
+    setPage(1);
+  }, [selectedPatient?.id, historyRecords.length]);
+  const totalItems = historyRecords.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / limit));
+  const currentPage = Math.min(page, totalPages);
+  const pagedHistory = historyRecords.slice((currentPage - 1) * limit, currentPage * limit);
 
   return (
     <div className="p-6 space-y-6">
@@ -461,6 +472,7 @@ export default function EliminacionHecesOrina() {
                 No hay registros guardados para este paciente.
               </div>
             ) : (
+              <>
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -491,7 +503,7 @@ export default function EliminacionHecesOrina() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {historyRecords.map((record) => (
+                    {pagedHistory.map((record) => (
                       <TableRow key={record.id}>
                         <TableCell className="border border-gray-300">
                           {formatDateOnly(record.record_date, "es-PE")}
@@ -594,6 +606,17 @@ export default function EliminacionHecesOrina() {
                   </TableBody>
                 </Table>
               </div>
+              {!loadingHistory && (
+                <TablePagination
+                  page={currentPage}
+                  limit={limit}
+                  total={totalItems}
+                  onPageChange={setPage}
+                  onLimitChange={(n) => { setLimit(n); setPage(1); }}
+                  itemLabel="registros"
+                />
+              )}
+              </>
             )}
             </CardContent>
           </Card>

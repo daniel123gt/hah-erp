@@ -16,17 +16,16 @@ import { AddContractModal } from "~/components/ui/add-contract-modal";
 import { EditContractModal } from "~/components/ui/edit-contract-modal";
 import { contractsService, type PatientContract } from "~/services/contractsService";
 import { toast } from "sonner";
-import { 
-  Search, 
-  Plus, 
-  Filter, 
-  FileText, 
+import { TablePagination } from "~/components/ui/table-pagination";
+import {
+  Search,
+  Plus,
+  Filter,
+  FileText,
   Calendar,
   DollarSign,
   User,
   Loader2,
-  ChevronLeft,
-  ChevronRight,
   X,
   Eye
 } from "lucide-react";
@@ -177,8 +176,6 @@ export default function ContratosPage() {
     }
   };
 
-  const totalPagesArray = Array.from({ length: pagination.totalPages }, (_, i) => i + 1);
-
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold text-gray-900">Gestión de Contratos</h1>
@@ -299,21 +296,6 @@ export default function ContratosPage() {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Elementos por página
-                </label>
-                <select
-                  value={pagination.limit}
-                  onChange={(e) => handleLimitChange(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
-                >
-                  <option value={5}>5 por página</option>
-                  <option value={10}>10 por página</option>
-                  <option value={20}>20 por página</option>
-                  <option value={50}>50 por página</option>
-                </select>
-              </div>
             </div>
           </div>
         </CardContent>
@@ -405,51 +387,18 @@ export default function ContratosPage() {
                   ))
                 )}
               </TableBody>
-              <TableCaption>
-                {pagination.total > 0
-                  ? `Mostrando ${
-                      (pagination.page - 1) * pagination.limit + 1
-                    }-${Math.min(
-                      pagination.page * pagination.limit,
-                      pagination.total
-                    )} de ${pagination.total} contratos.`
-                  : "No hay contratos para mostrar."}
-              </TableCaption>
             </Table>
           </div>
 
-          {/* Pagination Controls */}
-          {pagination.totalPages > 1 && (
-            <div className="flex justify-center items-center space-x-2 mt-6">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(pagination.page - 1)}
-                disabled={!pagination.hasPrevPage}
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Anterior
-              </Button>
-              {totalPagesArray.map((page) => (
-                <Button
-                  key={page}
-                  variant={pagination.page === page ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => handlePageChange(page)}
-                >
-                  {page}
-                </Button>
-              ))}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(pagination.page + 1)}
-                disabled={!pagination.hasNextPage}
-              >
-                Siguiente
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
+          {!loading && (
+            <TablePagination
+              page={pagination.page}
+              limit={pagination.limit}
+              total={pagination.total}
+              onPageChange={handlePageChange}
+              onLimitChange={handleLimitChange}
+              itemLabel="contratos"
+            />
           )}
         </CardContent>
       </Card>

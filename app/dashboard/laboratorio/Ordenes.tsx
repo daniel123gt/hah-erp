@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~
 import { SortableTableHead, type SortDirection } from "~/components/ui/sortable-table-head";
 import { toast } from "sonner";
 import { ArrowLeft, Eye, Calendar, FileText } from "lucide-react";
+import { TablePagination } from "~/components/ui/table-pagination";
 import { TableSkeleton } from "~/components/ui/table-skeleton";
 import labOrderService, { type LabExamOrder } from "~/services/labOrderService";
 import patientsService, { type Patient } from "~/services/patientsService";
@@ -44,7 +45,7 @@ export default function OrdenesLaboratorio() {
   const [totalOrders, setTotalOrders] = useState(0);
   const [sortColumn, setSortColumn] = useState<LabOrderSortColumn>(DEFAULT_LAB_ORDER_SORT);
   const [sortAsc, setSortAsc] = useState(DEFAULT_LAB_ORDER_SORT_ASC);
-  const limit = 20;
+  const [limit, setLimit] = useState(20);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm), 400);
@@ -106,7 +107,7 @@ export default function OrdenesLaboratorio() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, statusFilter, debouncedSearch, sortColumn, sortAsc]);
+  }, [currentPage, limit, statusFilter, debouncedSearch, sortColumn, sortAsc]);
 
   useEffect(() => {
     loadOrders();
@@ -134,7 +135,6 @@ export default function OrdenesLaboratorio() {
     }
   };
 
-  const totalPages = Math.ceil(totalOrders / limit);
   const isSearchActive = debouncedSearch.trim().length > 0;
 
   return (
@@ -190,12 +190,7 @@ export default function OrdenesLaboratorio() {
       {/* Tabla de órdenes */}
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle>Lista de Órdenes</CardTitle>
-            <div className="text-sm text-gray-600">
-              Mostrando {((currentPage - 1) * limit) + 1} - {Math.min(currentPage * limit, totalOrders)} de {totalOrders} órdenes
-            </div>
-          </div>
+          <CardTitle>Lista de Órdenes</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -333,28 +328,14 @@ export default function OrdenesLaboratorio() {
                 </Table>
               </div>
 
-              {/* Paginación */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                  >
-                    Anterior
-                  </Button>
-                  <span className="text-sm text-gray-600">
-                    Página {currentPage} de {totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                  >
-                    Siguiente
-                  </Button>
-                </div>
-              )}
+              <TablePagination
+                page={currentPage}
+                limit={limit}
+                total={totalOrders}
+                onPageChange={setCurrentPage}
+                onLimitChange={(n) => { setLimit(n); setCurrentPage(1); }}
+                itemLabel="órdenes"
+              />
             </>
           )}
         </CardContent>

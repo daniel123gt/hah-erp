@@ -8,6 +8,7 @@ import { ArrowLeft, Search, Eye, Plus, Loader2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import nursingInitialAssessmentService, { type NursingInitialAssessment } from "~/services/nursingInitialAssessmentService";
 import patientsService, { type Patient } from "~/services/patientsService";
+import { TablePagination } from "~/components/ui/table-pagination";
 import { normalizeSearchText } from "~/lib/utils";
 
 export default function VerValoraciones() {
@@ -16,6 +17,8 @@ export default function VerValoraciones() {
   const [patients, setPatients] = useState<Record<string, Patient>>({});
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
 
   useEffect(() => {
     loadAssessments();
@@ -69,6 +72,14 @@ export default function VerValoraciones() {
     );
   });
 
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, assessments.length]);
+  const totalItems = filteredAssessments.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / limit));
+  const currentPage = Math.min(page, totalPages);
+  const pagedAssessments = filteredAssessments.slice((currentPage - 1) * limit, currentPage * limit);
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -120,6 +131,7 @@ export default function VerValoraciones() {
               </Button>
             </div>
           ) : (
+            <>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -133,7 +145,7 @@ export default function VerValoraciones() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredAssessments.map((assessment) => {
+                  {pagedAssessments.map((assessment) => {
                     const patient = patients[assessment.patient_id];
                     return (
                       <TableRow key={assessment.id}>
@@ -166,6 +178,17 @@ export default function VerValoraciones() {
                 </TableBody>
               </Table>
             </div>
+            {!loading && (
+              <TablePagination
+                page={currentPage}
+                limit={limit}
+                total={totalItems}
+                onPageChange={setPage}
+                onLimitChange={(n) => { setLimit(n); setPage(1); }}
+                itemLabel="valoraciones"
+              />
+            )}
+            </>
           )}
         </CardContent>
       </Card>

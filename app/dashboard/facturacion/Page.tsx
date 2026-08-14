@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import { TablePagination } from "~/components/ui/table-pagination";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
   Table,
@@ -145,6 +146,8 @@ export default function FacturacionPage() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterDate, setFilterDate] = useState<string>("");
   const [invoices, setInvoices] = useState<Invoice[]>(mockInvoices);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
 
   const filteredInvoices = invoices.filter(invoice => {
     const matchesSearch = invoice.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -156,6 +159,12 @@ export default function FacturacionPage() {
     
     return matchesSearch && matchesStatus && matchesDate;
   });
+
+  useEffect(() => { setPage(1); }, [searchTerm, filterStatus, filterDate, invoices.length]);
+  const totalItems = filteredInvoices.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / limit));
+  const currentPage = Math.min(page, totalPages);
+  const pagedInvoices = filteredInvoices.slice((currentPage - 1) * limit, currentPage * limit);
 
   const handleInvoiceAdded = (newInvoice: Invoice) => {
     setInvoices(prev => [newInvoice, ...prev]);
@@ -357,7 +366,7 @@ export default function FacturacionPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredInvoices.map((invoice) => (
+              {pagedInvoices.map((invoice) => (
                 <TableRow key={invoice.id}>
                   <TableCell>
                     <div>
@@ -426,6 +435,14 @@ export default function FacturacionPage() {
             </TableBody>
             </Table>
           </div>
+          <TablePagination
+            page={currentPage}
+            limit={limit}
+            total={totalItems}
+            onPageChange={setPage}
+            onLimitChange={(n) => { setLimit(n); setPage(1); }}
+            itemLabel="facturas"
+          />
         </CardContent>
       </Card>
     </div>

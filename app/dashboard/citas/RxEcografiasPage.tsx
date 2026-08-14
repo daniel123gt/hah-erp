@@ -31,6 +31,7 @@ import { Badge } from "~/components/ui/badge";
 import { AddAppointmentModal } from "~/components/ui/add-appointment-modal";
 import { ViewAppointmentModal } from "~/components/ui/view-appointment-modal";
 import { EditAppointmentModal } from "~/components/ui/edit-appointment-modal";
+import { TablePagination } from "~/components/ui/table-pagination";
 import { useNotifications } from "~/contexts/NotificationsContext";
 import {
   Search,
@@ -80,6 +81,8 @@ export default function CitasRxEcografiasPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<Record<string, Patient>>({});
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
 
   useEffect(() => {
     setLoading(true);
@@ -123,6 +126,17 @@ export default function CitasRxEcografiasPage() {
     const matchesType = filterType === "all" || appointment.type === filterType;
     return matchesSearch && matchesDate && matchesStatus && matchesType;
   });
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, filterDate, filterStatus, filterType, appointments.length]);
+  const totalAppointments = filteredAppointments.length;
+  const totalPages = Math.max(1, Math.ceil(totalAppointments / limit));
+  const currentPage = Math.min(page, totalPages);
+  const pagedAppointments = filteredAppointments.slice(
+    (currentPage - 1) * limit,
+    currentPage * limit
+  );
 
   const handleAppointmentAdded = (newAppointment: Appointment) => {
     return appointmentsService
@@ -469,7 +483,7 @@ export default function CitasRxEcografiasPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredAppointments.map((appointment) => (
+                {pagedAppointments.map((appointment) => (
                   <TableRow key={appointment.id}>
                     <TableCell>
                       <div className="text-center">
@@ -525,6 +539,19 @@ export default function CitasRxEcografiasPage() {
               </TableBody>
             </Table>
           </div>
+          {!loading && (
+            <TablePagination
+              page={currentPage}
+              limit={limit}
+              total={totalAppointments}
+              onPageChange={setPage}
+              onLimitChange={(n) => {
+                setLimit(n);
+                setPage(1);
+              }}
+              itemLabel="citas"
+            />
+          )}
         </CardContent>
       </Card>
     </div>

@@ -21,6 +21,7 @@ import { patientsService } from "~/services/patientsService";
 import { AddProcedureModal } from "~/components/ui/add-procedure-modal";
 import { EditProcedureModal } from "~/components/ui/edit-procedure-modal";
 import { Badge } from "~/components/ui/badge";
+import { TablePagination } from "~/components/ui/table-pagination";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -30,8 +31,6 @@ import {
   Eye,
   Pencil,
   Trash2,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 
 function totalIngreso(r: ProcedureRecordWithDetails): number {
@@ -54,7 +53,7 @@ export default function ListadoProcedimientos() {
   const [toDate, setToDate] = useState("");
   const [paymentStatus, setPaymentStatus] = useState<"" | "pendiente" | "cancelado">("");
   const [page, setPage] = useState(1);
-  const limit = 10;
+  const [limit, setLimit] = useState(10);
   const [editRecord, setEditRecord] = useState<ProcedureRecordWithDetails | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -78,7 +77,7 @@ export default function ListadoProcedimientos() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, fromDate, toDate, paymentStatus]);
+  }, [page, limit, search, fromDate, toDate, paymentStatus]);
 
   // Volver a página 1 cuando cambien filtros o búsqueda
   useEffect(() => {
@@ -112,8 +111,6 @@ export default function ListadoProcedimientos() {
       setDeletingId(null);
     }
   };
-
-  const totalPages = Math.ceil(total / limit) || 1;
 
   return (
     <div className="space-y-6">
@@ -271,30 +268,15 @@ export default function ListadoProcedimientos() {
           </div>
         )}
 
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t">
-            <span className="text-sm text-gray-600">
-              Página {page} de {totalPages} ({total} registros)
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+        {!loading && (
+          <TablePagination
+            page={page}
+            limit={limit}
+            total={total}
+            onPageChange={setPage}
+            onLimitChange={(n) => { setLimit(n); setPage(1); }}
+            itemLabel="registros"
+          />
         )}
       </Card>
 
