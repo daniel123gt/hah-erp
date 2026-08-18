@@ -6,7 +6,7 @@ import { Input } from "~/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Badge } from "~/components/ui/badge";
 import { ESTADO_BADGE_CLASS } from "~/lib/estadoDisplay";
-import { TablePagination } from "~/components/ui/table-pagination";
+import { useProgressiveList, InfiniteScrollFooter } from "~/components/ui/infinite-scroll";
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Loader2, Search, Pencil, Trash2, Clock, Calendar, DollarSign } from "lucide-react";
 import shiftCareService, { type CareShiftWithPatient, type CareShiftFilters } from "~/services/shiftCareService";
@@ -32,8 +32,6 @@ export default function CuidadosPorTurnosList() {
   const [statsToday, setStatsToday] = useState({ count: 0, revenue: 0 });
   const [statsMonth, setStatsMonth] = useState({ count: 0, revenue: 0 });
   const [estadoFilter, setEstadoFilter] = useState<"" | "Pendiente" | "Completado" | "Cancelado">("");
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
 
   const loadShifts = async () => {
     try {
@@ -101,12 +99,14 @@ export default function CuidadosPorTurnosList() {
     );
   });
 
-  // Reinicia a la página 1 cuando cambian los filtros o la búsqueda.
-  useEffect(() => {
-    setPage(1);
-  }, [searchTerm, estadoFilter, fechaDesde, fechaHasta]);
-
-  const pagedShifts = filteredShifts.slice((page - 1) * limit, page * limit);
+  const {
+    visibleItems: pagedShifts,
+    sentinelRef,
+    hasMore,
+    loadMore,
+    shown,
+    total: totalShifts,
+  } = useProgressiveList(filteredShifts, 20, `${searchTerm}|${estadoFilter}|${fechaDesde}|${fechaHasta}`);
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("¿Eliminar este registro de turno?")) return;
@@ -345,15 +345,12 @@ export default function CuidadosPorTurnosList() {
           )}
 
           {!loading && filteredShifts.length > 0 && (
-            <TablePagination
-              page={page}
-              limit={limit}
-              total={filteredShifts.length}
-              onPageChange={setPage}
-              onLimitChange={(l) => {
-                setLimit(l);
-                setPage(1);
-              }}
+            <InfiniteScrollFooter
+              sentinelRef={sentinelRef}
+              hasMore={hasMore}
+              onLoadMore={loadMore}
+              shown={shown}
+              total={totalShifts}
               itemLabel="turnos"
             />
           )}

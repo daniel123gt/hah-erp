@@ -23,7 +23,7 @@ import {
 } from "./categories";
 import { formatDateOnly } from "~/lib/dateUtils";
 import { Search, Users, Phone, Mail, Calendar, ArrowLeft } from "lucide-react";
-import { TablePagination } from "~/components/ui/table-pagination";
+import { useInfiniteScroll, InfiniteScrollFooter } from "~/components/ui/infinite-scroll";
 import { staffService, type Staff as SupabaseStaff } from "~/services/staffService";
 import { toast } from "sonner";
 
@@ -85,12 +85,13 @@ export default function PersonalCategoryPage() {
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 10,
+    limit: 20,
     total: 0,
     totalPages: 0,
     hasNextPage: false,
     hasPrevPage: false,
   });
+  const [loadingMore, setLoadingMore] = useState(false);
 
   // Opciones del filtro: "Todas" + subcategorías
   const subcategoryOptions = categoryDef
@@ -102,26 +103,28 @@ export default function PersonalCategoryPage() {
     return () => clearTimeout(t);
   }, [searchTerm]);
 
-  const loadStaff = useCallback(async () => {
+  const loadStaffPage = useCallback(async (targetPage: number, append: boolean) => {
     if (!department || !category) return;
     const filter = subcategorySlug
       ? getFilterForSubcategory(category, subcategorySlug)
       : { department, position: undefined as string | undefined, positionPattern: undefined as string | undefined };
-    if (subcategorySlug && !filter) return;
+    if (!filter) return;
     try {
-      setLoading(true);
+      if (append) setLoadingMore(true);
+      else setLoading(true);
       const result = await staffService.getStaff({
-        page: pagination.page,
-        limit: pagination.limit,
+        page: targetPage,
+        limit: 20,
         search: debouncedSearchTerm,
         status: filterStatus,
         department: filter.department,
         position: filter.position ?? undefined,
         positionPattern: filter.position ? undefined : (filter.positionPattern && filter.positionPattern !== "%" ? filter.positionPattern : undefined),
       });
-      setStaff(result.data);
+      setStaff((prev) => (append ? [...prev, ...result.data] : result.data));
       setPagination((prev) => ({
         ...prev,
+        page: targetPage,
         total: result.total,
         totalPages: result.totalPages,
         hasNextPage: result.hasNextPage,
@@ -129,29 +132,34 @@ export default function PersonalCategoryPage() {
       }));
     } catch (err) {
       console.error(err);
-      if (pagination.page > 1) setPagination((p) => ({ ...p, page: 1 }));
-      else toast.error("Error al cargar la lista de personal");
+      if (!append) toast.error("Error al cargar la lista de personal");
     } finally {
-      setLoading(false);
+      if (append) setLoadingMore(false);
+      else setLoading(false);
     }
   }, [
     category,
     department,
     subcategorySlug,
-    pagination.page,
-    pagination.limit,
     debouncedSearchTerm,
     filterStatus,
   ]);
 
-  // Volver a página 1 cuando cambien filtros o búsqueda (evita error si los resultados caben en una sola página)
+  // Carga inicial y reinicio (vuelve al inicio) cuando cambian filtros o búsqueda.
   useEffect(() => {
-    setPagination((p) => ({ ...p, page: 1 }));
-  }, [subcategorySlug, debouncedSearchTerm, filterStatus]);
+    loadStaffPage(1, false);
+  }, [loadStaffPage]);
 
-  useEffect(() => {
-    loadStaff();
-  }, [loadStaff]);
+  const hasMore = staff.length < pagination.total;
+  const loadMore = useCallback(() => {
+    if (loading || loadingMore || !hasMore) return;
+    loadStaffPage(pagination.page + 1, true);
+  }, [loading, loadingMore, hasMore, pagination.page, loadStaffPage]);
+  const sentinelRef = useInfiniteScroll(loadMore, {
+    hasMore,
+    loading: loading || loadingMore,
+    deps: [staff.length],
+  });
 
   const handleStaffAdded = (modalStaff: ModalStaff) => {
     const s = convertToSupabaseStaff(modalStaff);
@@ -161,14 +169,6 @@ export default function PersonalCategoryPage() {
   const handleStaffUpdated = (modalStaff: ModalStaff) => {
     const s = convertToSupabaseStaff(modalStaff);
     setStaff((prev) => prev.map((x) => (x.id === s.id ? s : x)));
-  };
-
-  const handlePageChange = (newPage: number) => {
-    setPagination((p) => ({ ...p, page: newPage }));
-  };
-
-  const handleLimitChange = (newLimit: number) => {
-    setPagination((p) => ({ ...p, limit: newLimit, page: 1 }));
   };
 
   const getStatusBadge = (status?: string) => {
@@ -375,17 +375,16 @@ export default function PersonalCategoryPage() {
           </div>
         </CardContent>
 
-        {/* Paginación estándar (igual que home de pacientes) */}
+        {/* Scroll infinito */}
         {!loading && (
-          <TablePagination
-            page={pagination.page}
-            limit={pagination.limit}
+          <InfiniteScrollFooter
+            sentinelRef={sentinelRef}
+            hasMore={hasMore}
+            loading={loadingMore}
+            onLoadMore={loadMore}
+            shown={staff.length}
             total={pagination.total}
-            onPageChange={handlePageChange}
-            onLimitChange={handleLimitChange}
             itemLabel="empleados"
-            showSummary={true}
-            showLimitSelect={true}
           />
         )}
       </Card>

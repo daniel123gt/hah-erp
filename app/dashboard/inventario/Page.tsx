@@ -14,7 +14,7 @@ import { Badge } from "~/components/ui/badge";
 import { AddInventoryModal } from "~/components/ui/add-inventory-modal";
 import { ViewInventoryModal } from "~/components/ui/view-inventory-modal";
 import { EditInventoryModal } from "~/components/ui/edit-inventory-modal";
-import { TablePagination } from "~/components/ui/table-pagination";
+import { useProgressiveList, InfiniteScrollFooter } from "~/components/ui/infinite-scroll";
 import { inventoryService, type InventoryItem } from "~/services/inventoryService";
 import { normalizeSearchText } from "~/lib/utils";
 import { toast } from "sonner";
@@ -38,8 +38,6 @@ export default function InventarioPage() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
 
   useEffect(() => {
     setLoading(true);
@@ -66,24 +64,14 @@ export default function InventarioPage() {
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
-  const totalFiltered = filteredInventory.length;
-  const totalPages = Math.max(1, Math.ceil(totalFiltered / limit));
-  const from = (page - 1) * limit;
-  const paginatedRows = filteredInventory.slice(from, from + limit);
-
-  const handlePageChange = (newPage: number) => {
-    setPage(Math.max(1, Math.min(newPage, totalPages)));
-  };
-
-  const handleLimitChange = (newLimit: number) => {
-    setLimit(newLimit);
-    setPage(1);
-  };
-
-  // Ir a página 1 cuando cambian filtros o búsqueda (evita quedarse en una página vacía)
-  useEffect(() => {
-    setPage(1);
-  }, [searchTerm, filterCategory, filterStatus]);
+  const {
+    visibleItems: paginatedRows,
+    sentinelRef,
+    hasMore,
+    loadMore,
+    shown,
+    total: totalFiltered,
+  } = useProgressiveList(filteredInventory, 20, `${searchTerm}|${filterCategory}|${filterStatus}`);
 
   const handleInventoryAdded = async (newItem: InventoryItem) => {
     const { id: _id, ...rest } = newItem;
@@ -364,12 +352,12 @@ export default function InventarioPage() {
           </div>
           )}
           {!loading && (
-            <TablePagination
-              page={page}
-              limit={limit}
+            <InfiniteScrollFooter
+              sentinelRef={sentinelRef}
+              hasMore={hasMore}
+              onLoadMore={loadMore}
+              shown={shown}
               total={totalFiltered}
-              onPageChange={handlePageChange}
-              onLimitChange={handleLimitChange}
               itemLabel="productos"
             />
           )}

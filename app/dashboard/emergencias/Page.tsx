@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { TablePagination } from "~/components/ui/table-pagination";
+import { useProgressiveList, InfiniteScrollFooter } from "~/components/ui/infinite-scroll";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
   Table,
@@ -128,8 +128,6 @@ export default function EmergenciasPage() {
   const [filterPriority, setFilterPriority] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [emergencies, setEmergencies] = useState<Emergency[]>(mockEmergencies);
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
 
   const filteredEmergencies = emergencies.filter(emergency => {
     const matchesSearch = emergency.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -142,11 +140,14 @@ export default function EmergenciasPage() {
     return matchesSearch && matchesType && matchesPriority && matchesStatus;
   });
 
-  useEffect(() => { setPage(1); }, [searchTerm, filterType, filterPriority, filterStatus, emergencies.length]);
-  const totalItems = filteredEmergencies.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / limit));
-  const currentPage = Math.min(page, totalPages);
-  const pagedEmergencies = filteredEmergencies.slice((currentPage - 1) * limit, currentPage * limit);
+  const {
+    visibleItems: pagedEmergencies,
+    sentinelRef,
+    hasMore,
+    loadMore,
+    shown,
+    total: totalItems,
+  } = useProgressiveList(filteredEmergencies, 20, `${searchTerm}|${filterType}|${filterPriority}|${filterStatus}`);
 
   const handleEmergencyAdded = (newEmergency: Emergency) => {
     setEmergencies(prev => [newEmergency, ...prev]);
@@ -429,12 +430,12 @@ export default function EmergenciasPage() {
               ))}
             </TableBody>
           </Table>
-          <TablePagination
-            page={currentPage}
-            limit={limit}
+          <InfiniteScrollFooter
+            sentinelRef={sentinelRef}
+            hasMore={hasMore}
+            onLoadMore={loadMore}
+            shown={shown}
             total={totalItems}
-            onPageChange={setPage}
-            onLimitChange={(n) => { setLimit(n); setPage(1); }}
             itemLabel="emergencias"
           />
         </CardContent>

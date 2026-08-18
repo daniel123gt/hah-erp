@@ -6,7 +6,7 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Combobox } from "~/components/ui/combobox";
-import { TablePagination } from "~/components/ui/table-pagination";
+import { useProgressiveList, InfiniteScrollFooter } from "~/components/ui/infinite-scroll";
 import { toast } from "sonner";
 import { ArrowLeft, Search, Loader2, Save, Trash2, UserPlus } from "lucide-react";
 import { CreatePatientSubmodal } from "~/components/ui/create-patient-submodal";
@@ -34,8 +34,6 @@ export default function EliminacionHecesOrina() {
   const [historyRecords, setHistoryRecords] = useState<EliminationRecord[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
 
   const [form, setForm] = useState<CreateEliminationRecordData>({
     patient_id: "",
@@ -227,13 +225,14 @@ export default function EliminacionHecesOrina() {
     }
   };
 
-  useEffect(() => {
-    setPage(1);
-  }, [selectedPatient?.id, historyRecords.length]);
-  const totalItems = historyRecords.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / limit));
-  const currentPage = Math.min(page, totalPages);
-  const pagedHistory = historyRecords.slice((currentPage - 1) * limit, currentPage * limit);
+  const {
+    visibleItems: pagedHistory,
+    sentinelRef,
+    hasMore,
+    loadMore,
+    shown,
+    total: totalItems,
+  } = useProgressiveList(historyRecords, 20, `${selectedPatient?.id}`);
 
   return (
     <div className="p-6 space-y-6">
@@ -607,12 +606,12 @@ export default function EliminacionHecesOrina() {
                 </Table>
               </div>
               {!loadingHistory && (
-                <TablePagination
-                  page={currentPage}
-                  limit={limit}
+                <InfiniteScrollFooter
+                  sentinelRef={sentinelRef}
+                  hasMore={hasMore}
+                  onLoadMore={loadMore}
+                  shown={shown}
                   total={totalItems}
-                  onPageChange={setPage}
-                  onLimitChange={(n) => { setLimit(n); setPage(1); }}
                   itemLabel="registros"
                 />
               )}

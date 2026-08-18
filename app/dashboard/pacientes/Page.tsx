@@ -20,7 +20,7 @@ import { Combobox } from "~/components/ui/combobox";
 import { patientsService, type Patient } from "~/services/patientsService";
 import { formatDateOnly, parseDateOnlyAsLocal } from "~/lib/dateUtils";
 import { toast } from "sonner";
-import { TablePagination } from "~/components/ui/table-pagination";
+import { useInfiniteScroll, InfiniteScrollFooter } from "~/components/ui/infinite-scroll";
 import {
   Search,
   Plus,
@@ -115,12 +115,13 @@ export default function PacientesPage() {
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 10,
+    limit: 20,
     total: 0,
     totalPages: 0,
     hasNextPage: false,
     hasPrevPage: false
   });
+  const [loadingMore, setLoadingMore] = useState(false);
   const [stats, setStats] = useState({
     total: 0,
     male: 0,
@@ -129,9 +130,8 @@ export default function PacientesPage() {
     thisMonth: 0
   });
 
-  // Cargar datos de pacientes al montar el componente
+  // Cargar estadísticas y distritos al montar el componente
   useEffect(() => {
-    loadPatients();
     loadStats();
     loadDistricts();
   }, []);
@@ -147,32 +147,24 @@ export default function PacientesPage() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Volver a página 1 cuando cambien filtros o búsqueda (evita error si los resultados caben en una sola página)
-  useEffect(() => {
-    setPagination(prev => ({ ...prev, page: 1 }));
-  }, [debouncedSearchTerm, filterStatus, filterGender, filterBloodType, filterDistrict]);
-
-  // Recargar pacientes cuando cambien los filtros o paginación
-  useEffect(() => {
-    loadPatients();
-  }, [pagination.page, debouncedSearchTerm, filterStatus, filterGender, filterBloodType, filterDistrict]);
-
-  const loadPatients = async () => {
+  const loadPage = useCallback(async (targetPage: number, append: boolean) => {
     try {
-      setLoading(true);
+      if (append) setLoadingMore(true);
+      else setLoading(true);
       const response = await patientsService.getPatients({
-        page: pagination.page,
-        limit: pagination.limit,
+        page: targetPage,
+        limit: 20,
         search: debouncedSearchTerm,
         status: filterStatus,
         gender: filterGender,
         bloodType: filterBloodType,
         district: filterDistrict
       });
-      
-      setPatients(response.data);
+
+      setPatients(prev => (append ? [...prev, ...response.data] : response.data));
       setPagination(prev => ({
         ...prev,
+        page: targetPage,
         total: response.total,
         totalPages: response.totalPages,
         hasNextPage: response.hasNextPage,
@@ -180,15 +172,28 @@ export default function PacientesPage() {
       }));
     } catch (error) {
       console.error('Error al cargar pacientes:', error);
-      if (pagination.page > 1) {
-        setPagination(prev => ({ ...prev, page: 1 }));
-      } else {
-        toast.error('Error al cargar los pacientes');
-      }
+      if (!append) toast.error('Error al cargar los pacientes');
     } finally {
-      setLoading(false);
+      if (append) setLoadingMore(false);
+      else setLoading(false);
     }
-  };
+  }, [debouncedSearchTerm, filterStatus, filterGender, filterBloodType, filterDistrict]);
+
+  // Carga inicial y reinicio (vuelve al inicio) cuando cambian los filtros o la búsqueda.
+  useEffect(() => {
+    loadPage(1, false);
+  }, [loadPage]);
+
+  const hasMore = patients.length < pagination.total;
+  const loadMore = useCallback(() => {
+    if (loading || loadingMore || !hasMore) return;
+    loadPage(pagination.page + 1, true);
+  }, [loading, loadingMore, hasMore, pagination.page, loadPage]);
+  const sentinelRef = useInfiniteScroll(loadMore, {
+    hasMore,
+    loading: loading || loadingMore,
+    deps: [patients.length],
+  });
 
   const loadStats = async () => {
     try {
@@ -208,16 +213,6 @@ export default function PacientesPage() {
     }
   };
 
-  // Función para cambiar de página
-  const handlePageChange = (newPage: number) => {
-    setPagination(prev => ({ ...prev, page: newPage }));
-  };
-
-  // Función para cambiar el límite de elementos por página
-  const handleLimitChange = (newLimit: number) => {
-    setPagination(prev => ({ ...prev, limit: newLimit, page: 1 }));
-  };
-
   // Función para resetear filtros
   const handleResetFilters = () => {
     setSearchTerm("");
@@ -225,7 +220,6 @@ export default function PacientesPage() {
     setFilterGender("all");
     setFilterBloodType("all");
     setFilterDistrict("all");
-    setPagination(prev => ({ ...prev, page: 1 }));
   };
 
   const handlePatientAdded = async (modalPatient: ModalPatient) => {
@@ -446,22 +440,6 @@ export default function PacientesPage() {
                   placeholder="Todos los distritos"
                 />
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Elementos por página
-                </label>
-                <select
-                  value={pagination.limit}
-                  onChange={(e) => handleLimitChange(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
-                >
-                  <option value={5}>5</option>
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
-                  <option value={50}>50</option>
-                </select>
-              </div>
             </div>
           </div>
         </CardContent>
@@ -470,12 +448,7 @@ export default function PacientesPage() {
       {/* Patients Table */}
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle>Lista de Pacientes</CardTitle>
-            <div className="text-sm text-gray-600">
-              Mostrando {((pagination.page - 1) * pagination.limit) + 1} - {Math.min(pagination.page * pagination.limit, pagination.total)} de {pagination.total} pacientes
-            </div>
-          </div>
+          <CardTitle>Lista de Pacientes</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -558,17 +531,16 @@ export default function PacientesPage() {
           )}
         </CardContent>
 
-        {/* Paginación estándar */}
+        {/* Scroll infinito */}
         {!loading && (
-          <TablePagination
-            page={pagination.page}
-            limit={pagination.limit}
+          <InfiniteScrollFooter
+            sentinelRef={sentinelRef}
+            hasMore={hasMore}
+            loading={loadingMore}
+            onLoadMore={loadMore}
+            shown={patients.length}
             total={pagination.total}
-            onPageChange={handlePageChange}
-            onLimitChange={handleLimitChange}
             itemLabel="pacientes"
-            showSummary={false}
-            showLimitSelect={false}
           />
         )}
       </Card>

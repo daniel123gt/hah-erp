@@ -21,7 +21,7 @@ import { patientsService } from "~/services/patientsService";
 import { AddProcedureModal } from "~/components/ui/add-procedure-modal";
 import { EditProcedureModal } from "~/components/ui/edit-procedure-modal";
 import { Badge } from "~/components/ui/badge";
-import { TablePagination } from "~/components/ui/table-pagination";
+import { useInfiniteScroll, InfiniteScrollFooter } from "~/components/ui/infinite-scroll";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -53,48 +53,65 @@ export default function ListadoProcedimientos() {
   const [toDate, setToDate] = useState("");
   const [paymentStatus, setPaymentStatus] = useState<"" | "pendiente" | "cancelado">("");
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
+  const limit = 20;
+  const [loadingMore, setLoadingMore] = useState(false);
   const [editRecord, setEditRecord] = useState<ProcedureRecordWithDetails | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const loadRecords = useCallback(async () => {
+  const loadPage = useCallback(async (targetPage: number, append: boolean) => {
     try {
-      setLoading(true);
+      if (append) setLoadingMore(true);
+      else setLoading(true);
       const res = await procedureService.getRecords({
-        page,
+        page: targetPage,
         limit,
         search: search || undefined,
         fromDate: fromDate || undefined,
         toDate: toDate || undefined,
         paymentStatus: paymentStatus || undefined,
       });
-      setRecords(res.data);
+      setRecords((prev) => (append ? [...prev, ...res.data] : res.data));
       setTotal(res.total);
     } catch (e) {
       console.error(e);
-      if (page > 1) setPage(1);
-      else toast.error("Error al cargar el listado");
+      if (!append) toast.error("Error al cargar el listado");
     } finally {
-      setLoading(false);
+      if (append) setLoadingMore(false);
+      else setLoading(false);
     }
-  }, [page, limit, search, fromDate, toDate, paymentStatus]);
+  }, [limit, search, fromDate, toDate, paymentStatus]);
 
-  // Volver a página 1 cuando cambien filtros o búsqueda
+  // Carga inicial y reinicio (vuelve al inicio) cuando cambian filtros o búsqueda.
   useEffect(() => {
     setPage(1);
-  }, [search, fromDate, toDate, paymentStatus]);
+    loadPage(1, false);
+  }, [loadPage]);
 
-  useEffect(() => {
-    loadRecords();
-  }, [loadRecords]);
+  const hasMore = records.length < total;
+  const loadMore = useCallback(() => {
+    if (loading || loadingMore || !hasMore) return;
+    const next = page + 1;
+    setPage(next);
+    loadPage(next, true);
+  }, [loading, loadingMore, hasMore, page, loadPage]);
+  const sentinelRef = useInfiniteScroll(loadMore, {
+    hasMore,
+    loading: loading || loadingMore,
+    deps: [records.length],
+  });
+
+  const refresh = useCallback(() => {
+    setPage(1);
+    loadPage(1, false);
+  }, [loadPage]);
 
   const handleCreated = () => {
-    loadRecords();
+    refresh();
   };
 
   const handleUpdated = () => {
     setEditRecord(null);
-    loadRecords();
+    refresh();
   };
 
   const handleDelete = async (id: string) => {
@@ -104,7 +121,8 @@ export default function ListadoProcedimientos() {
     try {
       await procedureService.deleteRecord(id);
       toast.success("Registro eliminado");
-      loadRecords();
+      setRecords((prev) => prev.filter((r) => r.id !== id));
+      setTotal((t) => Math.max(0, t - 1));
     } catch (e) {
       toast.error("Error al eliminar");
     } finally {
@@ -269,12 +287,13 @@ export default function ListadoProcedimientos() {
         )}
 
         {!loading && (
-          <TablePagination
-            page={page}
-            limit={limit}
+          <InfiniteScrollFooter
+            sentinelRef={sentinelRef}
+            hasMore={hasMore}
+            loading={loadingMore}
+            onLoadMore={loadMore}
+            shown={records.length}
             total={total}
-            onPageChange={setPage}
-            onLimitChange={(n) => { setLimit(n); setPage(1); }}
             itemLabel="registros"
           />
         )}

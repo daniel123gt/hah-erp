@@ -35,7 +35,7 @@ import { staffService, type Staff as SupabaseStaff } from "~/services/staffServi
 import { OFFICIAL_POSITIONS } from "~/dashboard/personal/categories";
 import { formatDateOnly } from "~/lib/dateUtils";
 import { toast } from "sonner";
-import { TablePagination } from "~/components/ui/table-pagination";
+import { useInfiniteScroll, useProgressiveList, InfiniteScrollFooter } from "~/components/ui/infinite-scroll";
 
 // Interfaz para la UI (compatible con modales existentes)
 interface ModalStaff {
@@ -102,15 +102,15 @@ export default function PersonalPage() {
   });
   const [staffHiredThisYear, setStaffHiredThisYear] = useState<SupabaseStaff[]>([]);
   const [loadingHiredThisYear, setLoadingHiredThisYear] = useState(false);
-  const [paginationHired, setPaginationHired] = useState({ page: 1, limit: 10 });
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 10,
+    limit: 20,
     total: 0,
     totalPages: 0,
     hasNextPage: false,
     hasPrevPage: false
   });
+  const [loadingMore, setLoadingMore] = useState(false);
 
   // Debounced search term
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
@@ -122,39 +122,30 @@ export default function PersonalPage() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Cargar datos de personal al montar el componente
+  // Cargar estadísticas y contratados del año al montar el componente
   useEffect(() => {
-    loadStaff();
     loadStats();
     loadStaffHiredThisYear();
   }, []);
 
-  // Volver a página 1 cuando cambien filtros o búsqueda (evita error si los resultados caben en una sola página)
-  useEffect(() => {
-    setPagination(prev => ({ ...prev, page: 1 }));
-  }, [debouncedSearchTerm, filterStatus, filterDepartment, filterGender, filterPosition]);
-
-  // Recargar personal cuando cambien los filtros o paginación
-  useEffect(() => {
-    loadStaff();
-  }, [pagination.page, debouncedSearchTerm, filterStatus, filterDepartment, filterGender, filterPosition]);
-
-  const loadStaff = useCallback(async () => {
+  const loadStaffPage = useCallback(async (targetPage: number, append: boolean) => {
     try {
-      setLoading(true);
+      if (append) setLoadingMore(true);
+      else setLoading(true);
       const result = await staffService.getStaff({
-        page: pagination.page,
-        limit: pagination.limit,
+        page: targetPage,
+        limit: 20,
         search: debouncedSearchTerm,
         status: filterStatus,
         department: filterDepartment,
         gender: filterGender,
         position: filterPosition
       });
-      
-      setStaff(result.data);
+
+      setStaff(prev => (append ? [...prev, ...result.data] : result.data));
       setPagination(prev => ({
         ...prev,
+        page: targetPage,
         total: result.total,
         totalPages: result.totalPages,
         hasNextPage: result.hasNextPage,
@@ -162,12 +153,38 @@ export default function PersonalPage() {
       }));
     } catch (error) {
       console.error('Error al cargar personal:', error);
-      if (pagination.page > 1) setPagination(prev => ({ ...prev, page: 1 }));
-      else toast.error('Error al cargar la lista de personal');
+      if (!append) toast.error('Error al cargar la lista de personal');
     } finally {
-      setLoading(false);
+      if (append) setLoadingMore(false);
+      else setLoading(false);
     }
-  }, [pagination.page, pagination.limit, debouncedSearchTerm, filterStatus, filterDepartment, filterGender, filterPosition]);
+  }, [debouncedSearchTerm, filterStatus, filterDepartment, filterGender, filterPosition]);
+
+  // Carga inicial y reinicio (vuelve al inicio) cuando cambian los filtros o la búsqueda.
+  useEffect(() => {
+    loadStaffPage(1, false);
+  }, [loadStaffPage]);
+
+  const hasMore = staff.length < pagination.total;
+  const loadMore = useCallback(() => {
+    if (loading || loadingMore || !hasMore) return;
+    loadStaffPage(pagination.page + 1, true);
+  }, [loading, loadingMore, hasMore, pagination.page, loadStaffPage]);
+  const sentinelRef = useInfiniteScroll(loadMore, {
+    hasMore,
+    loading: loading || loadingMore,
+    deps: [staff.length],
+  });
+
+  // Scroll infinito para "Empleados que ingresaron este año" (lista en memoria).
+  const {
+    visibleItems: visibleHired,
+    sentinelRef: sentinelRefHired,
+    hasMore: hasMoreHired,
+    loadMore: loadMoreHired,
+    shown: shownHired,
+    total: totalHired,
+  } = useProgressiveList(staffHiredThisYear, 20, staffHiredThisYear.length);
 
   const loadStats = useCallback(async () => {
     try {
@@ -189,14 +206,6 @@ export default function PersonalPage() {
       setLoadingHiredThisYear(false);
     }
   }, []);
-
-  const handlePageChange = (newPage: number) => {
-    setPagination(prev => ({ ...prev, page: newPage }));
-  };
-
-  const handleLimitChange = (newLimit: number) => {
-    setPagination(prev => ({ ...prev, limit: newLimit, page: 1 }));
-  };
 
   const handleResetFilters = () => {
     setSearchTerm("");
@@ -353,11 +362,6 @@ export default function PersonalPage() {
               <Calendar className="w-5 h-5 text-primary-blue" />
               Empleados que ingresaron este año
             </CardTitle>
-            {!loadingHiredThisYear && staffHiredThisYear.length > 0 && (
-              <div className="text-sm text-gray-600">
-                Mostrando {((paginationHired.page - 1) * paginationHired.limit) + 1} - {Math.min(paginationHired.page * paginationHired.limit, staffHiredThisYear.length)} de {staffHiredThisYear.length} empleados
-              </div>
-            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -378,9 +382,7 @@ export default function PersonalPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {staffHiredThisYear
-                    .slice((paginationHired.page - 1) * paginationHired.limit, paginationHired.page * paginationHired.limit)
-                    .map((member) => (
+                  {visibleHired.map((member) => (
                     <TableRow key={member.id}>
                       <TableCell className="font-medium uppercase">{member.name}</TableCell>
                       <TableCell>{member.position}</TableCell>
@@ -399,15 +401,13 @@ export default function PersonalPage() {
           )}
         </CardContent>
         {!loadingHiredThisYear && staffHiredThisYear.length > 0 && (
-          <TablePagination
-            page={paginationHired.page}
-            limit={paginationHired.limit}
-            total={staffHiredThisYear.length}
-            onPageChange={(p) => setPaginationHired((prev) => ({ ...prev, page: p }))}
-            onLimitChange={(l) => setPaginationHired({ page: 1, limit: l })}
+          <InfiniteScrollFooter
+            sentinelRef={sentinelRefHired}
+            hasMore={hasMoreHired}
+            onLoadMore={loadMoreHired}
+            shown={shownHired}
+            total={totalHired}
             itemLabel="empleados"
-            showSummary={false}
-            showLimitSelect={false}
           />
         )}
       </Card>
@@ -500,21 +500,6 @@ export default function PersonalPage() {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Elementos por página
-                </label>
-                <select
-                  value={pagination.limit}
-                  onChange={(e) => handleLimitChange(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
-                >
-                  <option value={5}>5 por página</option>
-                  <option value={10}>10 por página</option>
-                  <option value={20}>20 por página</option>
-                  <option value={50}>50 por página</option>
-                </select>
-              </div>
             </div>
           </div>
         </CardContent>
@@ -630,17 +615,16 @@ export default function PersonalPage() {
           </div>
         </CardContent>
 
-        {/* Paginación estándar (igual que home de pacientes) */}
+        {/* Scroll infinito */}
         {!loading && (
-          <TablePagination
-            page={pagination.page}
-            limit={pagination.limit}
+          <InfiniteScrollFooter
+            sentinelRef={sentinelRef}
+            hasMore={hasMore}
+            loading={loadingMore}
+            onLoadMore={loadMore}
+            shown={staff.length}
             total={pagination.total}
-            onPageChange={handlePageChange}
-            onLimitChange={handleLimitChange}
             itemLabel="empleados"
-            showSummary={false}
-            showLimitSelect={false}
           />
         )}
       </Card>

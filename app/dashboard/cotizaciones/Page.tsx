@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { TablePagination } from "~/components/ui/table-pagination";
+import { useProgressiveList, InfiniteScrollFooter } from "~/components/ui/infinite-scroll";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
   Table,
@@ -137,8 +137,6 @@ export default function CotizacionesPage() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterDate, setFilterDate] = useState<string>("");
   const [quotes, setQuotes] = useState<Quote[]>(mockQuotes);
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
 
   const filteredQuotes = quotes.filter(quote => {
     const matchesSearch = quote.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -151,11 +149,14 @@ export default function CotizacionesPage() {
     return matchesSearch && matchesStatus && matchesDate;
   });
 
-  useEffect(() => { setPage(1); }, [searchTerm, filterStatus, filterDate, quotes.length]);
-  const totalItems = filteredQuotes.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / limit));
-  const currentPage = Math.min(page, totalPages);
-  const pagedQuotes = filteredQuotes.slice((currentPage - 1) * limit, currentPage * limit);
+  const {
+    visibleItems: pagedQuotes,
+    sentinelRef,
+    hasMore,
+    loadMore,
+    shown,
+    total: totalItems,
+  } = useProgressiveList(filteredQuotes, 20, `${searchTerm}|${filterStatus}|${filterDate}`);
 
   const handleQuoteAdded = (newQuote: Quote) => {
     setQuotes(prev => [newQuote, ...prev]);
@@ -399,12 +400,12 @@ export default function CotizacionesPage() {
               ))}
             </TableBody>
           </Table>
-          <TablePagination
-            page={currentPage}
-            limit={limit}
+          <InfiniteScrollFooter
+            sentinelRef={sentinelRef}
+            hasMore={hasMore}
+            onLoadMore={loadMore}
+            shown={shown}
             total={totalItems}
-            onPageChange={setPage}
-            onLimitChange={(n) => { setLimit(n); setPage(1); }}
             itemLabel="cotizaciones"
           />
         </CardContent>

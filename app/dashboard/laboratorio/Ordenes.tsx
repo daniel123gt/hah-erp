@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~
 import { SortableTableHead, type SortDirection } from "~/components/ui/sortable-table-head";
 import { toast } from "sonner";
 import { ArrowLeft, Eye, Calendar, FileText } from "lucide-react";
-import { TablePagination } from "~/components/ui/table-pagination";
+import { useInfiniteScroll, InfiniteScrollFooter } from "~/components/ui/infinite-scroll";
 import { TableSkeleton } from "~/components/ui/table-skeleton";
 import labOrderService, { type LabExamOrder } from "~/services/labOrderService";
 import patientsService, { type Patient } from "~/services/patientsService";
@@ -45,23 +45,20 @@ export default function OrdenesLaboratorio() {
   const [totalOrders, setTotalOrders] = useState(0);
   const [sortColumn, setSortColumn] = useState<LabOrderSortColumn>(DEFAULT_LAB_ORDER_SORT);
   const [sortAsc, setSortAsc] = useState(DEFAULT_LAB_ORDER_SORT_ASC);
-  const [limit, setLimit] = useState(20);
+  const limit = 20;
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm), 400);
     return () => clearTimeout(t);
   }, [searchTerm]);
 
-  // Volver a página 1 cuando cambien filtros o búsqueda
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [debouncedSearch, statusFilter, sortColumn, sortAsc]);
-
-  const loadOrders = useCallback(async () => {
+  const loadPage = useCallback(async (targetPage: number, append: boolean) => {
     try {
-      setLoading(true);
+      if (append) setLoadingMore(true);
+      else setLoading(true);
       const result = await labOrderService.getAllOrders({
-        page: currentPage,
+        page: targetPage,
         limit,
         status: statusFilter !== "all" ? statusFilter : undefined,
         search: debouncedSearch.trim() || undefined,
@@ -85,7 +82,7 @@ export default function OrdenesLaboratorio() {
       patientsData.forEach((item) => {
         if (item) patientsMap[item.id] = item.patient;
       });
-      setPatients(patientsMap);
+      setPatients((prev) => (append ? { ...prev, ...patientsMap } : patientsMap));
 
       const patientNames: Record<string, string> = {};
       Object.entries(patientsMap).forEach(([id, p]) => {
@@ -98,20 +95,35 @@ export default function OrdenesLaboratorio() {
         ? sortLabOrders(result.data, sortColumn, sortAsc, patientNames)
         : result.data;
 
-      setOrders(rows);
+      setOrders((prev) => (append ? [...prev, ...rows] : rows));
       setTotalOrders(result.total);
     } catch (error) {
       console.error("Error al cargar órdenes:", error);
-      if (currentPage > 1) setCurrentPage(1);
-      else toast.error("Error al cargar las órdenes");
+      if (!append) toast.error("Error al cargar las órdenes");
     } finally {
-      setLoading(false);
+      if (append) setLoadingMore(false);
+      else setLoading(false);
     }
-  }, [currentPage, limit, statusFilter, debouncedSearch, sortColumn, sortAsc]);
+  }, [limit, statusFilter, debouncedSearch, sortColumn, sortAsc]);
 
+  // Carga inicial y reinicio (vuelve al inicio) cuando cambian filtros o búsqueda.
   useEffect(() => {
-    loadOrders();
-  }, [loadOrders]);
+    setCurrentPage(1);
+    loadPage(1, false);
+  }, [loadPage]);
+
+  const hasMore = orders.length < totalOrders;
+  const loadMore = useCallback(() => {
+    if (loading || loadingMore || !hasMore) return;
+    const next = currentPage + 1;
+    setCurrentPage(next);
+    loadPage(next, true);
+  }, [loading, loadingMore, hasMore, currentPage, loadPage]);
+  const sentinelRef = useInfiniteScroll(loadMore, {
+    hasMore,
+    loading: loading || loadingMore,
+    deps: [orders.length],
+  });
 
   const handleSort = (column: LabOrderSortColumn) => {
     if (sortColumn === column) {
@@ -328,12 +340,13 @@ export default function OrdenesLaboratorio() {
                 </Table>
               </div>
 
-              <TablePagination
-                page={currentPage}
-                limit={limit}
+              <InfiniteScrollFooter
+                sentinelRef={sentinelRef}
+                hasMore={hasMore}
+                loading={loadingMore}
+                onLoadMore={loadMore}
+                shown={orders.length}
                 total={totalOrders}
-                onPageChange={setCurrentPage}
-                onLimitChange={(n) => { setLimit(n); setCurrentPage(1); }}
                 itemLabel="órdenes"
               />
             </>

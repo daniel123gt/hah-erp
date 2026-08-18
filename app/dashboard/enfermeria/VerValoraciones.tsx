@@ -8,7 +8,7 @@ import { ArrowLeft, Search, Eye, Plus, Loader2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import nursingInitialAssessmentService, { type NursingInitialAssessment } from "~/services/nursingInitialAssessmentService";
 import patientsService, { type Patient } from "~/services/patientsService";
-import { TablePagination } from "~/components/ui/table-pagination";
+import { useProgressiveList, InfiniteScrollFooter } from "~/components/ui/infinite-scroll";
 import { normalizeSearchText } from "~/lib/utils";
 
 export default function VerValoraciones() {
@@ -17,8 +17,6 @@ export default function VerValoraciones() {
   const [patients, setPatients] = useState<Record<string, Patient>>({});
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
 
   useEffect(() => {
     loadAssessments();
@@ -72,13 +70,14 @@ export default function VerValoraciones() {
     );
   });
 
-  useEffect(() => {
-    setPage(1);
-  }, [searchTerm, assessments.length]);
-  const totalItems = filteredAssessments.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / limit));
-  const currentPage = Math.min(page, totalPages);
-  const pagedAssessments = filteredAssessments.slice((currentPage - 1) * limit, currentPage * limit);
+  const {
+    visibleItems: pagedAssessments,
+    sentinelRef,
+    hasMore,
+    loadMore,
+    shown,
+    total: totalItems,
+  } = useProgressiveList(filteredAssessments, 20, `${searchTerm}`);
 
   return (
     <div className="p-6 space-y-6">
@@ -179,12 +178,12 @@ export default function VerValoraciones() {
               </Table>
             </div>
             {!loading && (
-              <TablePagination
-                page={currentPage}
-                limit={limit}
+              <InfiniteScrollFooter
+                sentinelRef={sentinelRef}
+                hasMore={hasMore}
+                onLoadMore={loadMore}
+                shown={shown}
                 total={totalItems}
-                onPageChange={setPage}
-                onLimitChange={(n) => { setLimit(n); setPage(1); }}
                 itemLabel="valoraciones"
               />
             )}

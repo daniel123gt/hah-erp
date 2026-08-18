@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Combobox } from "~/components/ui/combobox";
 import { PainScaleSelector } from "~/components/ui/pain-scale-selector";
-import { TablePagination } from "~/components/ui/table-pagination";
+import { useProgressiveList, InfiniteScrollFooter } from "~/components/ui/infinite-scroll";
 import { toast } from "sonner";
 import { ArrowLeft, Search, Loader2, Plus, Trash2, Save, UserPlus } from "lucide-react";
 import { CreatePatientSubmodal } from "~/components/ui/create-patient-submodal";
@@ -33,8 +33,6 @@ export default function EvolucionEnfermeria() {
   const [addPatientModalOpen, setAddPatientModalOpen] = useState(false);
   const [currentEvolution, setCurrentEvolution] = useState<NursingEvolution | null>(null);
   const [isLoadingEvolution, setIsLoadingEvolution] = useState(false);
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
 
   // Formulario estático
   const [form, setForm] = useState<CreateNursingEvolutionData>({
@@ -284,13 +282,14 @@ export default function EvolucionEnfermeria() {
   };
 
   const evolutionRecords = currentEvolution?.records ?? [];
-  useEffect(() => {
-    setPage(1);
-  }, [currentEvolution?.id, evolutionRecords.length]);
-  const totalItems = evolutionRecords.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / limit));
-  const currentPage = Math.min(page, totalPages);
-  const pagedRecords = evolutionRecords.slice((currentPage - 1) * limit, currentPage * limit);
+  const {
+    visibleItems: pagedRecords,
+    sentinelRef,
+    hasMore,
+    loadMore,
+    shown,
+    total: totalItems,
+  } = useProgressiveList(evolutionRecords, 20, `${currentEvolution?.id}`);
 
   return (
     <div className="p-6 space-y-6">
@@ -644,12 +643,12 @@ export default function EvolucionEnfermeria() {
                     </Table>
                   </div>
                   {!isLoadingEvolution && (
-                    <TablePagination
-                      page={currentPage}
-                      limit={limit}
+                    <InfiniteScrollFooter
+                      sentinelRef={sentinelRef}
+                      hasMore={hasMore}
+                      onLoadMore={loadMore}
+                      shown={shown}
                       total={totalItems}
-                      onPageChange={setPage}
-                      onLimitChange={(n) => { setLimit(n); setPage(1); }}
                       itemLabel="registros"
                     />
                   )}

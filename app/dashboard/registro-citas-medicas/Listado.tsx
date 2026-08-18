@@ -16,7 +16,7 @@ import {
   type MedicalAppointmentRecord,
 } from "~/services/medicalAppointmentRecordsService";
 import { formatDateOnly } from "~/lib/utils";
-import { TablePagination } from "~/components/ui/table-pagination";
+import { useInfiniteScroll, InfiniteScrollFooter } from "~/components/ui/infinite-scroll";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -36,46 +36,63 @@ export default function ListadoRegistroCitasMedicas() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
+  const limit = 20;
+  const [loadingMore, setLoadingMore] = useState(false);
   const [editRecord, setEditRecord] = useState<MedicalAppointmentRecord | null>(null);
 
-  const loadRecords = useCallback(async () => {
+  const loadPage = useCallback(async (targetPage: number, append: boolean) => {
     try {
-      setLoading(true);
+      if (append) setLoadingMore(true);
+      else setLoading(true);
       const res = await medicalAppointmentRecordsService.list({
-        page,
+        page: targetPage,
         limit,
         search: search || undefined,
         fromDate: fromDate || undefined,
         toDate: toDate || undefined,
       });
-      setRecords(res.data);
+      setRecords((prev) => (append ? [...prev, ...res.data] : res.data));
       setTotal(res.total);
     } catch (e) {
       console.error(e);
-      if (page > 1) setPage(1);
-      else toast.error("Error al cargar el listado");
+      if (!append) toast.error("Error al cargar el listado");
     } finally {
-      setLoading(false);
+      if (append) setLoadingMore(false);
+      else setLoading(false);
     }
-  }, [page, limit, search, fromDate, toDate]);
+  }, [limit, search, fromDate, toDate]);
 
-  // Volver a página 1 cuando cambien filtros o búsqueda
+  // Carga inicial y reinicio (vuelve al inicio) cuando cambian filtros o búsqueda.
   useEffect(() => {
     setPage(1);
-  }, [search, fromDate, toDate]);
+    loadPage(1, false);
+  }, [loadPage]);
 
-  useEffect(() => {
-    loadRecords();
-  }, [loadRecords]);
+  const hasMore = records.length < total;
+  const loadMore = useCallback(() => {
+    if (loading || loadingMore || !hasMore) return;
+    const next = page + 1;
+    setPage(next);
+    loadPage(next, true);
+  }, [loading, loadingMore, hasMore, page, loadPage]);
+  const sentinelRef = useInfiniteScroll(loadMore, {
+    hasMore,
+    loading: loading || loadingMore,
+    deps: [records.length],
+  });
+
+  const refresh = useCallback(() => {
+    setPage(1);
+    loadPage(1, false);
+  }, [loadPage]);
 
   const handleUpdated = () => {
     setEditRecord(null);
-    loadRecords();
+    refresh();
   };
 
   const handleCreated = () => {
-    loadRecords();
+    refresh();
   };
 
 
@@ -181,12 +198,13 @@ export default function ListadoRegistroCitasMedicas() {
         )}
 
         {!loading && (
-          <TablePagination
-            page={page}
-            limit={limit}
+          <InfiniteScrollFooter
+            sentinelRef={sentinelRef}
+            hasMore={hasMore}
+            loading={loadingMore}
+            onLoadMore={loadMore}
+            shown={records.length}
             total={total}
-            onPageChange={setPage}
-            onLimitChange={(n) => { setLimit(n); setPage(1); }}
             itemLabel="registros"
           />
         )}

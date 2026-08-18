@@ -16,7 +16,7 @@ import { AddContractModal } from "~/components/ui/add-contract-modal";
 import { EditContractModal } from "~/components/ui/edit-contract-modal";
 import { contractsService, type PatientContract } from "~/services/contractsService";
 import { toast } from "sonner";
-import { TablePagination } from "~/components/ui/table-pagination";
+import { useInfiniteScroll, InfiniteScrollFooter } from "~/components/ui/infinite-scroll";
 import {
   Search,
   Plus,
@@ -38,12 +38,13 @@ export default function ContratosPage() {
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 10,
+    limit: 20,
     total: 0,
     totalPages: 1,
     hasNextPage: false,
     hasPrevPage: false,
   });
+  const [loadingMore, setLoadingMore] = useState(false);
   const [stats, setStats] = useState({
     total: 0,
     active: 0,
@@ -63,36 +64,27 @@ export default function ContratosPage() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Cargar datos de contratos al montar el componente
+  // Cargar estadísticas al montar el componente
   useEffect(() => {
-    loadContracts();
     loadStats();
   }, []);
 
-  // Volver a página 1 cuando cambien filtros o búsqueda (evita error si los resultados caben en una sola página)
-  useEffect(() => {
-    setPagination(prev => ({ ...prev, page: 1 }));
-  }, [debouncedSearchTerm, filterStatus, filterServiceType]);
-
-  // Recargar contratos cuando cambien los filtros o paginación
-  useEffect(() => {
-    loadContracts();
-  }, [pagination.page, debouncedSearchTerm, filterStatus, filterServiceType]);
-
-  const loadContracts = async () => {
+  const loadPage = useCallback(async (targetPage: number, append: boolean) => {
     try {
-      setLoading(true);
+      if (append) setLoadingMore(true);
+      else setLoading(true);
       const response = await contractsService.getContracts({
-        page: pagination.page,
-        limit: pagination.limit,
+        page: targetPage,
+        limit: 20,
         search: debouncedSearchTerm,
         status: filterStatus === "all" ? undefined : filterStatus,
         serviceType: filterServiceType === "all" ? undefined : filterServiceType,
       });
-      
-      setContracts(response.data);
+
+      setContracts(prev => (append ? [...prev, ...response.data] : response.data));
       setPagination(prev => ({
         ...prev,
+        page: targetPage,
         total: response.total,
         totalPages: response.totalPages,
         hasNextPage: response.hasNextPage,
@@ -100,12 +92,28 @@ export default function ContratosPage() {
       }));
     } catch (error) {
       console.error("Error loading contracts:", error);
-      if (pagination.page > 1) setPagination(prev => ({ ...prev, page: 1 }));
-      else toast.error("Error al cargar contratos.");
+      if (!append) toast.error("Error al cargar contratos.");
     } finally {
-      setLoading(false);
+      if (append) setLoadingMore(false);
+      else setLoading(false);
     }
-  };
+  }, [debouncedSearchTerm, filterStatus, filterServiceType]);
+
+  // Carga inicial y reinicio (vuelve al inicio) cuando cambian los filtros o la búsqueda.
+  useEffect(() => {
+    loadPage(1, false);
+  }, [loadPage]);
+
+  const hasMore = contracts.length < pagination.total;
+  const loadMore = useCallback(() => {
+    if (loading || loadingMore || !hasMore) return;
+    loadPage(pagination.page + 1, true);
+  }, [loading, loadingMore, hasMore, pagination.page, loadPage]);
+  const sentinelRef = useInfiniteScroll(loadMore, {
+    hasMore,
+    loading: loading || loadingMore,
+    deps: [contracts.length],
+  });
 
   const loadStats = async () => {
     try {
@@ -116,22 +124,11 @@ export default function ContratosPage() {
     }
   };
 
-  // Función para cambiar de página
-  const handlePageChange = (newPage: number) => {
-    setPagination(prev => ({ ...prev, page: newPage }));
-  };
-
-  // Función para cambiar el límite de elementos por página
-  const handleLimitChange = (newLimit: number) => {
-    setPagination(prev => ({ ...prev, limit: newLimit, page: 1 }));
-  };
-
   // Función para resetear filtros
   const handleResetFilters = () => {
     setSearchTerm("");
     setFilterStatus("all");
     setFilterServiceType("all");
-    setPagination(prev => ({ ...prev, page: 1 }));
   };
 
   const handleContractAdded = (newContract: PatientContract) => {
@@ -391,12 +388,13 @@ export default function ContratosPage() {
           </div>
 
           {!loading && (
-            <TablePagination
-              page={pagination.page}
-              limit={pagination.limit}
+            <InfiniteScrollFooter
+              sentinelRef={sentinelRef}
+              hasMore={hasMore}
+              loading={loadingMore}
+              onLoadMore={loadMore}
+              shown={contracts.length}
               total={pagination.total}
-              onPageChange={handlePageChange}
-              onLimitChange={handleLimitChange}
               itemLabel="contratos"
             />
           )}
