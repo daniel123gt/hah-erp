@@ -363,8 +363,9 @@ export const procedureService = {
     toDate?: string;
     search?: string;
     paymentStatus?: "pendiente" | "cancelado";
+    enfermera?: string;
   } = {}): Promise<{ data: ProcedureRecordWithDetails[]; total: number }> {
-    const { page = 1, limit = 20, fromDate, toDate, search = "", paymentStatus } = options;
+    const { page = 1, limit = 20, fromDate, toDate, search = "", paymentStatus, enfermera } = options;
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 
@@ -379,6 +380,9 @@ export const procedureService = {
 
     if (fromDate) query = query.gte("fecha", fromDate);
     if (toDate) query = query.lte("fecha", toDate);
+    if (enfermera && enfermera.trim()) {
+      query = query.ilike("enfermera_name", enfermera.trim());
+    }
     if (search.trim()) {
       const term = normalizeSearchText(search);
       if (term) {
@@ -412,6 +416,22 @@ export const procedureService = {
     });
 
     return { data: rows, total: count ?? 0 };
+  },
+
+  /** Conteo de procedimientos por enfermera (para ordenar el filtro). Devuelve un mapa nombre→total. */
+  async getEnfermeraCounts(): Promise<Record<string, number>> {
+    try {
+      const { data, error } = await supabase.rpc("get_enfermera_procedure_counts");
+      if (error) throw error;
+      const map: Record<string, number> = {};
+      (data ?? []).forEach((r: { enfermera_name: string; total: number }) => {
+        map[String(r.enfermera_name)] = Number(r.total ?? 0);
+      });
+      return map;
+    } catch (e) {
+      console.error("Error al obtener conteo de procedimientos por enfermera:", e);
+      return {};
+    }
   },
 
   async getRecordById(id: string): Promise<ProcedureRecordWithDetails | null> {

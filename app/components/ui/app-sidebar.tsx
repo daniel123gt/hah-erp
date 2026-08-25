@@ -14,6 +14,7 @@ import {
   Clock,
   ChevronDown,
   BarChart3,
+  Wallet,
 } from "lucide-react";
 
 import {
@@ -162,6 +163,14 @@ const items: NavItem[] = [
     title: "Inventario",
     url: "/inventario",
     icon: Package,
+  },
+  {
+    title: "Egresos",
+    url: "/egresos",
+    icon: Wallet,
+    children: [
+      { title: "Movilidad", url: "/egresos/movilidad" },
+    ],
   },
   {
     title: "Configuración",

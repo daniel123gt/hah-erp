@@ -593,6 +593,7 @@ export default function OrdenDetalle() {
                       <SelectItem value="20">20%</SelectItem>
                       <SelectItem value="30">30%</SelectItem>
                       <SelectItem value="35">35%</SelectItem>
+                      <SelectItem value="40">40%</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

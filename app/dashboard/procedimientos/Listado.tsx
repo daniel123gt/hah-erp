@@ -18,9 +18,12 @@ import {
 } from "~/services/procedureService";
 import { formatDateOnly } from "~/lib/utils";
 import { patientsService } from "~/services/patientsService";
+import { staffService } from "~/services/staffService";
+import { getDepartmentForCategory } from "~/dashboard/personal/categories";
 import { AddProcedureModal } from "~/components/ui/add-procedure-modal";
 import { EditProcedureModal } from "~/components/ui/edit-procedure-modal";
 import { Badge } from "~/components/ui/badge";
+import { NurseFilterCombobox } from "~/components/ui/nurse-filter-combobox";
 import { useInfiniteScroll, InfiniteScrollFooter } from "~/components/ui/infinite-scroll";
 import { toast } from "sonner";
 import {
@@ -52,6 +55,9 @@ export default function ListadoProcedimientos() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [paymentStatus, setPaymentStatus] = useState<"" | "pendiente" | "cancelado">("");
+  const [enfermeraFilter, setEnfermeraFilter] = useState("");
+  const [nurses, setNurses] = useState<string[]>([]);
+  const [nurseCounts, setNurseCounts] = useState<Record<string, number>>({});
   const [page, setPage] = useState(1);
   const limit = 20;
   const [loadingMore, setLoadingMore] = useState(false);
@@ -69,6 +75,7 @@ export default function ListadoProcedimientos() {
         fromDate: fromDate || undefined,
         toDate: toDate || undefined,
         paymentStatus: paymentStatus || undefined,
+        enfermera: enfermeraFilter || undefined,
       });
       setRecords((prev) => (append ? [...prev, ...res.data] : res.data));
       setTotal(res.total);
@@ -79,7 +86,19 @@ export default function ListadoProcedimientos() {
       if (append) setLoadingMore(false);
       else setLoading(false);
     }
-  }, [limit, search, fromDate, toDate, paymentStatus]);
+  }, [limit, search, fromDate, toDate, paymentStatus, enfermeraFilter]);
+
+  // Carga la lista de enfermeras y el conteo de procedimientos por enfermera (para el filtro).
+  useEffect(() => {
+    const department = getDepartmentForCategory("enfermeria");
+    if (department) {
+      staffService
+        .getStaff({ limit: 200, department, status: "Activo" })
+        .then((res) => setNurses(res.data.map((s) => s.name).filter(Boolean)))
+        .catch(() => setNurses([]));
+    }
+    procedureService.getEnfermeraCounts().then(setNurseCounts).catch(() => setNurseCounts({}));
+  }, []);
 
   // Carga inicial y reinicio (vuelve al inicio) cuando cambian filtros o búsqueda.
   useEffect(() => {
@@ -178,6 +197,16 @@ export default function ListadoProcedimientos() {
             <option value="pendiente">Pendiente</option>
             <option value="cancelado">Cancelado</option>
           </select>
+          <div className="min-w-[200px]">
+            <NurseFilterCombobox
+              nurses={[...nurses, ...Object.keys(nurseCounts)]}
+              counts={nurseCounts}
+              value={enfermeraFilter}
+              onValueChange={setEnfermeraFilter}
+              allLabel="Todas las enfermeras"
+              placeholder="Buscar enfermera..."
+            />
+          </div>
         </div>
       </Card>
 

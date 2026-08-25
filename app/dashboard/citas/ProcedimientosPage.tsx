@@ -16,10 +16,10 @@ import { AddAppointmentModal } from "~/components/ui/add-appointment-modal";
 import { ViewAppointmentModal } from "~/components/ui/view-appointment-modal";
 import { EditAppointmentModal } from "~/components/ui/edit-appointment-modal";
 import { useProgressiveList, InfiniteScrollFooter } from "~/components/ui/infinite-scroll";
+import { NurseFilterCombobox } from "~/components/ui/nurse-filter-combobox";
 import { useNotifications } from "~/contexts/NotificationsContext";
 import {
   Search,
-  Filter,
   Calendar,
   Clock,
   Phone,
@@ -55,6 +55,8 @@ export default function CitasProcedimientosPage() {
   const [filterDate, setFilterDate] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
+  const [filterNurse, setFilterNurse] = useState<string>("all");
+  const [nurseCounts, setNurseCounts] = useState<Record<string, number>>({});
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<Record<string, Patient>>({});
   const [loading, setLoading] = useState(true);
@@ -69,6 +71,11 @@ export default function CitasProcedimientosPage() {
         toast.error("Error al cargar las citas");
       })
       .finally(() => setLoading(false));
+  }, []);
+
+  // Conteo de procedimientos por enfermera (para ordenar el filtro).
+  useEffect(() => {
+    procedureService.getEnfermeraCounts().then(setNurseCounts).catch(() => setNurseCounts({}));
   }, []);
 
   useEffect(() => {
@@ -90,6 +97,11 @@ export default function CitasProcedimientosPage() {
 
   const isSearchActive = normalizeSearchText(searchTerm).length > 0;
 
+  // Enfermeras presentes en las citas (para el filtro "Más filtros").
+  const nurseOptions = [...new Set(
+    appointments.map((a) => (a.doctorName ?? "").trim()).filter(Boolean)
+  )].sort((a, b) => a.localeCompare(b));
+
   const filteredAppointments = appointments.filter((appointment) => {
     const matchesSearch =
       normalizeSearchText(appointment.patientName).includes(normalizeSearchText(searchTerm)) ||
@@ -102,7 +114,9 @@ export default function CitasProcedimientosPage() {
       filterType === "all" ||
       appointment.type === filterType ||
       (filterType === "procedimiento" && appointment.type === "procedimiento");
-    return matchesSearch && matchesDate && matchesStatus && matchesType;
+    const matchesNurse =
+      filterNurse === "all" || (appointment.doctorName ?? "").trim() === filterNurse;
+    return matchesSearch && matchesDate && matchesStatus && matchesType && matchesNurse;
   });
 
   const {
@@ -112,7 +126,7 @@ export default function CitasProcedimientosPage() {
     loadMore,
     shown,
     total: totalItems,
-  } = useProgressiveList(filteredAppointments, 20, `${searchTerm}|${filterDate}|${filterStatus}|${filterType}`);
+  } = useProgressiveList(filteredAppointments, 20, `${searchTerm}|${filterDate}|${filterStatus}|${filterType}|${filterNurse}`);
 
   const createProcedureRecordFromAppointment = (apt: Appointment) => {
     if (!apt.procedure_catalog_id || !apt.procedure_name) return;
@@ -441,10 +455,17 @@ export default function CitasProcedimientosPage() {
               <option value="all">Todos los tipos</option>
               <option value="procedimiento">Procedimiento</option>
             </select>
-            <Button variant="outline">
-              <Filter className="w-4 h-4 mr-2" />
-              Más Filtros
-            </Button>
+            <div className="min-w-[220px]">
+              <NurseFilterCombobox
+                nurses={nurseOptions}
+                counts={nurseCounts}
+                value={filterNurse}
+                onValueChange={setFilterNurse}
+                allValue="all"
+                allLabel="Todas las enfermeras"
+                placeholder="Buscar enfermera..."
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
