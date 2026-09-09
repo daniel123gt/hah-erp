@@ -512,37 +512,27 @@ export async function getCalendarEvents(fromDate: string, toDate: string): Promi
     if (isLabCancelado(order.status)) return;
     const raw = order.sample_date || order.order_date || "";
     const rawStr = String(raw);
-    const d =
-      raw instanceof Date
-        ? `${raw.getFullYear()}-${String(raw.getMonth() + 1).padStart(2, "0")}-${String(raw.getDate()).padStart(2, "0")}`
-        : rawStr.slice(0, 10);
-    if (!d || !/^\d{4}-\d{2}-\d{2}$/.test(d) || d < from || d > to) return;
     const hasTime = raw instanceof Date || rawStr.includes("T");
+
+    // `new Date(...)` interpreta bien tanto los timestamptz con zona (ej. UTC)
+    // como las fechas-hora locales, y react-big-calendar muestra la hora LOCAL.
+    // (Antes una heurística sumaba el offset y corría los laboratorios +5h;
+    //  ese era el bug: un examen de 06:00 aparecía a las 11:00.)
     let start: Date;
     if (hasTime) {
-      const parsed = raw instanceof Date ? raw : new Date(raw as string);
-      if (isNaN(parsed.getTime())) {
-        start = new Date(d + "T08:00:00");
-      } else {
-        const utcH = parsed.getUTCHours();
-        const localH = parsed.getHours();
-        const offsetMinutes = parsed.getTimezoneOffset();
-        const looksLikeLocalStoredAsUtc =
-          offsetMinutes > 0 &&
-          utcH >= 7 &&
-          utcH <= 22 &&
-          localH >= 0 &&
-          localH <= 9;
-        if (looksLikeLocalStoredAsUtc) {
-          start = new Date(parsed.getTime() + offsetMinutes * 60 * 1000);
-        } else {
-          start = parsed;
-        }
-      }
+      const parsed = raw instanceof Date ? raw : new Date(rawStr);
+      start = isNaN(parsed.getTime())
+        ? new Date(rawStr.slice(0, 10) + "T08:00:00")
+        : parsed;
     } else {
-      start = new Date(d + "T08:00:00");
+      start = new Date(rawStr.slice(0, 10) + "T08:00:00");
     }
-    const end = hasTime ? new Date(start.getTime() + 30 * 60 * 1000) : new Date(d + "T08:30:00");
+
+    // Fecha local del evento (para el filtro de rango del calendario).
+    const d = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || d < from || d > to) return;
+
+    const end = new Date(start.getTime() + 30 * 60 * 1000);
     const patientInfo = labPatientMap[order.patient_id];
     const patientName = patientInfo?.name ?? "Paciente";
     events.push({
