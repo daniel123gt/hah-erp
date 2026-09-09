@@ -887,7 +887,7 @@ export default function OrdenDetalle() {
                         Agregar Exámenes
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                    <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
                       <DialogHeader>
                         <DialogTitle>Buscar y Agregar Exámenes</DialogTitle>
                       </DialogHeader>

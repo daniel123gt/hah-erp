@@ -166,7 +166,7 @@ export function UploadResultPdf({
           )}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Subir Resultado PDF - Orden #{orderNumber}</DialogTitle>
         </DialogHeader>

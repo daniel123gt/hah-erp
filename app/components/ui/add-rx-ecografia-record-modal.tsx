@@ -145,7 +145,7 @@ export function AddRxEcografiaRecordModal({ onCreated }: AddRxEcografiaRecordMod
             Nuevo registro
           </Button>
         </DialogTrigger>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Agregar registro RX / Ecografía</DialogTitle>
             <DialogDescription>

@@ -111,7 +111,7 @@ export function AddExamModal({ onExamAdded }: AddExamModalProps) {
           Agregar Examen
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Agregar Nuevo Examen</DialogTitle>
         </DialogHeader>

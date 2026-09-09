@@ -66,7 +66,7 @@ export function EditMovilidadExpenseModal({ expense, onClose, onUpdated }: EditM
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Editar egreso de movilidad</DialogTitle>
           <DialogDescription>Modifique los datos del egreso.</DialogDescription>

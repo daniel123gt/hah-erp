@@ -145,7 +145,7 @@ export function AddProcedureModal({ onCreated }: AddProcedureModalProps) {
           Nuevo procedimiento
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Registrar procedimiento</DialogTitle>
           <DialogDescription>

@@ -716,7 +716,7 @@ ${data.citasDelDia.map((cita: any) =>
 
       {/* Modal para Ver Cita */}
       <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Detalles de la Cita</DialogTitle>
           </DialogHeader>
@@ -764,7 +764,7 @@ ${data.citasDelDia.map((cita: any) =>
 
       {/* Modal para Editar Cita */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Editar Cita</DialogTitle>
           </DialogHeader>

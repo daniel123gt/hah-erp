@@ -101,7 +101,7 @@ export function EditExamModal({ exam, onExamUpdated }: EditExamModalProps) {
           <Edit className="w-4 h-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Editar Examen</DialogTitle>
         </DialogHeader>

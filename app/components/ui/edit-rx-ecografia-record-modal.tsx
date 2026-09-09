@@ -62,7 +62,7 @@ export function EditRxEcografiaRecordModal({ record, onClose, onUpdated }: EditR
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Editar registro - RX / Ecografía</DialogTitle>
         </DialogHeader>
