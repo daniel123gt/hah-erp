@@ -33,7 +33,7 @@ self.addEventListener("notificationclick", (event) => {
   );
 });
 
-// Fase 2 (avisos con la app cerrada): mostrar notificación al recibir un push del servidor.
+// Avisos con la app cerrada: mostrar notificación al recibir un push del servidor.
 self.addEventListener("push", (event) => {
   let payload = {};
   try {
@@ -50,5 +50,14 @@ self.addEventListener("push", (event) => {
     tag: payload.tag,
     renotify: Boolean(payload.tag),
   };
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil(
+    (async () => {
+      // Si la app está abierta y visible en este dispositivo, no duplicamos:
+      // la muestra la app en primer plano. Si no (ej. teléfono cerrado), la muestra el SW.
+      const clientsList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      const visible = clientsList.some((c) => c.visibilityState === "visible" || c.focused);
+      if (visible) return;
+      await self.registration.showNotification(title, options);
+    })()
+  );
 });
