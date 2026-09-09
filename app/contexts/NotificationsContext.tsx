@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { toast } from "sonner";
+import { subscribeToPush } from "~/lib/push";
 import { Bell, FlaskConical, Scan, Stethoscope, Syringe, X } from "lucide-react";
 import { playNotificationSound } from "~/lib/notificationSound";
 import { useAuthStore } from "~/store/authStore";
@@ -208,7 +209,18 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     if (typeof window === "undefined" || !("Notification" in window)) return false;
     const result = await Notification.requestPermission();
     setPermission(result);
+    if (result === "granted") {
+      // Suscribe este dispositivo a push (para recibir avisos con la app cerrada).
+      subscribeToPush().catch(() => {});
+    }
     return result === "granted";
+  }, []);
+
+  // Si ya había permiso concedido, re-suscribe el dispositivo al montar.
+  useEffect(() => {
+    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+      subscribeToPush().catch(() => {});
+    }
   }, []);
 
   const markReminderSent = useCallback((key: string): boolean => {

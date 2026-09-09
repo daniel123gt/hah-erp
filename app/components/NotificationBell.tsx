@@ -15,6 +15,8 @@ import {
   type AppNotification,
 } from "~/contexts/NotificationsContext";
 import { cn } from "~/lib/utils";
+import { toast } from "sonner";
+import { sendTestPush } from "~/lib/push";
 
 function getIcon(type: NotificationType) {
   switch (type) {
@@ -140,6 +142,30 @@ export function NotificationBell() {
               </p>
               <Button size="sm" className="w-full" onClick={handleRequestPermission}>
                 Permitir notificaciones
+              </Button>
+            </div>
+          )}
+          {permission === "granted" && (
+            <div className="px-3 py-2 border-b">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full text-xs"
+                onClick={async () => {
+                  const r = await sendTestPush();
+                  if (r.ok) {
+                    const n = (r as { sent?: number }).sent ?? 0;
+                    toast.success(
+                      n > 0
+                        ? `Push de prueba enviado a ${n} dispositivo(s). Cerrá la app para verlo.`
+                        : "No hay dispositivos suscritos aún. Reactivá el permiso."
+                    );
+                  } else {
+                    toast.error(r.error || "No se pudo enviar el push de prueba");
+                  }
+                }}
+              >
+                Probar notificación push
               </Button>
             </div>
           )}
