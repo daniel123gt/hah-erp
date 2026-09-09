@@ -41,13 +41,16 @@ function formatSampleTimeLocal(sampleDate: string | null | undefined): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
-/** Texto del tiempo restante para el aviso (ej. "en 10 minutos", "en 1 hora"). */
+/** Texto del tiempo restante para el aviso (ej. "en 10 minutos", "en 1 hora", "en 2 horas"). */
 function relativeWhen(ms: number): string {
   const mins = Math.round(ms / 60000);
   if (mins <= 0) return "ahora";
   if (mins === 1) return "en 1 minuto";
   if (mins < 60) return `en ${mins} minutos`;
-  return "en 1 hora";
+  const hours = Math.floor(mins / 60);
+  const rem = mins % 60;
+  if (rem === 0) return hours === 1 ? "en 1 hora" : `en ${hours} horas`;
+  return `en ${hours} h ${rem} min`;
 }
 
 export function ReminderChecker() {
@@ -56,10 +59,10 @@ export function ReminderChecker() {
 
   const checkReminders = () => {
     const now = Date.now();
-    const oneHourFromNow = now + 60 * 60 * 1000;
+    const twoHoursFromNow = now + 2 * 60 * 60 * 1000;
     const today = getTodayLocal();
 
-    // Citas (medicina + procedimientos + RX/Ecografías) con fecha/hora en la próxima hora
+    // Citas (medicina + procedimientos + RX/Ecografías) con fecha/hora en las próximas 2 horas
     Promise.all([
       appointmentsService.list("medicina"),
       appointmentsService.list("procedimientos"),
@@ -74,7 +77,7 @@ export function ReminderChecker() {
         list.forEach((apt) => {
           if (apt.date !== today) return;
           const ts = parseAppointmentDateTime(apt.date, apt.time);
-          if (ts < now || ts > oneHourFromNow) return;
+          if (ts < now || ts > twoHoursFromNow) return;
           const key = `cita-${apt.id}-${apt.date}-${apt.time}`;
           if (wasReminderSent(key)) return;
           if (!markReminderSent(key)) return;
@@ -93,12 +96,12 @@ export function ReminderChecker() {
       });
     }).catch(() => {});
 
-    // Órdenes de laboratorio con sample_date en la próxima hora
+    // Órdenes de laboratorio con sample_date en las próximas 2 horas
     labOrderService.getOrdersForSampleDate(today).then((orders) => {
       orders.forEach((order) => {
         const sampleStr = order.sample_date ?? order.order_date;
         const ts = parseSampleDateTime(sampleStr);
-        if (ts == null || ts < now || ts > oneHourFromNow) return;
+        if (ts == null || ts < now || ts > twoHoursFromNow) return;
         const key = `lab-${order.id}-${sampleStr}`;
         if (wasReminderSent(key)) return;
         if (!markReminderSent(key)) return;

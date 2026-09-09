@@ -71,7 +71,7 @@ export function RightSidebar() {
   }, []);
 
   return (
-    <div className="w-80 bg-white border-l border-gray-200 p-6 space-y-6">
+    <div className="hidden xl:block w-80 shrink-0 bg-white border-l border-gray-200 p-6 space-y-6">
       {/* Perfil del Usuario */}
       <Card>
         <CardHeader className="pb-4">

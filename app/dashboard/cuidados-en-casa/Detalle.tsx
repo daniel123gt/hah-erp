@@ -476,7 +476,7 @@ export default function CuidadosEnCasaDetalle() {
   const aplicaDescuento = descuentoVal > 0 && montoFinalVal < montoOriginal;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
         <Button variant="outline" onClick={() => navigate("/cuidados-en-casa")}>
           <ArrowLeft className="w-4 h-4 mr-2" />

@@ -214,7 +214,7 @@ export default function PersonalCategoryPage() {
             <span className="mx-1">/</span>
             <span className="text-gray-900 font-medium">{categoryDef.title}</span>
           </nav>
-          <h1 className="text-3xl font-bold text-primary-blue">{categoryDef.title}</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-primary-blue">{categoryDef.title}</h1>
           <p className="text-gray-600 mt-1">Listado de personal. Filtre por área si lo desea.</p>
         </div>
         <div className="flex gap-2">

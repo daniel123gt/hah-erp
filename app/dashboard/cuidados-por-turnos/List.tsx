@@ -126,7 +126,7 @@ export default function CuidadosPorTurnosList() {
   const totalMonto = filteredShifts.reduce((sum, s) => sum + (s.monto_a_pagar ?? 0), 0);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-4">
           <Button variant="outline" onClick={() => navigate("/")}>
@@ -201,8 +201,8 @@ export default function CuidadosPorTurnosList() {
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-wrap gap-4 items-end">
-            <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4 sm:items-end">
+            <div className="relative w-full sm:flex-1 sm:min-w-[200px] sm:max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
                 placeholder="Buscar por paciente, familiar, enfermera o distrito..."
@@ -211,31 +211,31 @@ export default function CuidadosPorTurnosList() {
                 className="pl-9"
               />
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <div>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:flex-wrap">
+              <div className="w-full sm:w-auto">
                 <label className="text-xs text-gray-500 block mb-1">Desde</label>
                 <Input
                   type="date"
                   value={fechaDesde}
                   onChange={(e) => setFechaDesde(e.target.value)}
-                  className="w-40"
+                  className="w-full sm:w-40"
                 />
               </div>
-              <div>
+              <div className="w-full sm:w-auto">
                 <label className="text-xs text-gray-500 block mb-1">Hasta</label>
                 <Input
                   type="date"
                   value={fechaHasta}
                   onChange={(e) => setFechaHasta(e.target.value)}
-                  className="w-40"
+                  className="w-full sm:w-40"
                 />
               </div>
-              <div>
+              <div className="w-full sm:w-auto">
                 <label className="text-xs text-gray-500 block mb-1">Estado</label>
                 <select
                   value={estadoFilter}
                   onChange={(e) => setEstadoFilter(e.target.value as typeof estadoFilter)}
-                  className="w-40 h-10 rounded-md border border-input bg-background px-3 text-sm"
+                  className="w-full sm:w-40 h-10 rounded-md border border-input bg-background px-3 text-sm"
                 >
                   <option value="">Todos</option>
                   <option value="Pendiente">Pendiente</option>

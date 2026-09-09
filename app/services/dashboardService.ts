@@ -3,7 +3,7 @@
  * Usa pacientes, citas y procedimientos para métricas reales.
  */
 
-import { getTodayLocal, formatTimeOnlyLocal } from "~/lib/dateUtils";
+import { getTodayLocal, formatTimeOnlyLocal, toTimeInputValue } from "~/lib/dateUtils";
 import { isAppointmentCancelado, isLabCancelado } from "~/lib/estadoDisplay";
 import patientsService from "~/services/patientsService";
 import { appointmentsService } from "~/services/appointmentsService";
@@ -370,6 +370,10 @@ export interface CalendarEventResource {
   patientName?: string;
   doctorName?: string;
   status?: string;
+  /** Tipo de visita / procedimiento / exámenes (para diferenciar del nombre en la agenda). */
+  visitType?: string;
+  /** Dirección exacta (o distrito si no hay dirección). */
+  place?: string;
   /** Para laboratorio: número de exámenes */
   itemsCount?: number;
   total_amount?: number;
@@ -389,6 +393,23 @@ function parseTimeToMinutes(time: string): number {
   const h = parseInt(parts[0], 10) || 0;
   const m = parseInt(parts[1], 10) || 0;
   return h * 60 + m;
+}
+
+/** Deriva la duración en minutos de un turno desde su código/nombre (ej. "8H", "12H día", "6 horas"). 0 si no se reconoce. */
+function parseShiftDurationMinutes(turno: string | null | undefined): number {
+  const m = String(turno ?? "").match(/(\d+)\s*(h|hora)/i);
+  return m ? parseInt(m[1], 10) * 60 : 0;
+}
+
+/** Suma minutos a una hora "HH:MM" y devuelve "HH:MM" (24h). "" si la hora es inválida. */
+function addMinutesToHHMM(time: string, minutes: number): string {
+  const t = String(time).trim();
+  if (!t) return "";
+  const total = parseTimeToMinutes(t) + (Number(minutes) || 0);
+  const norm = ((total % (24 * 60)) + 24 * 60) % (24 * 60);
+  const h = Math.floor(norm / 60);
+  const m = norm % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
 /** Genera eventos para el calendario (citas medicina, procedimientos, RX/Ecografías y laboratorio) en el rango [fromDate, toDate]. */
@@ -423,6 +444,8 @@ export async function getCalendarEvents(fromDate: string, toDate: string): Promi
         patientName: c.patientName,
         doctorName: c.doctorName,
         status: c.status,
+        visitType: c.type,
+        place: c.location || c.district || "",
       },
     });
   });
@@ -446,6 +469,8 @@ export async function getCalendarEvents(fromDate: string, toDate: string): Promi
         patientName: c.patientName,
         doctorName: c.doctorName,
         status: c.status,
+        visitType: c.procedure_name || c.type,
+        place: c.location || c.district || "",
       },
     });
   });
@@ -469,15 +494,17 @@ export async function getCalendarEvents(fromDate: string, toDate: string): Promi
         patientName: c.patientName,
         doctorName: c.doctorName,
         status: c.status,
+        visitType: c.type,
+        place: c.location || c.district || "",
       },
     });
   });
 
-  const labPatientMap: Record<string, string> = {};
+  const labPatientMap: Record<string, { name: string; place: string }> = {};
   await Promise.all(
     [...new Set(labOrders.map((o) => o.patient_id))].map(async (pid) => {
       const p = await patientsService.getPatientById(pid).catch(() => null);
-      if (p) labPatientMap[pid] = p.name;
+      if (p) labPatientMap[pid] = { name: p.name, place: p.address || p.district || "" };
     })
   );
 
@@ -516,7 +543,8 @@ export async function getCalendarEvents(fromDate: string, toDate: string): Promi
       start = new Date(d + "T08:00:00");
     }
     const end = hasTime ? new Date(start.getTime() + 30 * 60 * 1000) : new Date(d + "T08:30:00");
-    const patientName = labPatientMap[order.patient_id] ?? "Paciente";
+    const patientInfo = labPatientMap[order.patient_id];
+    const patientName = patientInfo?.name ?? "Paciente";
     events.push({
       id: `lab-${order.id}`,
       title: `${patientName} · ${order.items.length} exám.`,
@@ -526,6 +554,8 @@ export async function getCalendarEvents(fromDate: string, toDate: string): Promi
         type: "laboratorio",
         id: order.id,
         patientName,
+        visitType: `${order.items.length} exám.`,
+        place: patientInfo?.place ?? "",
         itemsCount: order.items.length,
         total_amount: order.total_amount,
       },
@@ -541,6 +571,8 @@ export interface AgendaItem {
   id: string;
   kind: AgendaKind;
   time: string;
+  /** Hora de fin (para mostrar rango "HH:MM - HH:MM"). "" si no aplica. */
+  endTime?: string;
   patientName: string;
   /** Tipo de cita / procedimiento / "Laboratorio" / turno */
   detail: string;
@@ -575,6 +607,7 @@ export async function getDayAgenda(dateYMD: string): Promise<AgendaItem[]> {
           id: `${kind}-${c.id}`,
           kind,
           time: c.time ?? "",
+          endTime: c.time ? addMinutesToHHMM(c.time, c.duration || 30) : "",
           patientName: c.patientName ?? "Paciente",
           detail:
             kind === "procedimientos"
@@ -610,6 +643,7 @@ export async function getDayAgenda(dateYMD: string): Promise<AgendaItem[]> {
       id: `laboratorio-${o.id}`,
       kind: "laboratorio",
       time,
+      endTime: time ? addMinutesToHHMM(time, 30) : "",
       patientName: p?.name ?? "Paciente",
       detail: `Laboratorio · ${o.items?.length ?? 0} examen(es)`,
       address,
@@ -626,10 +660,13 @@ export async function getDayAgenda(dateYMD: string): Promise<AgendaItem[]> {
       ? pt[0]?.name ?? "Turno"
       : pt?.name ?? s.familiar_responsable ?? "Turno";
     const district = s.distrito ?? "";
+    const turnoStart = toTimeInputValue(s.hora_inicio) || (s.hora_inicio ?? "");
+    const turnoMins = parseShiftDurationMinutes(s.turno) || 30;
     items.push({
       id: `turno-${s.id}`,
       kind: "turno",
-      time: s.hora_inicio ?? "",
+      time: turnoStart,
+      endTime: turnoStart ? addMinutesToHHMM(turnoStart, turnoMins) : "",
       patientName,
       detail: `Turno${s.turno ? ` · ${s.turno}` : ""}`,
       address: "",

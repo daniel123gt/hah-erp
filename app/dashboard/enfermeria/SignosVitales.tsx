@@ -131,12 +131,12 @@ export default function SignosVitales() {
   } = useProgressiveList(recentEntries, 20, `${selectedPatient?.id}`);
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center gap-4">
+    <div className="space-y-6">
+      <div className="flex items-center gap-3 min-w-0">
         <Button variant="outline" onClick={() => navigate("/enfermeria")}>
           <ArrowLeft className="w-4 h-4 mr-2" /> Volver
         </Button>
-        <h1 className="text-2xl font-bold text-gray-900">Registro de Funciones Vitales</h1>
+        <h1 className="text-2xl font-bold text-gray-900 min-w-0">Registro de Funciones Vitales</h1>
       </div>
 
       {/* Buscar / Seleccionar Paciente */}

@@ -86,7 +86,7 @@ export default function ProcedimientosDashboard() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Procedimientos de Enfermería</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Procedimientos de Enfermería</h1>
           <p className="text-gray-600 mt-1">
             Catálogo de procedimientos y registro de atenciones
           </p>
@@ -98,7 +98,7 @@ export default function ProcedimientosDashboard() {
       </div>
 
       {/* Cards informativos */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>

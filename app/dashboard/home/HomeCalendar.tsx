@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router";
 import { Calendar, dateFnsLocalizer, type View } from "react-big-calendar";
-import { format, parse, startOfWeek as startOfWeekFns, getDay, startOfMonth, endOfMonth } from "date-fns";
+import { format, parse, startOfWeek as startOfWeekFns, getDay, startOfMonth, endOfMonth, addDays } from "date-fns";
 import { es } from "date-fns/locale";
 import { getCalendarEvents, type CalendarEvent } from "~/services/dashboardService";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { Calendar as CalendarIcon, Plus, Loader2 } from "lucide-react";
+import { Calendar as CalendarIcon, Plus, Loader2, MapPin } from "lucide-react";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import "./HomeCalendar.css";
 
@@ -49,6 +49,28 @@ function getEventStyle(event: CalendarEvent) {
   return EVENT_STYLES[event.resource.type] ?? { background: "#6b7280" };
 }
 
+/** Días que abarca la vista Agenda (inicio + 6 = una semana). */
+const AGENDA_LENGTH = 6;
+
+/** Fila de la vista Agenda: nombre destacado, tipo de visita y dirección exacta. */
+function AgendaEvent({ event }: { event: CalendarEvent }) {
+  const r = event.resource;
+  return (
+    <div className="leading-tight">
+      <div>
+        <span className="font-bold uppercase">{r.patientName}</span>
+        {r.visitType && <span className="font-normal opacity-80"> · {r.visitType}</span>}
+      </div>
+      {r.place && (
+        <div className="text-[11px] opacity-80 flex items-center gap-1 mt-0.5">
+          <MapPin className="w-3 h-3 shrink-0" />
+          <span>{r.place}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface HomeCalendarProps {
   onNavigate?: (path: string) => void;
 }
@@ -60,8 +82,10 @@ export default function HomeCalendar({ onNavigate }: HomeCalendarProps) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const rangeStart = startOfMonth(date);
-  const rangeEnd = endOfMonth(date);
+  // En la vista Agenda se muestra una semana (inicio + 6 días); en el resto, el mes.
+  const isAgenda = view === "agenda";
+  const rangeStart = isAgenda ? date : startOfMonth(date);
+  const rangeEnd = isAgenda ? addDays(date, AGENDA_LENGTH) : endOfMonth(date);
   const fromStr = format(rangeStart, "yyyy-MM-dd");
   const toStr = format(rangeEnd, "yyyy-MM-dd");
 
@@ -152,6 +176,8 @@ export default function HomeCalendar({ onNavigate }: HomeCalendarProps) {
               onSelectSlot={handleSelectSlot}
               selectable
               messages={MESSAGES}
+              length={AGENDA_LENGTH}
+              components={{ agenda: { event: AgendaEvent as any } }}
               eventPropGetter={(event) => ({
                 style: getEventStyle(event as CalendarEvent),
               })}

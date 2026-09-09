@@ -1,4 +1,5 @@
 import supabase from "~/utils/supabase";
+import { authSignals } from "~/lib/authSignals";
 
 export const signInWithEmail = async (email: string, password: string) => {
   try {
@@ -19,6 +20,8 @@ export const signInWithEmail = async (email: string, password: string) => {
 };
 
 export const logout = async () => {
+  // Marca que este cierre de sesión es intencional (para no mostrar "sesión expirada").
+  authSignals.manualLogout = true;
   try {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;

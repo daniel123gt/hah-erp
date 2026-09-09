@@ -81,7 +81,7 @@ export default function CuidadosEnCasaList() {
   } = useProgressiveList(filtered, 20, `${searchTerm}|${estadoFilter}`);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-4">
           <Button variant="outline" onClick={() => navigate("/")}>

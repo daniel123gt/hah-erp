@@ -73,7 +73,7 @@ export default function ProcedimientoDetalle() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Detalle del procedimiento</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Detalle del procedimiento</h1>
           <p className="text-gray-600 mt-1">
             {(() => {
               const s = String(record.fecha).trim().slice(0, 10);
@@ -158,7 +158,7 @@ export default function ProcedimientoDetalle() {
             Costos y utilidad (S/.)
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <p className="text-sm text-gray-500">Costo (catálogo)</p>
             <p className="font-medium">{costo.toFixed(2)}</p>

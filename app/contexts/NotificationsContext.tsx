@@ -81,14 +81,30 @@ const MAX_NOTIFICATIONS = 50;
 /** Cada cuánto vuelve a sonar un aviso mientras su toast siga sin cerrarse. */
 const RESOUND_AVISO_MS = 5 * 60 * 1000; // 5 minutos
 
-function showNativeNotification(title: string, body: string) {
+async function showNativeNotification(title: string, body: string) {
   if (typeof window === "undefined" || !("Notification" in window)) return;
   if (Notification.permission !== "granted") return;
+  const options: NotificationOptions = {
+    body,
+    icon: "/icon-256.png",
+    badge: "/icon-256.png",
+  };
+  // En móvil el constructor `new Notification()` no funciona: hay que usar el
+  // service worker. Preferimos el SW cuando está disponible.
   try {
-    const n = new Notification(title, {
-      body,
-      icon: "/logo.svg",
-    });
+    if ("serviceWorker" in navigator) {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg) {
+        await reg.showNotification(title, options);
+        return;
+      }
+    }
+  } catch {
+    // seguimos al fallback
+  }
+  // Fallback (escritorio sin SW): constructor clásico.
+  try {
+    const n = new Notification(title, options);
     n.onclick = () => {
       window.focus();
       n.close();
@@ -262,21 +278,21 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       };
 
       const card = () => (
-        <div className={`flex w-[min(94vw,520px)] items-start gap-4 rounded-xl border-2 ${c.border} ${c.bg} p-5 shadow-2xl`}>
-          <div className={`flex h-24 w-24 shrink-0 items-center justify-center rounded-full ${c.circle}`}>
-            <Icon className="h-14 w-14 text-white" />
+        <div className={`flex w-[min(92vw,520px)] items-start gap-3 sm:gap-4 rounded-xl border-2 ${c.border} ${c.bg} p-3 sm:p-5 shadow-2xl`}>
+          <div className={`flex h-12 w-12 sm:h-24 sm:w-24 shrink-0 items-center justify-center rounded-full ${c.circle}`}>
+            <Icon className="h-7 w-7 sm:h-14 sm:w-14 text-white" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className={`text-[21px] font-bold leading-tight ${c.title}`}>{title}</p>
-            <p className={`mt-1 whitespace-pre-line text-[17px] ${c.body}`}>{body}</p>
+            <p className={`text-base sm:text-[21px] font-bold leading-tight ${c.title}`}>{title}</p>
+            <p className={`mt-1 whitespace-pre-line text-sm sm:text-[17px] ${c.body}`}>{body}</p>
           </div>
           <button
             type="button"
             onClick={close}
             aria-label="Cerrar"
-            className={`shrink-0 rounded-md p-1 ${c.x}`}
+            className={`shrink-0 rounded-md p-0.5 sm:p-1 ${c.x}`}
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
         </div>
       );

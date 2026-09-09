@@ -108,7 +108,6 @@ export default function PacientesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterGender, setFilterGender] = useState<string>("all");
-  const [filterBloodType, setFilterBloodType] = useState<string>("all");
   const [filterDistrict, setFilterDistrict] = useState<string>("all");
   const [patients, setPatients] = useState<Patient[]>([]);
   const [districts, setDistricts] = useState<Array<{name: string, zone: string}>>([]);
@@ -157,7 +156,6 @@ export default function PacientesPage() {
         search: debouncedSearchTerm,
         status: filterStatus,
         gender: filterGender,
-        bloodType: filterBloodType,
         district: filterDistrict
       });
 
@@ -177,7 +175,7 @@ export default function PacientesPage() {
       if (append) setLoadingMore(false);
       else setLoading(false);
     }
-  }, [debouncedSearchTerm, filterStatus, filterGender, filterBloodType, filterDistrict]);
+  }, [debouncedSearchTerm, filterStatus, filterGender, filterDistrict]);
 
   // Carga inicial y reinicio (vuelve al inicio) cuando cambian los filtros o la búsqueda.
   useEffect(() => {
@@ -218,7 +216,6 @@ export default function PacientesPage() {
     setSearchTerm("");
     setFilterStatus("all");
     setFilterGender("all");
-    setFilterBloodType("all");
     setFilterDistrict("all");
   };
 
@@ -278,16 +275,16 @@ export default function PacientesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
         <div>
-          <h1 className="text-3xl font-bold text-primary-blue">Gestión de Pacientes</h1>
-          <p className="text-gray-600 mt-2">Administra la información de todos los pacientes</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-primary-blue">Gestión de Pacientes</h1>
+          <p className="text-gray-600 mt-1 sm:mt-2">Administra la información de todos los pacientes</p>
         </div>
         <AddPatientModal onPatientAdded={handlePatientAdded} />
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center space-x-4">
@@ -366,14 +363,14 @@ export default function PacientesPage() {
                   className="pl-10"
                 />
               </div>
-              <Button variant="outline" onClick={handleResetFilters}>
+              <Button variant="outline" onClick={handleResetFilters} className="w-full md:w-auto">
                 <X className="w-4 h-4 mr-2" />
                 Limpiar Filtros
               </Button>
             </div>
 
             {/* Segunda fila: Filtros */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Estado
@@ -402,27 +399,6 @@ export default function PacientesPage() {
                   <option value="all">Todos los géneros</option>
                   <option value="M">Masculino</option>
                   <option value="F">Femenino</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tipo de Sangre
-                </label>
-                <select
-                  value={filterBloodType}
-                  onChange={(e) => setFilterBloodType(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
-                >
-                  <option value="all">Todos los tipos</option>
-                  <option value="A+">A+</option>
-                  <option value="A-">A-</option>
-                  <option value="B+">B+</option>
-                  <option value="B-">B-</option>
-                  <option value="AB+">AB+</option>
-                  <option value="AB-">AB-</option>
-                  <option value="O+">O+</option>
-                  <option value="O-">O-</option>
                 </select>
               </div>
 

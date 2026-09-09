@@ -235,12 +235,12 @@ export default function EliminacionHecesOrina() {
   } = useProgressiveList(historyRecords, 20, `${selectedPatient?.id}`);
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center gap-4">
+    <div className="space-y-6">
+      <div className="flex items-center gap-3 min-w-0">
         <Button variant="outline" onClick={() => navigate("/enfermeria")}>
           <ArrowLeft className="w-4 h-4 mr-2" /> Volver
         </Button>
-        <h1 className="text-2xl font-bold text-gray-900">Hoja Descriptiva de Eliminación de Heces y Orinas</h1>
+        <h1 className="text-2xl font-bold text-gray-900 min-w-0">Hoja Descriptiva de Eliminación de Heces y Orinas</h1>
       </div>
 
       {/* Buscar / Seleccionar Paciente */}
@@ -351,24 +351,24 @@ export default function EliminacionHecesOrina() {
         <>
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <CardTitle>Registro de Eliminación</CardTitle>
-              <div className="flex items-center gap-4">
-                <div>
-                  <Label>Fecha</Label>
-                  <Input
-                    type="date"
-                    value={form.record_date}
-                    onChange={(e) => handleDateChange(e.target.value)}
-                    className="w-48"
-                  />
+                <div className="flex items-end gap-2 sm:gap-4">
+                  <div className="flex-1 sm:flex-none">
+                    <Label>Fecha</Label>
+                    <Input
+                      type="date"
+                      value={form.record_date}
+                      onChange={(e) => handleDateChange(e.target.value)}
+                      className="w-full sm:w-48"
+                    />
+                  </div>
+                  <Button onClick={handleSave} disabled={isSaving || isLoadingRecord} className="shrink-0">
+                    {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                    Guardar
+                  </Button>
                 </div>
-                <Button onClick={handleSave} disabled={isSaving || isLoadingRecord}>
-                  {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                  Guardar
-                </Button>
               </div>
-            </div>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Información básica */}

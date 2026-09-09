@@ -61,20 +61,18 @@ export default function HomeAgendaMap() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <CardTitle className="flex items-center gap-2">
-            <MapPin className="w-5 h-5 text-primary-blue" />
-            Agenda del día y ubicación
-          </CardTitle>
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-gray-400" />
-            <Input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-44"
-            />
-          </div>
+        <CardTitle className="flex items-center gap-2">
+          <MapPin className="w-5 h-5 text-primary-blue" />
+          Agenda del día y ubicación
+        </CardTitle>
+        <div className="flex items-center gap-2 mt-3">
+          <Calendar className="w-4 h-4 text-gray-400" />
+          <Input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="w-44"
+          />
         </div>
       </CardHeader>
       <CardContent>
@@ -115,7 +113,9 @@ export default function HomeAgendaMap() {
                           {item.patientName}
                         </p>
                         {item.time && (
-                          <span className="text-xs text-gray-500 shrink-0">{item.time}</span>
+                          <span className="text-sm font-semibold text-gray-700 shrink-0 tabular-nums">
+                            {item.endTime ? `${item.time} - ${item.endTime}` : item.time}
+                          </span>
                         )}
                       </div>
                       <p className="text-xs text-gray-600 truncate">

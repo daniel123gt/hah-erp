@@ -368,12 +368,12 @@ ${data.citasDelDia.map((cita: any) =>
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
         <div>
-          <h1 className="text-3xl font-bold text-primary-blue">Dashboard Principal</h1>
-          <p className="text-gray-600 mt-2">Bienvenido de vuelta, {user?.email?.split('@')[0] || 'Usuario'}</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-primary-blue">Dashboard Principal</h1>
+          <p className="text-gray-600 mt-1 sm:mt-2">Bienvenido de vuelta, {user?.email?.split('@')[0] || 'Usuario'}</p>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex flex-wrap gap-2 sm:gap-3">
           {!isGestor && (
             <Button variant="outline" size="sm" onClick={handleGenerateReport}>
               <FileText className="w-4 h-4 mr-2" />
@@ -491,6 +491,12 @@ ${data.citasDelDia.map((cita: any) =>
       </div>
       )}
 
+      {/* Calendario a ancho completo */}
+      <HomeCalendar />
+
+      {/* Agenda del día + mapa de ubicación */}
+      <HomeAgendaMap />
+
       {/* Gráfico: Citas medicina, procedimientos y laboratorio en el tiempo */}
       {!loading && chartData.length > 0 && (
         <Card>
@@ -578,15 +584,9 @@ ${data.citasDelDia.map((cita: any) =>
         </Card>
       )}
 
-      {/* Agenda del día + mapa de ubicación (debajo de la gráfica, encima del calendario) */}
-      <HomeAgendaMap />
-
       {/* Contenido Principal */}
       {!loading && (
       <div className="space-y-6">
-        {/* Calendario a ancho completo */}
-        <HomeCalendar />
-
         {/* Tres columnas: Actividad Reciente, Alertas, Servicios Populares */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Actividad Reciente - solo admin */}
@@ -722,7 +722,7 @@ ${data.citasDelDia.map((cita: any) =>
           </DialogHeader>
           {selectedAppointment && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-600">Paciente</label>
                   <p className="text-lg font-semibold">{selectedAppointment.patient}</p>
@@ -775,7 +775,7 @@ ${data.citasDelDia.map((cita: any) =>
                   <strong>Nota:</strong> Para editar completamente la cita, serás redirigido a la página de citas donde podrás modificar todos los detalles.
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-600">Paciente</label>
                   <p className="text-lg font-semibold">{selectedAppointment.patient}</p>

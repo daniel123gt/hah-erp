@@ -1,0 +1,26 @@
+{
+  "name": "Health At Home Tools",
+  "short_name": "HAH Tools",
+  "description": "ERP de Health At Home: pacientes, citas, laboratorio, cuidados y más.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1F3666",
+  "orientation": "portrait-primary",
+  "lang": "es-PE",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-256.png",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

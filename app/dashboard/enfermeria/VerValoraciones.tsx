@@ -80,14 +80,14 @@ export default function VerValoraciones() {
   } = useProgressiveList(filteredAssessments, 20, `${searchTerm}`);
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3 min-w-0">
           <Button variant="outline" onClick={() => navigate("/enfermeria")}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Volver
           </Button>
-          <h1 className="text-2xl font-bold text-gray-900">Valoraciones Iniciales</h1>
+          <h1 className="text-2xl font-bold text-gray-900 min-w-0">Valoraciones Iniciales</h1>
         </div>
         <Button onClick={() => navigate("/enfermeria/valoracion-inicial")}>
           <Plus className="w-4 h-4 mr-2" />

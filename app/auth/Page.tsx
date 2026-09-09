@@ -73,12 +73,17 @@ export default function AuthPage() {
     }
   };
   return (
-    <div className="grid grid-cols-12 h-dvh">
-      <div className="col-span-8 flex flex-col gap-12 justify-center items-center bg-soft-blue">
-        <h1 className="text-6xl text-center font-light text-primary-blue text-wrap max-w-[400px]">
+    <div className="relative flex flex-col lg:flex-row min-h-dvh overflow-hidden">
+      <div className="relative flex-1 flex flex-col gap-8 lg:gap-12 justify-center items-center bg-soft-blue px-4 py-10 sm:py-12 overflow-hidden">
+        {/* Decoración (detrás del contenido) */}
+        <div className="pointer-events-none absolute bottom-0 left-0 w-[70%] max-w-[560px] z-0">
+          <img src="illus/Rectangle1.svg" className="w-full" />
+          <img src="illus/Rectangle2.svg" className="absolute bottom-0 left-0 w-full" />
+        </div>
+        <h1 className="relative z-10 text-4xl sm:text-5xl lg:text-6xl text-center font-light text-primary-blue text-wrap max-w-[400px]">
           HEALTH AT HOME TOOLS
         </h1>
-        <Card className="w-[400px] border-0">
+        <Card className="relative z-10 w-full max-w-[400px] border-0">
           <CardHeader>
             <CardTitle className="text-primary-blue font-bold text-2xl">
               Iniciar Sesión
@@ -138,14 +143,10 @@ export default function AuthPage() {
           </CardContent>
         </Card>
       </div>
-      <div className="col-span-4 bg-primary-blue flex justify-center items-center">
+      <div className="hidden lg:flex lg:w-1/3 bg-primary-blue justify-center items-center p-8">
         <figure>
-          <img src="logo.svg" alt="logo de health at home" />
+          <img src="logo.svg" alt="logo de health at home" className="max-w-full mx-auto" />
         </figure>
-      </div>
-      <div className="absolute bottom-0 left-0">
-        <img src="illus/Rectangle1.svg" className="w-[80%]" />
-        <img src="illus/Rectangle2.svg" className="absolute bottom-0 w-[80%]" />
       </div>
     </div>
   );

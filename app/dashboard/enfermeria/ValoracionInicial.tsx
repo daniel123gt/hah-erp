@@ -187,14 +187,14 @@ export default function ValoracionInicial() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3 min-w-0">
           <Button variant="outline" onClick={() => navigate("/enfermeria")}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Volver
           </Button>
-          <h1 className="text-2xl font-bold text-gray-900">Valoración Inicial de Enfermería</h1>
+          <h1 className="text-2xl font-bold text-gray-900 min-w-0">Valoración Inicial de Enfermería</h1>
         </div>
       </div>
 
@@ -206,7 +206,7 @@ export default function ValoracionInicial() {
         <CardContent className="space-y-4">
           {!patient ? (
             <>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <Input
                   placeholder="Buscar por nombre, email o teléfono..."
                   value={searchTerm}
@@ -214,14 +214,16 @@ export default function ValoracionInicial() {
                   onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                   className="flex-1"
                 />
-                <Button onClick={handleSearch} disabled={isSearching}>
-                  {isSearching ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
-                  Buscar
-                </Button>
-                <Button variant="outline" onClick={() => setAddPatientModalOpen(true)}>
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Agregar paciente
-                </Button>
+                <div className="flex gap-2">
+                  <Button onClick={handleSearch} disabled={isSearching} className="flex-1 sm:flex-none">
+                    {isSearching ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
+                    Buscar
+                  </Button>
+                  <Button variant="outline" onClick={() => setAddPatientModalOpen(true)} className="flex-1 sm:flex-none">
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Agregar paciente
+                  </Button>
+                </div>
               </div>
 
               <CreatePatientSubmodal
@@ -276,7 +278,7 @@ export default function ValoracionInicial() {
               <CardTitle>Datos de la Valoración</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label>Fecha de Valoración *</Label>
                   <Input
@@ -305,7 +307,7 @@ export default function ValoracionInicial() {
               <CardTitle>Signos Vitales</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                   <Label>T.A. Sistólica (mmHg)</Label>
                   <Input
@@ -412,7 +414,7 @@ export default function ValoracionInicial() {
               <CardTitle>Datos del Paciente</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                   <Label>Edad</Label>
                   <Input

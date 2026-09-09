@@ -292,12 +292,12 @@ export default function EvolucionEnfermeria() {
   } = useProgressiveList(evolutionRecords, 20, `${currentEvolution?.id}`);
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center gap-4">
+    <div className="space-y-6">
+      <div className="flex items-center gap-3 min-w-0">
         <Button variant="outline" onClick={() => navigate("/enfermeria")}>
           <ArrowLeft className="w-4 h-4 mr-2" /> Volver
         </Button>
-        <h1 className="text-2xl font-bold text-gray-900">Evolución de Enfermería</h1>
+        <h1 className="text-2xl font-bold text-gray-900 min-w-0">Evolución de Enfermería</h1>
       </div>
 
       {/* Buscar / Seleccionar Paciente */}
@@ -390,9 +390,9 @@ export default function EvolucionEnfermeria() {
           {/* Formulario de Evolución */}
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <CardTitle>Formulario de Evolución</CardTitle>
-                <Button onClick={handleSaveEvolution} disabled={isSubmitting}>
+                <Button onClick={handleSaveEvolution} disabled={isSubmitting} className="w-full sm:w-auto">
                   {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                   Guardar Evolución
                 </Button>
@@ -524,7 +524,7 @@ export default function EvolucionEnfermeria() {
                     </div>
                     <div className="md:col-span-2">
                       <Label>Fecha y Hora <span className="text-red-500">*</span></Label>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <Input
                           type="date"
                           value={newRecord.time ? new Date(newRecord.time).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}

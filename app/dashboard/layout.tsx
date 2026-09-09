@@ -1,4 +1,4 @@
-import { SidebarProvider } from "~/components/ui/sidebar";
+import { SidebarProvider, SidebarTrigger } from "~/components/ui/sidebar";
 import { AppSidebar } from "~/components/ui/app-sidebar";
 import { RightSidebar } from "~/components/ui/right-sidebar";
 import { NotificationsProvider } from "~/contexts/NotificationsContext";
@@ -6,6 +6,7 @@ import { NotificationBell } from "~/components/NotificationBell";
 import { GlobalSearch } from "~/components/GlobalSearch";
 import { ReminderChecker } from "~/components/ReminderChecker";
 import { RealtimeNotificationsSubscriber } from "~/components/RealtimeNotificationsSubscriber";
+import { SessionWatcher } from "~/components/SessionWatcher";
 import { useAuthStore, getAppRole } from "~/store/authStore";
 import { Navigate, Outlet, useLocation } from "react-router";
 import Loading from "~/components/root/Loading/Loading";
@@ -43,6 +44,7 @@ export default function Layout() {
 
   return (
     <NotificationsProvider>
+      <SessionWatcher />
       <ReminderChecker />
       <RealtimeNotificationsSubscriber />
       <SidebarProvider style={{
@@ -50,10 +52,13 @@ export default function Layout() {
           "--sidebar-background": getPrimaryColor()
       } as React.CSSProperties }>
         <AppSidebar />
-        <main className="py-12 px-8 text-primary-blue flex-1 max-w-full overflow-hidden">
+        <main className="py-6 px-4 sm:py-8 sm:px-6 lg:py-12 lg:px-8 text-primary-blue flex-1 max-w-full overflow-hidden">
           <div className="max-w-7xl mx-auto flex flex-col gap-4">
-            <div className="flex justify-between items-center gap-4">
-              <GlobalSearch />
+            <div className="flex items-center gap-2 sm:gap-4">
+              <SidebarTrigger className="md:hidden shrink-0 text-primary-blue" />
+              <div className="flex-1 min-w-0">
+                <GlobalSearch />
+              </div>
               <NotificationBell />
             </div>
             <Outlet />

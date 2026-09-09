@@ -60,7 +60,7 @@ export default function RegistroCitasMedicasDashboard() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Registro Citas Médicas</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Registro Citas Médicas</h1>
           <p className="text-gray-600 mt-1">
             Registro de citas médicas completadas para reportes de entradas y salidas
           </p>

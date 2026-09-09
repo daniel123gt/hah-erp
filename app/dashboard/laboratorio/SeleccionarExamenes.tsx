@@ -167,9 +167,9 @@ export default function LaboratorioPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">🧪 Laboratorio</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">🧪 Laboratorio</h1>
           <p className="text-gray-600 mt-1">
             Selección de exámenes y cotizaciones de laboratorio
           </p>

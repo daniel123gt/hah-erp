@@ -371,16 +371,16 @@ export default function OrdenDetalle() {
   const totalFinal = Math.max(0, totalAntesDeDescuento - Number(order.discount_amount ?? 0));
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3 min-w-0">
           <Button variant="outline" onClick={() => navigate("/laboratorio/ordenes")}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Volver
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-2xl font-bold text-gray-900 min-w-0">
               Orden de Exámenes #{order.id.slice(0, 8)}
             </h1>
             <p className="text-sm text-gray-500 mt-1">
@@ -722,6 +722,35 @@ export default function OrdenDetalle() {
                 <p className="text-sm text-gray-600 mb-3">
                   Para que el paciente vea sus resultados con Nro. documento y contraseña. Si perdió la contraseña, puede generar una nueva.
                 </p>
+                <div className="mb-3 rounded-md border border-gray-200 bg-gray-50 p-2.5">
+                  <p className="text-xs font-medium text-gray-500 mb-1">Link del portal (para enviar al paciente)</p>
+                  <div className="flex items-center gap-2">
+                    <a
+                      href="https://www.healthathomeresultados.com/"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sm text-primary-blue underline break-all flex-1 min-w-0"
+                    >
+                      https://www.healthathomeresultados.com/
+                    </a>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText("https://www.healthathomeresultados.com/");
+                          toast.success("Link del portal copiado");
+                        } catch {
+                          toast.error("No se pudo copiar el link");
+                        }
+                      }}
+                    >
+                      <Copy className="w-4 h-4 mr-1" />
+                      Copiar
+                    </Button>
+                  </div>
+                </div>
                 <Button
                   variant="outline"
                   size="sm"

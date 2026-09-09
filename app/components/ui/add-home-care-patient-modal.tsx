@@ -206,7 +206,7 @@ export function AddHomeCarePatientModal({ onAdded }: AddHomeCarePatientModalProp
           Agregar paciente
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[1120px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-[1120px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <User className="w-5 h-5" />
@@ -229,9 +229,9 @@ export function AddHomeCarePatientModal({ onAdded }: AddHomeCarePatientModalProp
             <CardContent className="space-y-3">
               <div className="space-y-2">
                 <Label>Paciente *</Label>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <Combobox
-                    className="flex-1"
+                    className="flex-1 min-w-0"
                     uppercase
                     options={availablePatients.map((p) => ({
                       value: p.id,
