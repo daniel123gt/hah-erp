@@ -81,6 +81,7 @@ const items: NavItem[] = [
     children: [
       { title: "Nueva orden", url: "/laboratorio/seleccionar" },
       { title: "Órdenes", url: "/laboratorio/ordenes" },
+      { title: "Cotizaciones", url: "/laboratorio/cotizaciones" },
       { title: "Catálogo de exámenes", url: "/laboratorio/buscar" },
       { title: "Reportes", url: "/laboratorio/reportes" },
     ],

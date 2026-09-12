@@ -43,6 +43,7 @@ export default [
     route('laboratorio/buscar', 'routes/laboratorio-buscar.tsx'),
     route('laboratorio/reportes', 'routes/laboratorio-reportes.tsx'),
     route('laboratorio/ordenes', 'routes/laboratorio-ordenes.tsx'),
+    route('laboratorio/cotizaciones', 'routes/laboratorio-cotizaciones.tsx'),
     route('laboratorio/ordenes/:id', 'routes/laboratorio-orden-detalle.tsx'),
     route('enfermeria', 'routes/enfermeria.tsx'),
     route('enfermeria/valoracion-inicial', 'routes/enfermeria-valoracion.tsx'),

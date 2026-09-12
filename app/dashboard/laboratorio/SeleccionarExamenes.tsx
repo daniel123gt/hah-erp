@@ -32,6 +32,7 @@ interface ExamQuote {
 import { toast } from "sonner";
 import { useAuthStore, getAppRole } from "~/store/authStore";
 import { CreateOrderModal } from "~/components/ui/create-order-modal";
+import { SaveQuoteModal } from "~/components/ui/save-quote-modal";
 import {
   Search,
   Plus,
@@ -308,13 +309,18 @@ export default function LaboratorioPage() {
               </h2>
               {selectedExams.length > 0 && (
                 <div className="flex flex-col gap-2 w-full">
-                  <CreateOrderModal 
+                  <CreateOrderModal
                     selectedExams={selectedExams}
                     onOrderCreated={() => {
                       handleClearSelection();
                       toast.success("Orden creada exitosamente");
                     }}
-                  />   
+                  />
+                  <SaveQuoteModal
+                    selectedExams={selectedExams}
+                    total={quote?.totalFinal ?? 0}
+                    onSaved={handleClearSelection}
+                  />
                   <Button
                     onClick={handleClearSelection}
                     variant="outline"

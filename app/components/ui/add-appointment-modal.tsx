@@ -24,6 +24,7 @@ import {
 } from "~/components/ui/select";
 import { Combobox } from "~/components/ui/combobox";
 import { CreatePatientSubmodal } from "~/components/ui/create-patient-submodal";
+import { MultiDateCalendar } from "~/components/ui/multi-date-calendar";
 import { patientsService, type Patient } from "~/services/patientsService";
 import { procedureService, PAYMENT_METHOD_OPTIONS } from "~/services/procedureService";
 import { staffService } from "~/services/staffService";
@@ -43,6 +44,8 @@ import {
   DollarSign,
   AlertCircle,
   Loader2,
+  CalendarDays,
+  X,
 } from "lucide-react";
 
 interface Appointment {
@@ -104,6 +107,13 @@ export function AddAppointmentModal({
       : "Médico";
 
   const [isOpen, setIsOpen] = useState(false);
+  // Programación de varias fechas (solo procedimientos): se crea una cita por fecha seleccionada.
+  const [multiDate, setMultiDate] = useState(false);
+  const [selectedDates, setSelectedDates] = useState<string[]>([]);
+  const toggleDate = (dateStr: string) =>
+    setSelectedDates((prev) =>
+      prev.includes(dateStr) ? prev.filter((d) => d !== dateStr) : [...prev, dateStr]
+    );
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loadingPatients, setLoadingPatients] = useState(false);
   const [professionals, setProfessionals] = useState<{ name: string; specialty: string }[]>([]);
@@ -134,6 +144,14 @@ export function AddAppointmentModal({
     paymentMethod: "efectivo",
     numeroOperacion: "",
   });
+
+  // Al cerrar el modal, limpiar la programación de varias fechas.
+  useEffect(() => {
+    if (!isOpen) {
+      setMultiDate(false);
+      setSelectedDates([]);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -252,6 +270,19 @@ export function AddAppointmentModal({
       toast.error("Debe asignar un profesional (enfermera o médico).");
       return;
     }
+    const isBatch = variant === "procedimientos" && multiDate;
+    if (isBatch && selectedDates.length === 0) {
+      toast.error("Selecciona al menos una fecha en el calendario.");
+      return;
+    }
+    if (!isBatch && !formData.date?.trim()) {
+      toast.error("Selecciona la fecha de la cita.");
+      return;
+    }
+    if (!formData.time?.trim()) {
+      toast.error("Selecciona la hora de la cita.");
+      return;
+    }
     const patient = patients.find((p) => p.id === formData.patientId);
     const locationTrim = formData.location?.trim() ?? "";
     const districtTrim = formData.district?.trim() ?? "";
@@ -279,9 +310,10 @@ export function AddAppointmentModal({
     const patientEmail = (rest.patientEmail?.trim() || patient?.email) ?? "";
     const patientPhone = (rest.patientPhone?.trim() || patient?.phone) ?? "";
 
-    const newAppointment: Appointment = {
-      id: `A${Date.now()}`,
+    const buildAppointment = (dateStr: string, idx: number): Appointment => ({
+      id: `A${Date.now()}-${idx}`,
       ...rest,
+      date: dateStr,
       patientName,
       patientEmail,
       patientPhone,
@@ -297,13 +329,20 @@ export function AddAppointmentModal({
       }),
       payment_method: formData.status === "completed" ? formData.paymentMethod || null : null,
       numero_operacion: formData.status === "completed" && formData.numeroOperacion?.trim() ? formData.numeroOperacion.trim() : null,
-    };
+    });
+
+    const datesToCreate = isBatch ? [...selectedDates].sort() : [formData.date];
 
     setIsSubmitting(true);
     try {
-      const result = onAppointmentAdded(newAppointment);
-      if (result && typeof (result as Promise<void>).then === "function") {
-        await (result as Promise<void>);
+      for (let i = 0; i < datesToCreate.length; i++) {
+        const result = onAppointmentAdded(buildAppointment(datesToCreate[i], i));
+        if (result && typeof (result as Promise<void>).then === "function") {
+          await (result as Promise<void>);
+        }
+      }
+      if (datesToCreate.length > 1) {
+        toast.success(`${datesToCreate.length} citas creadas para el tratamiento`);
       }
       setIsOpen(false);
       setProcedureProfessionalKind("enfermera");
@@ -466,17 +505,72 @@ export function AddAppointmentModal({
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Fecha *</label>
-                    <div className="relative">
-                      <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                      <Input
-                        type="date"
-                        value={formData.date}
-                        onChange={(e) => handleInputChange("date", e.target.value)}
-                        className="pl-10"
-                        required
-                      />
-                    </div>
+                    {variant === "procedimientos" && multiDate ? (
+                      <div className="h-10 flex items-center px-3 rounded-md border border-dashed border-primary-blue/40 bg-blue-50 text-sm text-primary-blue">
+                        {selectedDates.length > 0
+                          ? `${selectedDates.length} fecha${selectedDates.length === 1 ? "" : "s"} seleccionada${selectedDates.length === 1 ? "" : "s"}`
+                          : "Elige las fechas en el calendario"}
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <Input
+                          type="date"
+                          value={formData.date}
+                          onChange={(e) => handleInputChange("date", e.target.value)}
+                          className="pl-10"
+                          required
+                        />
+                      </div>
+                    )}
                   </div>
+
+                  {variant === "procedimientos" && (
+                    <div className="space-y-3">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={multiDate}
+                          onChange={(e) => setMultiDate(e.target.checked)}
+                          className="h-4 w-4 accent-primary-blue"
+                        />
+                        <span className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+                          <CalendarDays className="w-4 h-4" />
+                          Programar varias fechas (tratamiento)
+                        </span>
+                      </label>
+
+                      {multiDate && (
+                        <div className="space-y-3">
+                          <p className="text-xs text-gray-500">
+                            Toca los días en el calendario. La misma hora, procedimiento y profesional se
+                            aplican a todas las fechas: se creará una cita por cada fecha seleccionada.
+                          </p>
+                          <MultiDateCalendar selected={selectedDates} onToggle={toggleDate} />
+                          {selectedDates.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                              {[...selectedDates].sort().map((d) => (
+                                <span
+                                  key={d}
+                                  className="inline-flex items-center gap-1 rounded-full bg-primary-blue/10 text-primary-blue text-xs px-2 py-1"
+                                >
+                                  {d.split("-").reverse().join("/")}
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleDate(d)}
+                                    className="hover:text-red-600"
+                                    aria-label="Quitar fecha"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Hora *</label>
                     <div className="relative">
@@ -732,10 +826,13 @@ export function AddAppointmentModal({
                 <div>
                   <p className="text-sm text-gray-600">Fecha y Hora:</p>
                   <p className="font-medium">
-                    {formData.date && formData.time 
-                      ? `${formData.date.split('-').reverse().join('/')} a las ${formData.time}`
-                      : "No seleccionado"
-                    }
+                    {variant === "procedimientos" && multiDate
+                      ? selectedDates.length > 0 && formData.time
+                        ? `${selectedDates.length} fecha${selectedDates.length === 1 ? "" : "s"} a las ${formData.time}`
+                        : "No seleccionado"
+                      : formData.date && formData.time
+                        ? `${formData.date.split('-').reverse().join('/')} a las ${formData.time}`
+                        : "No seleccionado"}
                   </p>
                 </div>
                 <div>
