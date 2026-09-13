@@ -37,6 +37,12 @@ interface ComboboxProps {
   emptySearchText?: string;
   /** Muestra el valor y las opciones en MAYÚSCULAS (para nombres de pacientes/personal) */
   uppercase?: boolean;
+  /**
+   * Si se pasa, la búsqueda se delega al padre (server-side): se desactiva el filtrado
+   * en cliente y el padre debe proveer las `options` ya filtradas. Útil cuando hay más
+   * registros de los que se cargan en memoria.
+   */
+  onSearchChange?: (search: string) => void;
 }
 
 export function Combobox({
@@ -50,6 +56,7 @@ export function Combobox({
   className,
   emptySearchText = "Sin resultados.",
   uppercase = false,
+  onSearchChange,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false);
 
@@ -97,8 +104,8 @@ export function Combobox({
         sideOffset={4}
         avoidCollisions={false}
       >
-        <Command shouldFilter={true}>
-          <CommandInput placeholder={placeholder} />
+        <Command shouldFilter={!onSearchChange}>
+          <CommandInput placeholder={placeholder} onValueChange={onSearchChange} />
           <CommandList>
             <CommandEmpty>{emptySearchText}</CommandEmpty>
             <CommandGroup>

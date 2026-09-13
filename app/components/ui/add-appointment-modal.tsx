@@ -116,6 +116,9 @@ export function AddAppointmentModal({
     );
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loadingPatients, setLoadingPatients] = useState(false);
+  // Búsqueda de pacientes en el servidor (para no depender solo de los cargados en memoria).
+  const [patientSearch, setPatientSearch] = useState("");
+  const [patientResults, setPatientResults] = useState<Patient[] | null>(null);
   const [professionals, setProfessionals] = useState<{ name: string; specialty: string }[]>([]);
   const [loadingProfessionals, setLoadingProfessionals] = useState(false);
   const [procedureCatalog, setProcedureCatalog] = useState<{ id: string; name: string; base_price_soles: number; total_cost_soles: number }[]>([]);
@@ -150,6 +153,8 @@ export function AddAppointmentModal({
     if (!isOpen) {
       setMultiDate(false);
       setSelectedDates([]);
+      setPatientSearch("");
+      setPatientResults(null);
     }
   }, [isOpen]);
 
@@ -163,6 +168,31 @@ export function AddAppointmentModal({
       .finally(() => setLoadingPatients(false));
     patientsService.getDistricts().then(setDistricts).catch(() => setDistricts([]));
   }, [isOpen]);
+
+  // Búsqueda de pacientes en el servidor (acentos-insensible), con debounce.
+  useEffect(() => {
+    if (!isOpen) return;
+    const term = patientSearch.trim();
+    if (term.length < 2) {
+      setPatientResults(null);
+      return;
+    }
+    let active = true;
+    const t = setTimeout(() => {
+      patientsService
+        .getPatients({ search: term, limit: 50 })
+        .then((res) => {
+          if (active) setPatientResults(res.data);
+        })
+        .catch(() => {
+          if (active) setPatientResults([]);
+        });
+    }, 300);
+    return () => {
+      active = false;
+      clearTimeout(t);
+    };
+  }, [patientSearch, isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -234,11 +264,18 @@ export function AddAppointmentModal({
   };
 
   const handlePatientChange = (patientId: string) => {
-    const patient = patients.find((p) => p.id === patientId);
+    // El paciente puede venir de la lista cargada o de los resultados de búsqueda del servidor.
+    const patient =
+      patients.find((p) => p.id === patientId) ??
+      (patientResults ?? []).find((p) => p.id === patientId);
+    // Si vino de la búsqueda, lo conservamos en la lista para futuras operaciones/etiqueta.
+    if (patient && !patients.some((p) => p.id === patientId)) {
+      setPatients((prev) => [patient, ...prev]);
+    }
     setFormData((prev) => ({
       ...prev,
       patientId: patientId,
-      patientName: patient?.name ?? "",
+      patientName: patient?.name ?? prev.patientName,
       patientEmail: patient?.email ?? "",
       patientPhone: patient?.phone ?? "",
       location: patient?.address ?? "",
@@ -430,9 +467,21 @@ export function AddAppointmentModal({
                 </label>
                 <Combobox
                   uppercase
-                  options={patients.map((p) => ({ value: p.id, label: p.name }))}
+                  options={(() => {
+                    const list = patientResults ?? patients;
+                    const opts = list.map((p) => ({ value: p.id, label: p.name }));
+                    // Garantizar que el paciente seleccionado siempre tenga etiqueta visible.
+                    if (formData.patientId && !opts.some((o) => o.value === formData.patientId)) {
+                      opts.unshift({
+                        value: formData.patientId,
+                        label: formData.patientName || "Paciente seleccionado",
+                      });
+                    }
+                    return opts;
+                  })()}
                   value={formData.patientId}
                   onValueChange={handlePatientChange}
+                  onSearchChange={setPatientSearch}
                   placeholder={loadingPatients ? "Cargando pacientes..." : "Seleccionar paciente"}
                   disabled={loadingPatients}
                 />
