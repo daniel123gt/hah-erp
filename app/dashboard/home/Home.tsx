@@ -46,6 +46,7 @@ import {
 } from "recharts";
 import HomeCalendar from "~/dashboard/home/HomeCalendar";
 import HomeAgendaMap from "~/dashboard/home/HomeAgendaMap";
+import { ServicesPerDayChart } from "~/dashboard/home/ServicesPerDayChart";
 
 const ACTIVITY_ICON = { procedimiento: Stethoscope };
 const ACTIVITY_COLOR = { procedimiento: "text-purple-600" };
@@ -496,6 +497,9 @@ ${data.citasDelDia.map((cita: any) =>
 
       {/* Agenda del día + mapa de ubicación */}
       <HomeAgendaMap />
+
+      {/* Gráfico: servicios concretados por día (rango seleccionable) */}
+      <ServicesPerDayChart />
 
       {/* Gráfico: Citas medicina, procedimientos y laboratorio en el tiempo */}
       {!loading && chartData.length > 0 && (

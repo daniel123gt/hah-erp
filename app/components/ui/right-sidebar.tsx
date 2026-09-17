@@ -9,6 +9,7 @@ import { useNavigate } from "react-router";
 import { appointmentsService } from "~/services/appointmentsService";
 import labOrderService from "~/services/labOrderService";
 import { getTodayLocal } from "~/lib/dateUtils";
+import { RegisterLeadCard } from "~/components/ui/register-lead-card";
 
 export function RightSidebar() {
   const { user } = useAuthStore();
@@ -114,6 +115,9 @@ export function RightSidebar() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Registro de llamadas / mensajes entrantes (leads) */}
+      <RegisterLeadCard />
 
       {/* Citas de procedimientos de hoy */}
       <Card>

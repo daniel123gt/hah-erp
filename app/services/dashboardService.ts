@@ -4,7 +4,7 @@
  */
 
 import { getTodayLocal, formatTimeOnlyLocal, toTimeInputValue } from "~/lib/dateUtils";
-import { isAppointmentCancelado, isLabCancelado } from "~/lib/estadoDisplay";
+import { isAppointmentCancelado, isAppointmentCompletado, isLabCancelado, normalizeLabEstado } from "~/lib/estadoDisplay";
 import patientsService from "~/services/patientsService";
 import { appointmentsService } from "~/services/appointmentsService";
 import { procedureService, type ProcedureRecord } from "~/services/procedureService";
@@ -358,6 +358,112 @@ export async function getDashboardChartData(): Promise<DashboardChartPoint[]> {
       citasRxEcografias: rxEcografiasByDate[date] ?? 0,
       laboratorio: labCount,
       cuidadosPorTurnos: cuidadosPorTurnosByDate[date] ?? 0,
+    };
+  });
+}
+
+/** Punto del gráfico "servicios concretados por día". */
+export interface ServicesPerDayPoint {
+  date: string;
+  /** Formato corto para eje X (ej. "15/02") */
+  label: string;
+  medicina: number;
+  procedimientos: number;
+  rxEcografias: number;
+  laboratorio: number;
+  total: number;
+}
+
+const pad2 = (n: number) => String(n).padStart(2, "0");
+
+/** Lista de fechas locales YYYY-MM-DD entre from y to (inclusive). */
+function getDaysBetween(fromYMD: string, toYMD: string): string[] {
+  const [fy, fm, fd] = fromYMD.slice(0, 10).split("-").map(Number);
+  const [ty, tm, td] = toYMD.slice(0, 10).split("-").map(Number);
+  let start = new Date(fy, fm - 1, fd);
+  let end = new Date(ty, tm - 1, td);
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return [];
+  if (start > end) [start, end] = [end, start];
+  const out: string[] = [];
+  for (let dt = new Date(start); dt <= end; dt.setDate(dt.getDate() + 1)) {
+    out.push(`${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())}`);
+    if (out.length > 400) break; // guarda contra rangos absurdos
+  }
+  return out;
+}
+
+/** Fecha local YYYY-MM-DD a partir de un valor de fecha/hora (timestamptz o date). */
+function localDateFromRaw(raw: unknown): string {
+  const rawStr = String(raw ?? "");
+  if (!rawStr) return "";
+  const dt = rawStr.includes("T") ? new Date(rawStr) : new Date(rawStr.slice(0, 10) + "T12:00:00");
+  if (isNaN(dt.getTime())) return rawStr.slice(0, 10);
+  return `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())}`;
+}
+
+/**
+ * Número de servicios CONCRETADOS por día (solo completados; excluye pendientes y
+ * cancelados) en el rango [fromYMD, toYMD]. Servicios: citas medicina, procedimientos,
+ * RX/Ecografías y órdenes de laboratorio. Laboratorio se ubica por fecha de toma de muestra.
+ */
+export async function getServicesPerDay(fromYMD: string, toYMD: string): Promise<ServicesPerDayPoint[]> {
+  const from = fromYMD.slice(0, 10);
+  const to = toYMD.slice(0, 10);
+  const dates = getDaysBetween(from, to);
+  if (dates.length === 0) return [];
+  const rangeFrom = dates[0];
+  const rangeTo = dates[dates.length - 1];
+  const dateSet = new Set(dates);
+
+  const [med, proc, rx, labOrders] = await Promise.all([
+    appointmentsService.list("medicina").catch(() => []),
+    appointmentsService.list("procedimientos").catch(() => []),
+    appointmentsService.list("rx_ecografias").catch(() => []),
+    labOrderService.getOrdersForSampleDateRange(rangeFrom, rangeTo).catch(() => []),
+  ]);
+
+  const medByDate: Record<string, number> = {};
+  const procByDate: Record<string, number> = {};
+  const rxByDate: Record<string, number> = {};
+  const labByDate: Record<string, number> = {};
+  dates.forEach((d) => {
+    medByDate[d] = 0;
+    procByDate[d] = 0;
+    rxByDate[d] = 0;
+    labByDate[d] = 0;
+  });
+
+  const bucketAppt = (list: Array<{ status?: string; date: string }>, map: Record<string, number>) => {
+    list.forEach((c) => {
+      if (!isAppointmentCompletado(c.status)) return; // solo concretados
+      const d = c.date.length >= 10 ? c.date.slice(0, 10) : c.date;
+      if (dateSet.has(d)) map[d] = (map[d] ?? 0) + 1;
+    });
+  };
+  bucketAppt(med, medByDate);
+  bucketAppt(proc, procByDate);
+  bucketAppt(rx, rxByDate);
+
+  labOrders.forEach((o) => {
+    if (normalizeLabEstado(o.status) !== "Completado") return; // solo concretados
+    const d = localDateFromRaw(o.sample_date || o.order_date || "");
+    if (dateSet.has(d)) labByDate[d] = (labByDate[d] ?? 0) + 1;
+  });
+
+  return dates.map((date) => {
+    const [, m, d] = date.split("-");
+    const medicina = medByDate[date] ?? 0;
+    const procedimientos = procByDate[date] ?? 0;
+    const rxEcografias = rxByDate[date] ?? 0;
+    const laboratorio = labByDate[date] ?? 0;
+    return {
+      date,
+      label: `${d}/${m}`,
+      medicina,
+      procedimientos,
+      rxEcografias,
+      laboratorio,
+      total: medicina + procedimientos + rxEcografias + laboratorio,
     };
   });
 }
