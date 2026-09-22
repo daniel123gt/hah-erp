@@ -3,15 +3,61 @@ import { Button } from "./button";
 import { Card, CardContent, CardHeader, CardTitle } from "./card";
 import { Avatar, AvatarFallback, AvatarImage } from "./avatar";
 import { Badge } from "./badge";
-import { Settings, Calendar, Hash, HeartPulse, FlaskConical, Scan } from "lucide-react";
+import { Settings, Calendar, Hash, HeartPulse, FlaskConical, Scan, PanelRightOpen } from "lucide-react";
 import { useAuthStore, getAppRole } from "~/store/authStore";
-import { useNavigate } from "react-router";
+import { useNavigate, useLocation } from "react-router";
 import { appointmentsService } from "~/services/appointmentsService";
 import labOrderService from "~/services/labOrderService";
 import { getTodayLocal } from "~/lib/dateUtils";
 import { RegisterLeadCard } from "~/components/ui/register-lead-card";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "./sheet";
 
+/** Panel lateral derecho fijo (solo visible en pantallas xl+). */
 export function RightSidebar() {
+  return (
+    <div className="hidden xl:block w-80 shrink-0 bg-white border-l border-gray-200 p-6">
+      <RightSidebarContent />
+    </div>
+  );
+}
+
+/**
+ * Botón + panel deslizante para ver el contenido del RightSidebar en móvil/tablet
+ * (donde el panel fijo está oculto). El botón se muestra solo en pantallas < xl.
+ */
+export function RightSidebarSheet() {
+  const [open, setOpen] = useState(false);
+  const location = useLocation();
+
+  // Cerrar el panel al navegar a otra ruta.
+  useEffect(() => {
+    setOpen(false);
+  }, [location.pathname]);
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="xl:hidden shrink-0 text-primary-blue"
+          aria-label="Abrir panel lateral"
+        >
+          <PanelRightOpen className="w-5 h-5" />
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="right" className="w-[88%] sm:max-w-sm overflow-y-auto p-4">
+        <SheetHeader className="p-0 mb-3">
+          <SheetTitle className="text-primary-blue">Panel</SheetTitle>
+        </SheetHeader>
+        <RightSidebarContent />
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+/** Contenido compartido del panel derecho (tarjetas). */
+function RightSidebarContent() {
   const { user } = useAuthStore();
   const role = getAppRole(user);
   const navigate = useNavigate();
@@ -72,7 +118,7 @@ export function RightSidebar() {
   }, []);
 
   return (
-    <div className="hidden xl:block w-80 shrink-0 bg-white border-l border-gray-200 p-6 space-y-6">
+    <div className="space-y-6">
       {/* Perfil del Usuario */}
       <Card>
         <CardHeader className="pb-4">

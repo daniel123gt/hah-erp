@@ -1,6 +1,6 @@
 import { SidebarProvider, SidebarTrigger } from "~/components/ui/sidebar";
 import { AppSidebar } from "~/components/ui/app-sidebar";
-import { RightSidebar } from "~/components/ui/right-sidebar";
+import { RightSidebar, RightSidebarSheet } from "~/components/ui/right-sidebar";
 import { NotificationsProvider } from "~/contexts/NotificationsContext";
 import { NotificationBell } from "~/components/NotificationBell";
 import { GlobalSearch } from "~/components/GlobalSearch";
@@ -60,6 +60,7 @@ export default function Layout() {
                 <GlobalSearch />
               </div>
               <NotificationBell />
+              <RightSidebarSheet />
             </div>
             <Outlet />
           </div>

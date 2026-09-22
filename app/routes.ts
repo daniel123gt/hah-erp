@@ -54,6 +54,7 @@ export default [
     route('inventario', 'routes/inventario.tsx'),
     route('egresos', 'routes/egresos.tsx'),
     route('egresos/movilidad', 'routes/egresos-movilidad.tsx'),
+    route('llamadas-mensajes', 'routes/leads.tsx'),
     route('facturacion', 'routes/facturacion.tsx'),
     route('reportes', 'routes/reportes.tsx'),
     route('emergencias', 'routes/emergencias.tsx'),

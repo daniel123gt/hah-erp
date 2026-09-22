@@ -15,6 +15,7 @@ import {
   ChevronDown,
   BarChart3,
   Wallet,
+  PhoneIncoming,
 } from "lucide-react";
 
 import {
@@ -172,6 +173,11 @@ const items: NavItem[] = [
     children: [
       { title: "Movilidad", url: "/egresos/movilidad" },
     ],
+  },
+  {
+    title: "Llamadas y mensajes",
+    url: "/llamadas-mensajes",
+    icon: PhoneIncoming,
   },
   {
     title: "Configuración",

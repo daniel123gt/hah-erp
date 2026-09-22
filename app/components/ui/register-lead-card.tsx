@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
@@ -27,6 +28,7 @@ const CATEGORY_OPTIONS: { value: LeadCategory; label: string; desc: string }[] =
 ];
 
 export function RegisterLeadCard() {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<"select" | "confirm">("select");
   const [type, setType] = useState<LeadType | null>(null);
@@ -106,6 +108,13 @@ export function RegisterLeadCard() {
         >
           <Plus className="w-4 h-4 mr-2" />
           Agregar registro
+        </Button>
+        <Button
+          variant="outline"
+          className="w-full border-primary-blue text-primary-blue hover:bg-primary-blue hover:text-white"
+          onClick={() => navigate("/llamadas-mensajes")}
+        >
+          Ver registros y reportes
         </Button>
       </CardContent>
 
